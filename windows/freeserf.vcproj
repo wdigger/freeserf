@@ -476,10 +476,18 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\src\sdl-video.c"
+				RelativePath="..\src\video-sdl.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -638,7 +646,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\src\sdl-video.h"
+				RelativePath="..\src\video.h"
 				>
 			</File>
 			<File
