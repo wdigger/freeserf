@@ -280,6 +280,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\src\gfx-cache.cc"
+				>
+			</File>
+			<File
 				RelativePath="..\src\gfx.c"
 				>
 				<FileConfiguration
