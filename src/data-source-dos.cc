@@ -26,6 +26,8 @@
 extern "C" {
 #endif
   #include "log.h"
+  #include "sfx2wav.h"
+  #include "xmi2mid.h"
 #ifndef _MSC_VER
 }
 #endif
@@ -441,7 +443,50 @@ data_get_sprite_offset(int sprite, int *dx, int *dy)
   }
 }
 
-sprite_t *data_get_cursor()
+sprite_t *
+data_get_cursor()
 {
   return data_transparent_sprite_for_index(DATA_CURSOR, 0);
+}
+
+void *
+data_get_sound(uint index, size_t *size)
+{
+  *size = 0;
+
+  size_t sfx_size = 0;
+  void *data = (char*)data_get_object(DATA_SFX_BASE + index, &sfx_size);
+  if (data == NULL) {
+    LOGE("data", "Could not extract SFX clip: %d.", index);
+    return NULL;
+  }
+
+  void *wav = sfx2wav(data, sfx_size, size);
+  if (wav == NULL) {
+    LOGE("data", "Could not convert SFX clip to WAV: %d.", index);
+    return NULL;
+  }
+
+  return wav;
+}
+
+void *
+data_get_music(uint index, size_t *size)
+{
+  *size = 0;
+
+  size_t xmi_size = 0;
+  void *data = (char*)data_get_object(DATA_MUSIC_GAME + index, &xmi_size);
+  if (data == NULL) {
+    LOGE("data", "Could not extract XMI clip: %d.", index);
+    return NULL;
+  }
+
+  void *mid = xmi2mid(data, xmi_size, size);
+  if (mid == NULL) {
+    LOGE("data", "Could not convert XMI clip to MID: %d.", index);
+    return NULL;
+  }
+
+  return mid;
 }

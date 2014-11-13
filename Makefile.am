@@ -37,7 +37,9 @@ freeserf_SOURCES = \
 	src/data-source-dos.cc \
 	src/text-input.cc src/text-input.h \
 	src/event_loop.cc src/event_loop.h \
-	src/event_loop-sdl.cc src/event_loop-sdl.h
+	src/event_loop-sdl.cc src/event_loop-sdl.h \
+	src/sfx2wav.c src/sfx2wav.h \
+	src/xmi2mid.c src/xmi2mid.h
 
 AM_CFLAGS = $(SDL2_CFLAGS) -I$(top_builddir)/src
 AM_CXXFLAGS = $(SDL2_CFLAGS) -I$(top_builddir)/src

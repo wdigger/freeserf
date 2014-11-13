@@ -424,6 +424,26 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\src\sfx2wav.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
 				RelativePath="..\src\text-input.cc"
 				>
 			</File>
@@ -462,6 +482,26 @@
 			<File
 				RelativePath="..\src\viewport.cc"
 				>
+			</File>
+			<File
+				RelativePath="..\src\xmi2mid.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
 			</File>
 		</Filter>
 		<Filter
@@ -582,6 +622,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\src\sfx2wav.h"
+				>
+			</File>
+			<File
 				RelativePath="..\src\text-input.h"
 				>
 			</File>
@@ -599,6 +643,10 @@
 			</File>
 			<File
 				RelativePath="..\src\viewport.h"
+				>
+			</File>
+			<File
+				RelativePath="..\src\xmi2mid.h"
 				>
 			</File>
 		</Filter>

@@ -283,4 +283,7 @@ sprite_t *data_get_cursor();
 void data_sprite_free(sprite_t *sprite);
 sprite_t *data_apply_mask(sprite_t *sprite, sprite_t *mask);
 
+void *data_get_sound(uint index, size_t *size);
+void *data_get_music(uint index, size_t *size);
+
 #endif /* ! _DATA_H */
