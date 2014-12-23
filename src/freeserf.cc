@@ -452,7 +452,7 @@ game_loop()
     interface->update();
 
     frame_t *screen = video_get_screen_frame();
-    interface->draw(screen);
+    interface->draw(screen, 0, 0);
 
     /* Swap video buffers */
     video_swap_buffers();

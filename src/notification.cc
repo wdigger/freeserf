@@ -273,7 +273,7 @@ draw_call_to_stock_message_box(frame_t *frame, int param)
 }
 
 void
-notification_box_t::internal_draw(frame_t *frame)
+notification_box_t::internal_draw()
 {
   draw_background(width, height, 0x13a, frame);
   draw_icon(14, 128, 0x120, frame); /* Checkbox */

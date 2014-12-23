@@ -186,7 +186,7 @@ draw_minimap_rect(minimap_t *minimap, frame_t *frame)
 }
 
 void
-minimap_t::internal_draw(frame_t *frame)
+minimap_t::internal_draw()
 {
   if (BIT_TEST(flags, 1)) {
     gfx_fill_rect(0, 0, 128, 128, 1, frame);

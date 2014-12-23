@@ -62,14 +62,15 @@ public:
   int enabled;
   int redraw;
   gui_container_t *parent;
+  frame_t *frame;
 
   gui_object_t();
 
-  virtual void internal_draw(frame_t *frame) = 0;
+  virtual void internal_draw() = 0;
   virtual int internal_handle_event(const gui_event_t *event) = 0;
   virtual void internal_set_size(int width, int height);
 
-  void draw(frame_t *frame);
+  void draw(frame_t *frame, int x, int y);
   int handle_event(const gui_event_t *event);
   void set_size(int width, int height);
   void set_displayed(int displayed);

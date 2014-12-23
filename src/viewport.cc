@@ -2246,7 +2246,7 @@ draw_height_grid_overlay(viewport_t *viewport, int color, frame_t *frame)
 }
 
 void
-viewport_t::internal_draw(frame_t *frame)
+viewport_t::internal_draw()
 {
   if (layers & VIEWPORT_LAYER_LANDSCAPE) draw_landscape(this, frame);
   if (layers & VIEWPORT_LAYER_GRID) {

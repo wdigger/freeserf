@@ -132,7 +132,7 @@ draw_panel_buttons(panel_bar_t *panel, frame_t *frame)
 }
 
 void
-panel_bar_t::internal_draw(frame_t *frame)
+panel_bar_t::internal_draw()
 {
   draw_panel_frame(this, frame);
   draw_panel_buttons(this, frame);

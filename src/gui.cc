@@ -54,12 +54,17 @@ gui_object_t::gui_object_t()
   enabled = 1;
   redraw = 0;
   parent = NULL;
+  frame = NULL;
 }
 
 void
-gui_object_t::draw(frame_t *frame)
+gui_object_t::draw(frame_t *frame, int x, int y)
 {
-  internal_draw(frame);
+  if(this->frame == NULL) {
+    this->frame = gfx_frame_create(width, height);
+  }
+  internal_draw();
+  gfx_draw_frame(x, y, frame, 0, 0, this->frame, width, height);
   redraw = 0;
 }
 
@@ -73,6 +78,10 @@ gui_object_t::handle_event(const gui_event_t *event)
 void
 gui_object_t::set_size(int width, int height)
 {
+  if(frame != NULL) {
+    gfx_frame_destroy(frame);
+    frame = NULL;
+  }
   internal_set_size(width, height);
 }
 

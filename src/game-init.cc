@@ -67,7 +67,7 @@ get_player_face_sprite(int face)
 }
 
 void
-game_init_box_t::internal_draw(frame_t *frame)
+game_init_box_t::internal_draw()
 {
   /* Background */
   gfx_fill_rect(0, 0, width, height, 1, frame);

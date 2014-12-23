@@ -48,7 +48,7 @@ public:
 
   minimap_t(interface_t *interface);
 
-  virtual void internal_draw(frame_t *frame);
+  virtual void internal_draw();
   virtual int internal_handle_event(const gui_event_t *event);
 
   void set_scale(int scale);

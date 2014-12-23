@@ -653,13 +653,13 @@ update_map_height(map_pos_t pos, interface_t *interface)
 }
 
 void
-interface_t::internal_draw(frame_t *frame)
+interface_t::internal_draw()
 {
   int redraw_above = redraw;
 
   if (top->displayed &&
       (redraw_top || redraw_above)) {
-    top->draw(frame);
+    top->draw(frame, 0, 0);
     redraw_top = 0;
     redraw_above = 1;
   }
@@ -669,12 +669,7 @@ interface_t::internal_draw(frame_t *frame)
     interface_float_t *fl = (interface_float_t *)elm;
     if (fl->obj->displayed &&
         (fl->redraw || redraw_above)) {
-      frame_t *float_frame =
-        gfx_frame_create(fl->obj->width, fl->obj->height);
-      fl->obj->draw(float_frame);
-      gfx_draw_frame(fl->x, fl->y, frame, 0, 0,
-        float_frame, fl->obj->width, fl->obj->height);
-      gfx_frame_destroy(float_frame);
+      fl->obj->draw(frame, fl->x, fl->y);
       fl->redraw = 0;
       redraw_above = 1;
     }

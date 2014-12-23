@@ -57,7 +57,7 @@ public:
 
   viewport_t(interface_t *interface);
 
-  virtual void internal_draw(frame_t *frame);
+  virtual void internal_draw();
   virtual int internal_handle_event(const gui_event_t *event);
 
   void move_to_map_pos(map_pos_t pos);

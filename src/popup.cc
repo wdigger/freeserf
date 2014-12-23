@@ -466,10 +466,7 @@ draw_map_box(popup_box_t *popup, frame_t *frame)
   draw_popup_icon(14, 128, BIT_TEST(popup->minimap->flags, 5) ? 91 : 92, frame); /* Scale */
 
   /* Draw minimap */
-  frame_t *minimap_frame = gfx_frame_create(128, 128);
-  popup->minimap->draw(minimap_frame);
-  gfx_draw_frame(8, 9, frame, 0, 0, minimap_frame, 128, 128);
-  gfx_frame_destroy(minimap_frame);
+  popup->minimap->draw(frame, 8, 9);
 }
 
 /* Draw building mine popup box. */
@@ -2241,7 +2238,6 @@ draw_transport_info_box(popup_box_t *popup, frame_t *frame)
 
 #if 1
   /* Draw viewport of flag */
-  frame_t *flag_frame = gfx_frame_create(128, 64);
   viewport_t flag_view(popup->interface);
   flag_view.layers = (viewport_layer_t)(VIEWPORT_LAYER_PATHS | VIEWPORT_LAYER_OBJECTS);
   flag_view.set_displayed(1);
@@ -2251,9 +2247,7 @@ draw_transport_info_box(popup_box_t *popup, frame_t *frame)
   flag_view.move_to_map_pos(flag->pos);
   flag_view.offset_y -= 10;
 
-  flag_view.draw(flag_frame);
-  gfx_draw_frame(8, 24, frame, 0, 0, flag_frame, 128, 64);
-  gfx_frame_destroy(flag_frame);
+  flag_view.draw(frame, 8, 24);
 #else
   /* Static flag */
   draw_popup_building(8, 40, 0x80 + 4*popup->interface->player->player_num, frame);
@@ -2659,7 +2653,7 @@ draw_demolish_box(popup_box_t *popup, frame_t *frame)
 }
 
 void
-popup_box_t::internal_draw(frame_t *frame)
+popup_box_t::internal_draw()
 {
   draw_popup_box_frame(frame);
 
