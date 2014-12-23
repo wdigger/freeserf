@@ -67,7 +67,7 @@ get_player_face_sprite(int face)
 }
 
 void
-game_init_box_t::draw(frame_t *frame)
+game_init_box_t::internal_draw(frame_t *frame)
 {
   /* Background */
   gfx_fill_rect(0, 0, width, height, 1, frame);
@@ -184,9 +184,9 @@ handle_action(game_init_box_t *box, int action)
       if (r < 0) return;
     }
 
-    box->interface->viewport->viewport_map_reinit();
-    box->interface->interface_set_player(0);
-    box->interface->interface_close_game_init();
+    box->interface->viewport->map_reinit();
+    box->interface->set_player(0);
+    box->interface->close_game_init();
     break;
   case ACTION_TOGGLE_GAME_TYPE:
     if (box->game_mission < 0) {
@@ -215,7 +215,7 @@ handle_action(game_init_box_t *box, int action)
     }
     break;
   case ACTION_CLOSE:
-    box->interface->interface_close_game_init();
+    box->interface->close_game_init();
     break;
   default:
     break;
@@ -223,7 +223,7 @@ handle_action(game_init_box_t *box, int action)
 }
 
 int
-game_init_box_t::game_init_box_handle_event_click(int x, int y)
+game_init_box_t::handle_event_click(int x, int y)
 {
   const int clickmap[] = {
     ACTION_START_GAME, 20, 16, 32, 32,
@@ -296,12 +296,12 @@ game_init_box_t::game_init_box_handle_event_click(int x, int y)
 }
 
 int
-game_init_box_t::handle_event(const gui_event_t *event)
+game_init_box_t::internal_handle_event(const gui_event_t *event)
 {
   switch (event->type) {
   case GUI_EVENT_TYPE_CLICK:
     if (event->button == GUI_EVENT_BUTTON_LEFT) {
-      return game_init_box_handle_event_click(event->x, event->y);
+      return handle_event_click(event->x, event->y);
     }
   default:
     break;

@@ -120,46 +120,46 @@ public:
 
   interface_t();
 
-  virtual void draw(frame_t *frame);
-  virtual int handle_event(const gui_event_t *event);
-  virtual void set_size(int width, int height);
+  virtual void internal_draw(frame_t *frame);
+  virtual int internal_handle_event(const gui_event_t *event);
+  virtual void internal_set_size(int width, int height);
 
-  virtual void set_redraw_child(gui_object_t *child);
-  virtual int get_child_position(gui_object_t *child, int *x, int *t);
+  virtual void internal_set_redraw_child(gui_object_t *child);
+  virtual int internal_get_child_position(gui_object_t *child, int *x, int *t);
 
-  viewport_t *interface_get_top_viewport();
-  panel_bar_t *interface_get_panel_bar();
-  popup_box_t *interface_get_popup_box();
+  viewport_t *get_top_viewport();
+  panel_bar_t *get_panel_bar();
+  popup_box_t *get_popup_box();
 
-  void interface_open_popup(int box);
-  void interface_close_popup();
+  void open_popup(int box);
+  void close_popup();
 
-  void interface_open_game_init();
-  void interface_close_game_init();
+  void open_game_init();
+  void close_game_init();
 
-  void interface_open_message();
-  void interface_return_from_message();
-  void interface_close_message();
+  void open_message();
+  void return_from_message();
+  void close_message();
 
-  void interface_set_player(uint player);
-  void interface_update_map_cursor_pos(map_pos_t pos);
+  void set_player(uint player);
+  void update_map_cursor_pos(map_pos_t pos);
 
-  void interface_build_road_begin();
-  void interface_build_road_end();
-  int interface_build_road_segment(dir_t dir);
-  int interface_remove_road_segment();
-  int interface_extend_road(dir_t *dirs, uint length);
+  void build_road_begin();
+  void build_road_end();
+  int build_road_segment(dir_t dir);
+  int remove_road_segment();
+  int extend_road(dir_t *dirs, uint length);
 
-  void interface_demolish_object();
+  void demolish_object();
 
-  void interface_build_flag();
-  void interface_build_building(building_type_t type);
-  void interface_build_castle();
+  void build_flag();
+  void build_building(building_type_t type);
+  void build_castle();
 
-  void interface_set_top(gui_object_t *obj);
-  void interface_add_float(gui_object_t *obj, int x, int y, int width, int height);
+  void set_top(gui_object_t *obj);
+  void add_float(gui_object_t *obj, int x, int y, int width, int height);
 
-  void interface_update();
+  void update();
 };
 
 #endif /* !_INTERFACE_H */

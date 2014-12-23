@@ -186,7 +186,7 @@ draw_minimap_rect(minimap_t *minimap, frame_t *frame)
 }
 
 void
-minimap_t::draw(frame_t *frame)
+minimap_t::internal_draw(frame_t *frame)
 {
   if (BIT_TEST(flags, 1)) {
     gfx_fill_rect(0, 0, 128, 128, 1, frame);
@@ -220,11 +220,11 @@ minimap_t::draw(frame_t *frame)
 static int
 minimap_handle_event_click(minimap_t *minimap, int x, int y)
 {
-  map_pos_t pos = minimap->minimap_map_pos_from_screen_pix(x, y);
-  minimap->interface->interface_get_top_viewport()->viewport_move_to_map_pos(pos);
+  map_pos_t pos = minimap->map_pos_from_screen_pix(x, y);
+  minimap->interface->get_top_viewport()->move_to_map_pos(pos);
 
-  minimap->interface->interface_update_map_cursor_pos(pos);
-  minimap->interface->interface_close_popup();
+  minimap->interface->update_map_cursor_pos(pos);
+  minimap->interface->close_popup();
 
   return 0;
 }
@@ -236,7 +236,7 @@ minimap_handle_scroll(minimap_t *minimap, int up)
   if (up) scale = minimap->scale + 1;
   else scale = minimap->scale - 1;
 
-  minimap->minimap_set_scale(clamp(1, scale, MINIMAP_MAX_SCALE));
+  minimap->set_scale(clamp(1, scale, MINIMAP_MAX_SCALE));
   return 0;
 }
 
@@ -246,7 +246,7 @@ minimap_handle_drag(minimap_t *minimap, int x, int y,
 {
   if (button == GUI_EVENT_BUTTON_RIGHT) {
     if (x != 0 || y != 0) {
-      minimap->minimap_move_by_pixels(x, y);
+      minimap->move_by_pixels(x, y);
     }
   }
 
@@ -254,7 +254,7 @@ minimap_handle_drag(minimap_t *minimap, int x, int y,
 }
 
 int
-minimap_t::handle_event(const gui_event_t *event)
+minimap_t::internal_handle_event(const gui_event_t *event)
 {
   int x = event->x;
   int y = event->y;
@@ -300,13 +300,13 @@ minimap_t::minimap_t(interface_t *interface)
 
 /* Set the scale of the map (zoom). Must be positive. */
 void
-minimap_t::minimap_set_scale(int scale)
+minimap_t::set_scale(int scale)
 {
-  map_pos_t pos = minimap_get_current_map_pos();
+  map_pos_t pos = get_current_map_pos();
   this->scale = scale;
-  minimap_move_to_map_pos(pos);
+  move_to_map_pos(pos);
 
-  gui_object_set_redraw();
+  set_redraw();
 }
 
 void
@@ -351,7 +351,7 @@ minimap_map_pix_from_map_coord(minimap_t *minimap, map_pos_t pos, int *mx, int *
 }
 
 map_pos_t
-minimap_t::minimap_map_pos_from_screen_pix(int x, int y)
+minimap_t::map_pos_from_screen_pix(int x, int y)
 {
   int mx = x + offset_x;
   int my = y + offset_y;
@@ -363,13 +363,13 @@ minimap_t::minimap_map_pos_from_screen_pix(int x, int y)
 }
 
 map_pos_t
-minimap_t::minimap_get_current_map_pos()
+minimap_t::get_current_map_pos()
 {
-  return minimap_map_pos_from_screen_pix(width/2, height/2);
+  return map_pos_from_screen_pix(width/2, height/2);
 }
 
 void
-minimap_t::minimap_move_to_map_pos(map_pos_t pos)
+minimap_t::move_to_map_pos(map_pos_t pos)
 {
   int mx, my;
   minimap_map_pix_from_map_coord(this, pos, &mx, &my);
@@ -392,11 +392,11 @@ minimap_t::minimap_move_to_map_pos(map_pos_t pos)
   offset_x = mx;
   offset_y = my;
 
-  gui_object_set_redraw();
+  set_redraw();
 }
 
 void
-minimap_t::minimap_move_by_pixels(int dx, int dy)
+minimap_t::move_by_pixels(int dx, int dy)
 {
   int width = game.map.cols * scale;
   int height = game.map.rows * scale;
@@ -415,5 +415,5 @@ minimap_t::minimap_move_by_pixels(int dx, int dy)
   if (offset_x >= width) offset_x -= width;
   else if (offset_x < 0) offset_x += width;
 
-  gui_object_set_redraw();
+  set_redraw();
 }

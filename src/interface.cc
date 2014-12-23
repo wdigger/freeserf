@@ -45,19 +45,19 @@ typedef struct {
 
 
 viewport_t *
-interface_t::interface_get_top_viewport()
+interface_t::get_top_viewport()
 {
   return viewport;
 }
 
 panel_bar_t *
-interface_t::interface_get_panel_bar()
+interface_t::get_panel_bar()
 {
   return panel;
 }
 
 popup_box_t *
-interface_t::interface_get_popup_box()
+interface_t::get_popup_box()
 {
   return popup;
 }
@@ -65,47 +65,47 @@ interface_t::interface_get_popup_box()
 
 /* Open popup box */
 void
-interface_t::interface_open_popup(int box)
+interface_t::open_popup(int box)
 {
   popup->box = (box_t)box;
-  popup->gui_object_set_displayed(1);
+  popup->set_displayed(1);
 }
 
 /* Close the current popup. */
 void
-interface_t::interface_close_popup()
+interface_t::close_popup()
 {
   popup->box = (box_t)0;
-  popup->gui_object_set_displayed(0);
+  popup->set_displayed(0);
   panel_btns[2] = PANEL_BTN_MAP;
   panel_btns[3] = PANEL_BTN_STATS;
   panel_btns[4] = PANEL_BTN_SETT;
 
-  interface_update_map_cursor_pos(map_cursor_pos);
+  update_map_cursor_pos(map_cursor_pos);
 }
 
 /* Open box for starting a new game */
 void
-interface_t::interface_open_game_init()
+interface_t::open_game_init()
 {
-  init_box->gui_object_set_displayed(1);
-  panel->gui_object_set_enabled(0);
-  viewport->gui_object_set_enabled(0);
+  init_box->set_displayed(1);
+  panel->set_enabled(0);
+  viewport->set_enabled(0);
 }
 
 void
-interface_t::interface_close_game_init()
+interface_t::close_game_init()
 {
-  init_box->gui_object_set_displayed(0);
-  panel->gui_object_set_enabled(1);
-  viewport->gui_object_set_enabled(1);
+  init_box->set_displayed(0);
+  panel->set_enabled(1);
+  viewport->set_enabled(1);
 
-  interface_update_map_cursor_pos(map_cursor_pos);
+  update_map_cursor_pos(map_cursor_pos);
 }
 
 /* Open box for next message in the message queue */
 void
-interface_t::interface_open_message()
+interface_t::open_message()
 {
   if (player->msg_queue_type[0] == 0) {
     sfx_play_clip(SFX_CLICK);
@@ -113,8 +113,8 @@ interface_t::interface_open_message()
   } else if (!BIT_TEST(msg_flags, 3)) {
     msg_flags |= BIT(4);
     msg_flags |= BIT(3);
-    viewport_t *viewport = interface_get_top_viewport();
-    map_pos_t pos = viewport->viewport_get_current_map_pos();
+    viewport_t *viewport = get_top_viewport();
+    map_pos_t pos = viewport->get_current_map_pos();
     return_pos = pos;
   }
 
@@ -127,15 +127,15 @@ interface_t::interface_open_message()
   int param = (player->msg_queue_type[0] >> 5) & 7;
   notification_box->type = type;
   notification_box->param = param;
-  notification_box->gui_object_set_displayed(1);
+  notification_box->set_displayed(1);
 
   if (BIT_TEST(0x8f3fe, type)) {
     /* Move screen to new position */
     map_pos_t new_pos = player->msg_queue_pos[0];
 
-    viewport_t *viewport = interface_get_top_viewport();
-    viewport->viewport_move_to_map_pos(new_pos);
-    interface_update_map_cursor_pos(new_pos);
+    viewport_t *viewport = get_top_viewport();
+    viewport->move_to_map_pos(new_pos);
+    update_map_cursor_pos(new_pos);
   }
 
   /* Move notifications forward in the queue. */
@@ -152,25 +152,25 @@ interface_t::interface_open_message()
 }
 
 void
-interface_t::interface_return_from_message()
+interface_t::return_from_message()
 {
   if (BIT_TEST(msg_flags, 3)) { /* Return arrow present */
     msg_flags |= BIT(4);
     msg_flags &= ~BIT(3);
 
     return_timeout = 0;
-    viewport_t *viewport = interface_get_top_viewport();
-    viewport->viewport_move_to_map_pos(return_pos);
+    viewport_t *viewport = get_top_viewport();
+    viewport->move_to_map_pos(return_pos);
 
-    if (popup->box == BOX_MESSAGE) interface_close_popup();
+    if (popup->box == BOX_MESSAGE) close_popup();
     sfx_play_clip(SFX_CLICK);
   }
 }
 
 void
-interface_t::interface_close_message()
+interface_t::close_message()
 {
-  notification_box->gui_object_set_displayed(0);
+  notification_box->set_displayed(0);
 }
 
 
@@ -405,7 +405,7 @@ interface_update_interface(interface_t *interface)
 }
 
 void
-interface_t::interface_set_player(uint player)
+interface_t::set_player(uint player)
 {
   assert(PLAYER_IS_ACTIVE(game.player[player]));
   this->player = game.player[player];
@@ -417,12 +417,12 @@ interface_t::interface_set_player(uint player)
     init_pos = MAP_MOVE_UP_LEFT(flag->pos);
   }
 
-  interface_update_map_cursor_pos(init_pos);
-  viewport->viewport_move_to_map_pos(map_cursor_pos);
+  update_map_cursor_pos(init_pos);
+  viewport->move_to_map_pos(map_cursor_pos);
 }
 
 void
-interface_t::interface_update_map_cursor_pos(map_pos_t pos)
+interface_t::update_map_cursor_pos(map_pos_t pos)
 {
   map_cursor_pos = pos;
   if (building_road) {
@@ -436,7 +436,7 @@ interface_t::interface_update_map_cursor_pos(map_pos_t pos)
 
 /* Start road construction mode for player interface. */
 void
-interface_t::interface_build_road_begin()
+interface_t::build_road_begin()
 {
   interface_determine_map_cursor_type(this);
 
@@ -456,12 +456,12 @@ interface_t::interface_build_road_begin()
   building_road_length = 0;
   building_road_source = map_cursor_pos;
 
-  interface_update_map_cursor_pos(map_cursor_pos);
+  update_map_cursor_pos(map_cursor_pos);
 }
 
 /* End road construction mode for player interface. */
 void
-interface_t::interface_build_road_end()
+interface_t::build_road_end()
 {
   panel_btns[2] = PANEL_BTN_MAP;
   panel_btns[3] = PANEL_BTN_STATS;
@@ -475,13 +475,13 @@ interface_t::interface_build_road_end()
   map_cursor_sprites[6].sprite = 33;
 
   building_road = 0;
-  interface_update_map_cursor_pos(map_cursor_pos);
+  update_map_cursor_pos(map_cursor_pos);
 }
 
 /* Build a single road segment. Return -1 on fail, 0 on successful
    construction, and 1 if this segment completed the path. */
 int
-interface_t::interface_build_road_segment(dir_t dir)
+interface_t::build_road_segment(dir_t dir)
 {
   if (building_road_length+1 >= MAX_ROAD_LENGTH) {
     /* Max length reached */
@@ -498,7 +498,7 @@ interface_t::interface_build_road_segment(dir_t dir)
             player, &dest, NULL);
   if (!r) {
     /* Invalid construction, undo. */
-    return interface_remove_road_segment();
+    return remove_road_segment();
   }
 
   if (MAP_OBJ(dest) == MAP_OBJ_FLAG) {
@@ -508,16 +508,16 @@ interface_t::interface_build_road_segment(dir_t dir)
           building_road_length,
           player);
     if (r < 0) {
-      interface_build_road_end();
+      build_road_end();
       return -1;
     } else {
-      interface_build_road_end();
-      interface_update_map_cursor_pos(dest);
+      build_road_end();
+      update_map_cursor_pos(dest);
       return 1;
     }
   } else if (MAP_PATHS(dest) == 0) {
     /* No existing paths at destination, build segment. */
-    interface_update_map_cursor_pos(dest);
+    update_map_cursor_pos(dest);
 
     /* TODO Pathway scrolling */
   } else {
@@ -529,7 +529,7 @@ interface_t::interface_build_road_segment(dir_t dir)
 }
 
 int
-interface_t::interface_remove_road_segment()
+interface_t::remove_road_segment()
 {
   building_road_length -= 1;
 
@@ -540,11 +540,11 @@ interface_t::interface_remove_road_segment()
             player, &dest, NULL);
   if (!r) {
     /* Road construction is no longer valid, abort. */
-    interface_build_road_end();
+    build_road_end();
     return -1;
   }
 
-  interface_update_map_cursor_pos(dest);
+  update_map_cursor_pos(dest);
 
   /* TODO Pathway scrolling */
 
@@ -553,15 +553,15 @@ interface_t::interface_remove_road_segment()
 
 /* Extend currently constructed road with an array of directions. */
 int
-interface_t::interface_extend_road(dir_t *dirs, uint length)
+interface_t::extend_road(dir_t *dirs, uint length)
 {
   for (uint i = 0; i < length; i++) {
     dir_t dir = dirs[i];
-    int r = interface_build_road_segment(dir);
+    int r = build_road_segment(dir);
     if (r < 0) {
       /* Backtrack */
       for (int j = i-1; j >= 0; j--) {
-        interface_remove_road_segment();
+        remove_road_segment();
       }
       return -1;
     } else if (r == 1) {
@@ -573,7 +573,7 @@ interface_t::interface_extend_road(dir_t *dirs, uint length)
 }
 
 void
-interface_t::interface_demolish_object()
+interface_t::demolish_object()
 {
   interface_determine_map_cursor_type(this);
 
@@ -602,7 +602,7 @@ interface_t::interface_demolish_object()
 
 /* Build new flag. */
 void
-interface_t::interface_build_flag()
+interface_t::build_flag()
 {
   int r = game_build_flag(map_cursor_pos, player);
   if (r < 0) {
@@ -610,12 +610,12 @@ interface_t::interface_build_flag()
     return;
   }
 
-  interface_update_map_cursor_pos(map_cursor_pos);
+  update_map_cursor_pos(map_cursor_pos);
 }
 
 /* Build a new building. */
 void
-interface_t::interface_build_building(building_type_t type)
+interface_t::build_building(building_type_t type)
 {
   int r = game_build_building(map_cursor_pos, type, player);
   if (r < 0) {
@@ -624,16 +624,16 @@ interface_t::interface_build_building(building_type_t type)
   }
 
   sfx_play_clip(SFX_ACCEPTED);
-  interface_close_popup();
+  close_popup();
 
   /* Move cursor to flag. */
   map_pos_t flag_pos = MAP_MOVE_DOWN_RIGHT(map_cursor_pos);
-  interface_update_map_cursor_pos(flag_pos);
+  update_map_cursor_pos(flag_pos);
 }
 
 /* Build castle. */
 void
-interface_t::interface_build_castle()
+interface_t::build_castle()
 {
   int r = game_build_castle(map_cursor_pos, player);
   if (r < 0) {
@@ -642,24 +642,24 @@ interface_t::interface_build_castle()
   }
 
   sfx_play_clip(SFX_ACCEPTED);
-  interface_update_map_cursor_pos(map_cursor_pos);
+  update_map_cursor_pos(map_cursor_pos);
 }
 
 
 static void
 update_map_height(map_pos_t pos, interface_t *interface)
 {
-  interface->viewport->viewport_redraw_map_pos(pos);
+  interface->viewport->redraw_map_pos(pos);
 }
 
 void
-interface_t::draw(frame_t *frame)
+interface_t::internal_draw(frame_t *frame)
 {
   int redraw_above = redraw;
 
   if (top->displayed &&
       (redraw_top || redraw_above)) {
-    top->gui_object_redraw(frame);
+    top->draw(frame);
     redraw_top = 0;
     redraw_above = 1;
   }
@@ -671,7 +671,7 @@ interface_t::draw(frame_t *frame)
         (fl->redraw || redraw_above)) {
       frame_t *float_frame =
         gfx_frame_create(fl->obj->width, fl->obj->height);
-      fl->obj->gui_object_redraw(float_frame);
+      fl->obj->draw(float_frame);
       gfx_draw_frame(fl->x, fl->y, frame, 0, 0,
         float_frame, fl->obj->width, fl->obj->height);
       gfx_frame_destroy(float_frame);
@@ -682,15 +682,15 @@ interface_t::draw(frame_t *frame)
 }
 
 int
-interface_t::handle_event(const gui_event_t *event)
+interface_t::internal_handle_event(const gui_event_t *event)
 {
   /* Handle locked cursor */
   if (cursor_lock_target != NULL) {
     if (cursor_lock_target == top) {
-      return top->handle_event(event);
+      return top->internal_handle_event(event);
     } else {
       if (event->type == GUI_EVENT_TYPE_DRAG_MOVE) {
-        return cursor_lock_target->handle_event(event);
+        return cursor_lock_target->internal_handle_event(event);
       }
       gui_event_t float_event;
       float_event.type = event->type;
@@ -700,7 +700,7 @@ interface_t::handle_event(const gui_event_t *event)
       gui_object_t *obj = cursor_lock_target;
       while (obj->parent != NULL) {
         int x, y;
-        int r = obj->parent->gui_container_get_child_position(obj, &x, &y);
+        int r = obj->parent->get_child_position(obj, &x, &y);
         if (r < 0) return -1;
 
         float_event.x -= x;
@@ -710,7 +710,7 @@ interface_t::handle_event(const gui_event_t *event)
       }
 
       if (obj != this) return -1;
-      return cursor_lock_target->handle_event(&float_event);
+      return cursor_lock_target->internal_handle_event(&float_event);
     }
   }
 
@@ -727,15 +727,15 @@ interface_t::handle_event(const gui_event_t *event)
       float_event.x = event->x - fl->x;
       float_event.y = event->y - fl->y;
       float_event.button = event->button;
-      return fl->obj->gui_object_handle_event(&float_event);
+      return fl->obj->handle_event(&float_event);
     }
   }
 
-  return top->handle_event(event);
+  return top->internal_handle_event(event);
 }
 
 void
-interface_t::set_size(int width, int height)
+interface_t::internal_set_size(int width, int height)
 {
   this->width = width;
   this->height = height;
@@ -760,7 +760,7 @@ interface_t::set_size(int width, int height)
   int notification_box_x = panel_x + 40;
   int notification_box_y = panel_y - notification_box_height;
 
-  top->set_size(width, height);
+  top->internal_set_size(width, height);
   redraw_top = 1;
 
   /* Reassign position of floats. */
@@ -771,33 +771,33 @@ interface_t::set_size(int width, int height)
       fl->x = popup_x;
       fl->y = popup_y;
       fl->redraw = 1;
-      fl->obj->gui_object_set_size(popup_width, popup_height);
+      fl->obj->set_size(popup_width, popup_height);
     } else if (fl->obj == panel) {
       fl->x = panel_x;
       fl->y = panel_y;
       fl->redraw = 1;
-      fl->obj->gui_object_set_size(panel_width, panel_height);
+      fl->obj->set_size(panel_width, panel_height);
     } else if (fl->obj == init_box) {
       fl->x = init_box_x;
       fl->y = init_box_y;
       fl->redraw = 1;
-      fl->obj->gui_object_set_size(init_box_width, init_box_height);
+      fl->obj->set_size(init_box_width, init_box_height);
     } else if (fl->obj == notification_box) {
       fl->x = notification_box_x;
       fl->y = notification_box_y;
       fl->redraw = 1;
-      fl->obj->gui_object_set_size(notification_box_width, notification_box_height);
+      fl->obj->set_size(notification_box_width, notification_box_height);
     }
   }
 
-  gui_object_set_redraw();
+  set_redraw();
 }
 
 void
-interface_t::set_redraw_child(gui_object_t *child)
+interface_t::internal_set_redraw_child(gui_object_t *child)
 {
   if (parent != NULL) {
-    parent->set_redraw_child(this);
+    parent->internal_set_redraw_child(this);
   }
 
   if (top == child) {
@@ -816,7 +816,7 @@ interface_t::set_redraw_child(gui_object_t *child)
 }
 
 int
-interface_t::get_child_position(gui_object_t *child, int *x, int *y)
+interface_t::internal_get_child_position(gui_object_t *child, int *x, int *y)
 {
   if (top == child) {
     *x = 0;
@@ -885,29 +885,29 @@ interface_t::interface_t()
 
   /* Viewport */
   viewport = new viewport_t(this);
-  viewport->gui_object_set_displayed(1);
+  viewport->set_displayed(1);
 
   /* Panel bar */
   panel = new panel_bar_t(this);
-  panel->gui_object_set_displayed(1);
+  panel->set_displayed(1);
 
   /* Popup box */
   popup = new popup_box_t(this);
 
   /* Add objects to interface container. */
-  interface_set_top(viewport);
+  set_top(viewport);
 
-  interface_add_float(popup, 0, 0, 0, 0);
-  interface_add_float(panel, 0, 0, 0, 0);
+  add_float(popup, 0, 0, 0, 0);
+  add_float(panel, 0, 0, 0, 0);
 
   /* Game init box */
   init_box = new game_init_box_t(this);
-  init_box->gui_object_set_displayed(1);
-  interface_add_float(init_box, 0, 0, 0, 0);
+  init_box->set_displayed(1);
+  add_float(init_box, 0, 0, 0, 0);
 
   /* Notification box */
   notification_box = new notification_box_t(this);
-  interface_add_float(notification_box, 0, 0, 0, 0);
+  add_float(notification_box, 0, 0, 0, 0);
 
   map_cursor_pos = MAP_POS(0, 0);
   map_cursor_type = (map_cursor_type_t)0;
@@ -955,17 +955,17 @@ interface_t::interface_t()
 }
 
 void
-interface_t::interface_set_top(gui_object_t *obj)
+interface_t::set_top(gui_object_t *obj)
 {
   top = obj;
   obj->parent = this;
-  top->gui_object_set_size(width, height);
+  top->set_size(width, height);
   redraw_top = 1;
-  gui_object_set_redraw();
+  set_redraw();
 }
 
 void
-interface_t::interface_add_float(gui_object_t *obj,
+interface_t::add_float(gui_object_t *obj,
         int x, int y, int width, int height)
 {
   interface_float_t *fl = (interface_float_t*)malloc(sizeof(interface_float_t));
@@ -979,13 +979,13 @@ interface_t::interface_add_float(gui_object_t *obj,
 
   obj->parent = this;
   list_append(&floats, (list_elm_t *)fl);
-  obj->gui_object_set_size(width, height);
-  gui_object_set_redraw();
+  obj->set_size(width, height);
+  set_redraw();
 }
 
 /* Called periodically when the game progresses. */
 void
-interface_t::interface_update()
+interface_t::update()
 {
   uint tick_diff = game.const_tick - last_const_tick;
   last_const_tick = game.const_tick;
@@ -1064,5 +1064,5 @@ interface_t::interface_update()
     }
   }
 
-  viewport->viewport_update();
+  viewport->update();
 }

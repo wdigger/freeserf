@@ -65,16 +65,16 @@ public:
 
   gui_object_t();
 
-  virtual void draw(frame_t *frame) = 0;
-  virtual int handle_event(const gui_event_t *event) = 0;
-  virtual void set_size(int width, int height);
+  virtual void internal_draw(frame_t *frame) = 0;
+  virtual int internal_handle_event(const gui_event_t *event) = 0;
+  virtual void internal_set_size(int width, int height);
 
-  void gui_object_redraw(frame_t *frame);
-  int gui_object_handle_event(const gui_event_t *event);
-  void gui_object_set_size(int width, int height);
-  void gui_object_set_displayed(int displayed);
-  void gui_object_set_enabled(int enabled);
-  void gui_object_set_redraw();
+  void draw(frame_t *frame);
+  int handle_event(const gui_event_t *event);
+  void set_size(int width, int height);
+  void set_displayed(int displayed);
+  void set_enabled(int enabled);
+  void set_redraw();
 };
 
 class gui_container_t
@@ -83,11 +83,11 @@ class gui_container_t
 public:
   gui_container_t();
 
-  virtual void set_redraw_child(gui_object_t *child);
-  virtual int get_child_position(gui_object_t *child, int *x, int *t) = 0;
+  virtual void internal_set_redraw_child(gui_object_t *child);
+  virtual int internal_get_child_position(gui_object_t *child, int *x, int *t) = 0;
 
-  void gui_container_set_redraw_child(gui_object_t *child);
-  int gui_container_get_child_position(gui_object_t *child, int *x, int *y);
+  void set_redraw_child(gui_object_t *child);
+  int get_child_position(gui_object_t *child, int *x, int *y);
 };
 
 int gui_get_slider_click_value(int x);

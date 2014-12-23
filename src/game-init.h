@@ -48,11 +48,11 @@ public:
 
   game_init_box_t(interface_t *interface);
 
-  virtual void draw(frame_t *frame);
-  virtual int handle_event(const gui_event_t *event);
+  virtual void internal_draw(frame_t *frame);
+  virtual int internal_handle_event(const gui_event_t *event);
 
 protected:
-  int game_init_box_handle_event_click(int x, int y);
+  int handle_event_click(int x, int y);
 };
 
 #endif /* !_GAME_INIT_H */

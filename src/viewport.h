@@ -57,22 +57,22 @@ public:
 
   viewport_t(interface_t *interface);
 
-  virtual void draw(frame_t *frame);
-  virtual int handle_event(const gui_event_t *event);
+  virtual void internal_draw(frame_t *frame);
+  virtual int internal_handle_event(const gui_event_t *event);
 
-  void viewport_move_to_map_pos(map_pos_t pos);
-  void viewport_move_by_pixels(int x, int y);
-  map_pos_t viewport_get_current_map_pos();
+  void move_to_map_pos(map_pos_t pos);
+  void move_by_pixels(int x, int y);
+  map_pos_t get_current_map_pos();
 
-  void viewport_screen_pix_from_map_pix(int mx, int my, int *sx, int *sy);
-  void viewport_map_pix_from_map_coord(map_pos_t pos, int h, int *mx, int *my);
-  map_pos_t viewport_map_pos_from_screen_pix(int x, int y);
+  void screen_pix_from_map_pix(int mx, int my, int *sx, int *sy);
+  void map_pix_from_map_coord(map_pos_t pos, int h, int *mx, int *my);
+  map_pos_t map_pos_from_screen_pix(int x, int y);
 
-  void viewport_map_reinit();
-  void viewport_map_deinit();
-  void viewport_redraw_map_pos(map_pos_t pos);
+  void map_reinit();
+  void map_deinit();
+  void redraw_map_pos(map_pos_t pos);
 
-  void viewport_update();
+  void update();
 };
 
 #endif /* ! _VIEWPORT_H */

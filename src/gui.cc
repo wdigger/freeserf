@@ -40,7 +40,7 @@ gui_get_slider_click_value(int x)
 
 
 void
-gui_object_t::set_size(int width, int height)
+gui_object_t::internal_set_size(int width, int height)
 {
   this->width = width;
   this->height = height;
@@ -57,55 +57,55 @@ gui_object_t::gui_object_t()
 }
 
 void
-gui_object_t::gui_object_redraw(frame_t *frame)
+gui_object_t::draw(frame_t *frame)
 {
-  draw(frame);
+  internal_draw(frame);
   redraw = 0;
 }
 
 int
-gui_object_t::gui_object_handle_event(const gui_event_t *event)
+gui_object_t::handle_event(const gui_event_t *event)
 {
   if (!enabled) return 0;
-  return handle_event(event);
+  return internal_handle_event(event);
 }
 
 void
-gui_object_t::gui_object_set_size(int width, int height)
+gui_object_t::set_size(int width, int height)
 {
-  set_size(width, height);
+  internal_set_size(width, height);
 }
 
 void
-gui_object_t::gui_object_set_displayed(int displayed)
+gui_object_t::set_displayed(int displayed)
 {
   this->displayed = displayed;
   if (displayed) {
-    gui_object_set_redraw();
+    set_redraw();
   } else if (parent != NULL) {
-    parent->gui_object_set_redraw();
+    parent->set_redraw();
   }
 }
 
 void
-gui_object_t::gui_object_set_enabled(int enabled)
+gui_object_t::set_enabled(int enabled)
 {
   this->enabled = enabled;
 }
 
 void
-gui_object_t::gui_object_set_redraw()
+gui_object_t::set_redraw()
 {
   redraw = 1;
   if (parent != NULL) {
-    parent->gui_container_set_redraw_child(this);
+    parent->set_redraw_child(this);
   }
 }
 
 void
-gui_container_t::set_redraw_child(gui_object_t *child)
+gui_container_t::internal_set_redraw_child(gui_object_t *child)
 {
-  gui_object_set_redraw();
+  set_redraw();
 }
 
 gui_container_t::gui_container_t()
@@ -114,14 +114,14 @@ gui_container_t::gui_container_t()
 }
 
 void
-gui_container_t::gui_container_set_redraw_child(gui_object_t *child)
+gui_container_t::set_redraw_child(gui_object_t *child)
 {
-  set_redraw_child(child);
+  internal_set_redraw_child(child);
 }
 
 int
-gui_container_t::gui_container_get_child_position(gui_object_t *child,
+gui_container_t::get_child_position(gui_object_t *child,
          int *x, int *y)
 {
-  return get_child_position(child, x, y);
+  return internal_get_child_position(child, x, y);
 }

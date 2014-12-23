@@ -62,10 +62,10 @@ public:
 
   panel_bar_t(interface_t *interface);
 
-  virtual void draw(frame_t *frame);
-  virtual int handle_event(const gui_event_t *event);
+  virtual void internal_draw(frame_t *frame);
+  virtual int internal_handle_event(const gui_event_t *event);
 
-  void panel_bar_activate_button(int button);
+  void activate_button(int button);
 };
 
 #endif /* !_PANEL_H */

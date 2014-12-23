@@ -101,9 +101,9 @@ public:
 
   popup_box_t(interface_t *interface);
 
-  virtual void draw(frame_t *frame);
-  virtual int handle_event(const gui_event_t *event);
-  virtual int get_child_position(gui_object_t *child, int *x, int *t);
+  virtual void internal_draw(frame_t *frame);
+  virtual int internal_handle_event(const gui_event_t *event);
+  virtual int internal_get_child_position(gui_object_t *child, int *x, int *t);
 };
 
 #endif /* !_POPUP_H */

@@ -273,7 +273,7 @@ draw_call_to_stock_message_box(frame_t *frame, int param)
 }
 
 void
-notification_box_t::draw(frame_t *frame)
+notification_box_t::internal_draw(frame_t *frame)
 {
   draw_background(width, height, 0x13a, frame);
   draw_icon(14, 128, 0x120, frame); /* Checkbox */
@@ -345,12 +345,12 @@ notification_box_t::draw(frame_t *frame)
 static int
 notification_box_handle_event_click(notification_box_t *box, int x, int y)
 {
-  box->gui_object_set_displayed(0);
+  box->set_displayed(0);
   return 0;
 }
 
 int
-notification_box_t::handle_event(const gui_event_t *event)
+notification_box_t::internal_handle_event(const gui_event_t *event)
 {
   switch (event->type) {
   case GUI_EVENT_TYPE_CLICK:

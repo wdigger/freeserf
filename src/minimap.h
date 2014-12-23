@@ -48,17 +48,17 @@ public:
 
   minimap_t(interface_t *interface);
 
-  virtual void draw(frame_t *frame);
-  virtual int handle_event(const gui_event_t *event);
+  virtual void internal_draw(frame_t *frame);
+  virtual int internal_handle_event(const gui_event_t *event);
 
-  void minimap_set_scale(int scale);
+  void set_scale(int scale);
 
-  void minimap_move_to_map_pos(map_pos_t pos);
-  void minimap_move_by_pixels(int x, int y);
-  map_pos_t minimap_get_current_map_pos();
+  void move_to_map_pos(map_pos_t pos);
+  void move_by_pixels(int x, int y);
+  map_pos_t get_current_map_pos();
 
-  void minimap_screen_pix_from_map_pos(map_pos_t pos, int *sx, int *sy);
-  map_pos_t minimap_map_pos_from_screen_pix(int x, int y);
+  void screen_pix_from_map_pos(map_pos_t pos, int *sx, int *sy);
+  map_pos_t map_pos_from_screen_pix(int x, int y);
 };
 
 #endif /* !_MINIMAP_H */

@@ -37,8 +37,8 @@ public:
 
   notification_box_t(interface_t *interface);
 
-  virtual void draw(frame_t *frame);
-  virtual int handle_event(const gui_event_t *event);
+  virtual void internal_draw(frame_t *frame);
+  virtual int internal_handle_event(const gui_event_t *event);
 };
 
 #endif /* !_NOTIFICATION_H */
