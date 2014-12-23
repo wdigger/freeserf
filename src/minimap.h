@@ -37,7 +37,7 @@ class interface_t;
 class minimap_t
   : public gui_object_t
 {
-public:
+protected:
   interface_t *interface;
 
   int offset_x, offset_y;
@@ -46,12 +46,11 @@ public:
   int advanced;
   int flags;
 
-  minimap_t(interface_t *interface);
-
   virtual void internal_draw();
   virtual int internal_handle_event(const gui_event_t *event);
 
-  void set_scale(int scale);
+public:
+  minimap_t(interface_t *interface);
 
   void move_to_map_pos(map_pos_t pos);
   void move_by_pixels(int x, int y);
@@ -59,6 +58,31 @@ public:
 
   void screen_pix_from_map_pos(map_pos_t pos, int *sx, int *sy);
   map_pos_t map_pos_from_screen_pix(int x, int y);
+
+  void set_scale(int scale);
+  int get_scale() { return scale; }
+  int get_flags() { return flags; }
+  int get_advanced() { return advanced; }
+  void set_advanced(int advanced);
+  void set_flags(int flags);
+  void clear_flags(int flags);
+  void invert_flags(int flags);
+
+protected:
+  void draw_minimap_point(int col, int row, uint8_t color,
+                          int density, frame_t *frame);
+  void draw_minimap_map(frame_t *frame);
+  void draw_minimap_ownership(int density, frame_t *frame);
+  void draw_minimap_roads(frame_t *frame);
+  void draw_minimap_buildings(frame_t *frame);
+  void draw_minimap_traffic(frame_t *frame);
+  void draw_minimap_grid(frame_t *frame);
+  void draw_minimap_rect(frame_t *frame);
+
+  int handle_event_click(int x, int y);
+  int handle_scroll(int up);
+
+  void map_pix_from_map_coord(map_pos_t pos, int *mx, int *my);
 };
 
 #endif /* !_MINIMAP_H */

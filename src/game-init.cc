@@ -21,6 +21,7 @@
 
 #include "game-init.h"
 #include "interface.h"
+#include "viewport.h"
 
 #ifndef _MSC_VER
 extern "C" {
@@ -184,7 +185,7 @@ handle_action(game_init_box_t *box, int action)
       if (r < 0) return;
     }
 
-    box->interface->viewport->map_reinit();
+    box->interface->get_top_viewport()->map_reinit();
     box->interface->set_player(0);
     box->interface->close_game_init();
     break;

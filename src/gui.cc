@@ -86,7 +86,7 @@ gui_object_t::set_size(int width, int height)
 }
 
 void
-gui_object_t::set_displayed(int displayed)
+gui_object_t::set_displayed(bool displayed)
 {
   this->displayed = displayed;
   if (displayed) {
@@ -97,7 +97,7 @@ gui_object_t::set_displayed(int displayed)
 }
 
 void
-gui_object_t::set_enabled(int enabled)
+gui_object_t::set_enabled(bool enabled)
 {
   this->enabled = enabled;
 }
@@ -109,6 +109,14 @@ gui_object_t::set_redraw()
   if (parent != NULL) {
     parent->set_redraw_child(this);
   }
+}
+
+bool
+gui_object_t::point_inside(int x, int y, int point_x, int point_y)
+{
+  return (point_x >= x && point_y >= y &&
+          point_x < x + width &&
+          point_y < y + height);
 }
 
 void

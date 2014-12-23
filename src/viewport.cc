@@ -22,6 +22,7 @@
 #include "viewport.h"
 #include "interface.h"
 #include "pathfinder.h"
+#include "popup.h"
 
 #ifndef _MSC_VER
 extern "C" {
@@ -32,6 +33,7 @@ extern "C" {
   #include "log.h"
   #include "debug.h"
   #include "audio.h"
+  #include "freeserf_endian.h"
 #ifndef _MSC_VER
 }
 #endif
@@ -326,8 +328,8 @@ viewport_t::redraw_map_pos(map_pos_t pos)
   landscape_tile[tid].dirty = 1;
 }
 
-static void
-draw_landscape(viewport_t *viewport, frame_t *frame)
+void
+viewport_t::draw_landscape(frame_t *frame)
 {
   int horiz_tiles = game.map.cols/MAP_TILE_COLS;
   int vert_tiles = game.map.rows/MAP_TILE_ROWS;
@@ -338,10 +340,10 @@ draw_landscape(viewport_t *viewport, frame_t *frame)
   int map_width = game.map.cols*MAP_TILE_WIDTH;
   int map_height = game.map.rows*MAP_TILE_HEIGHT;
 
-  int my = viewport->offset_y;
+  int my = offset_y;
   int y = 0;
   int x_base = 0;
-  while (y < viewport->height) {
+  while (y < height) {
     while (my >= map_height) {
       my -= map_height;
       x_base += (game.map.rows*MAP_TILE_WIDTH)/2;
@@ -350,8 +352,8 @@ draw_landscape(viewport_t *viewport, frame_t *frame)
     int ty = my % tile_height;
 
     int x = 0;
-    int mx = (viewport->offset_x + x_base) % map_width;
-    while (x < viewport->width) {
+    int mx = (offset_x + x_base) % map_width;
+    while (x < width) {
       int tx = mx % tile_width;
 
       int tc = (mx / tile_width) % horiz_tiles;
@@ -393,12 +395,12 @@ draw_landscape(viewport_t *viewport, frame_t *frame)
       }
 
       int w = tile_width - tx;
-      if (x+w > viewport->width) {
-        w = viewport->width - x;
+      if (x+w > width) {
+        w = width - x;
       }
       int h = tile_height - ty;
-      if (y+h > viewport->height) {
-        h = viewport->height - y;
+      if (y+h > height) {
+        h = height - y;
       }
 
       gfx_draw_frame(x, y, frame,
@@ -529,17 +531,17 @@ draw_border_segment(int x, int y, map_pos_t pos, dir_t dir, frame_t *frame)
              0, 0, 0, frame);
 }
 
-static void
-draw_paths_and_borders(viewport_t *viewport, frame_t *frame)
+void
+viewport_t::draw_paths_and_borders(frame_t *frame)
 {
-  int x_off = -(viewport->offset_x + 16*(viewport->offset_y/20)) % 32;
-  int y_off = -viewport->offset_y % 20;
+  int x_off = -(offset_x + 16*(offset_y/20)) % 32;
+  int y_off = -offset_y % 20;
 
-  int col_0 = (viewport->offset_x/16 + viewport->offset_y/20)/2 & game.map.col_mask;
-  int row_0 = (viewport->offset_y/MAP_TILE_HEIGHT) & game.map.row_mask;
+  int col_0 = (offset_x/16 + offset_y/20)/2 & game.map.col_mask;
+  int row_0 = (offset_y/MAP_TILE_HEIGHT) & game.map.row_mask;
   map_pos_t base_pos = MAP_POS(col_0, row_0);
 
-  for (int x_base = x_off; x_base < viewport->width + MAP_TILE_WIDTH; x_base += MAP_TILE_WIDTH) {
+  for (int x_base = x_off; x_base < width + MAP_TILE_WIDTH; x_base += MAP_TILE_WIDTH) {
     map_pos_t pos = base_pos;
     int y_base = y_off;
     int row = 0;
@@ -550,7 +552,7 @@ draw_paths_and_borders(viewport_t *viewport, frame_t *frame)
       else x = x_base - MAP_TILE_WIDTH/2;
 
       int y = y_base - 4*MAP_HEIGHT(pos);
-      if (y >= viewport->height) break;
+      if (y >= height) break;
 
       /* For each direction right, down right and down,
          draw the corresponding paths and borders. */
@@ -578,11 +580,10 @@ draw_paths_and_borders(viewport_t *viewport, frame_t *frame)
 
   /* If we're in road construction mode, also draw
      the temporarily placed roads. */
-  interface_t *interface = viewport->interface;
-  if (interface->building_road) {
-    map_pos_t pos = interface->building_road_source;
-    for (int i = 0; i < interface->building_road_length; i++) {
-      dir_t dir = interface->building_road_dirs[i];
+  if (interface->get_building_road()) {
+    map_pos_t pos = interface->get_building_road_source();
+    for (int i = 0; i < interface->get_building_road_length(); i++) {
+      dir_t dir = interface->get_building_road_dirs()[i];
 
       map_pos_t draw_pos = pos;
       dir_t draw_dir = dir;
@@ -592,12 +593,10 @@ draw_paths_and_borders(viewport_t *viewport, frame_t *frame)
       }
 
       int mx, my;
-      viewport->map_pix_from_map_coord(draw_pos,
-              MAP_HEIGHT(draw_pos),
-              &mx, &my);
+      map_pix_from_map_coord(draw_pos, MAP_HEIGHT(draw_pos), &mx, &my);
 
       int sx, sy;
-      viewport->screen_pix_from_map_pix(mx, my, &sx, &sy);
+      screen_pix_from_map_pix(mx, my, &sx, &sy);
 
       draw_path_segment(sx, sy + 4*MAP_HEIGHT(draw_pos), draw_pos,
             draw_dir, frame);
@@ -694,11 +693,11 @@ draw_building_unfinished(building_t *building, building_type_t bld_type, int x, 
   }
 }
 
-static void
-draw_unharmed_building(viewport_t *viewport, building_t *building,
+void
+viewport_t::draw_unharmed_building(building_t *building,
            int x, int y, frame_t *frame)
 {
-  random_state_t *random = &viewport->interface->random;
+  random_state_t *random = interface->get_random();
 
   static const int pigfarm_anim[] = {
     0xa2, 0, 0xa2, 0, 0xa2, 0, 0xa2, 0, 0xa2, 0, 0xa3, 0,
@@ -903,8 +902,8 @@ draw_unharmed_building(viewport_t *viewport, building_t *building,
   }
 }
 
-static void
-draw_burning_building(viewport_t *viewport, building_t *building,
+void
+viewport_t::draw_burning_building(building_t *building,
           int x, int y, frame_t *frame)
 {
   const int building_anim_offset_from_type[] = {
@@ -1130,7 +1129,7 @@ draw_burning_building(viewport_t *viewport, building_t *building,
 
   if (building->serf_index >= delta) {
     building->serf_index -= delta; /* TODO this is also done in update_buildings(). */
-    draw_unharmed_building(viewport, building, x, y, frame);
+    draw_unharmed_building(building, x, y, frame);
 
     int type = 0;
     if (BUILDING_IS_DONE(building) ||
@@ -1150,15 +1149,15 @@ draw_burning_building(viewport_t *viewport, building_t *building,
   }
 }
 
-static void
-draw_building(viewport_t *viewport, map_pos_t pos, int x, int y, frame_t *frame)
+void
+viewport_t::draw_building(map_pos_t pos, int x, int y, frame_t *frame)
 {
   building_t *building = game_get_building(MAP_OBJ_INDEX(pos));
 
   if (BUILDING_IS_BURNING(building)) {
-    draw_burning_building(viewport, building, x, y, frame);
+    draw_burning_building(building, x, y, frame);
   } else {
-    draw_unharmed_building(viewport, building, x, y, frame);
+    draw_unharmed_building(building, x, y, frame);
   }
 }
 
@@ -1211,8 +1210,8 @@ draw_flag_and_res(map_pos_t pos, int x, int y, frame_t *frame)
   if (flag->slot[7].type != RESOURCE_NONE) draw_game_sprite(x-4, y+4, flag->slot[7].type + 1, frame);
 }
 
-static void
-draw_map_objects_row(viewport_t *viewport, map_pos_t pos, int y_base,
+void
+viewport_t::draw_map_objects_row(map_pos_t pos, int y_base,
          int cols, int x_base, frame_t *frame)
 {
   for (int i = 0; i < cols; i++, x_base += MAP_TILE_WIDTH, pos = MAP_MOVE_RIGHT(pos)) {
@@ -1223,7 +1222,7 @@ draw_map_objects_row(viewport_t *viewport, map_pos_t pos, int y_base,
       if (MAP_OBJ(pos) == MAP_OBJ_FLAG) {
         draw_flag_and_res(pos, x_base, y, frame);
       } else if (MAP_OBJ(pos) <= MAP_OBJ_CASTLE) {
-        draw_building(viewport, pos, x_base, y, frame);
+        draw_building(pos, x_base, y, frame);
       }
     } else {
       int sprite = MAP_OBJ(pos) - MAP_OBJ_TREE_0;
@@ -2041,8 +2040,8 @@ draw_serf_row_behind(map_pos_t pos, int y_base, int cols, int x_base,
   }
 }
 
-static void
-draw_game_objects(viewport_t *viewport, int layers, frame_t *frame)
+void
+viewport_t::draw_game_objects(int layers, frame_t *frame)
 {
   /*player->water_in_view = 0;
   player->trees_in_view = 0;*/
@@ -2052,52 +2051,50 @@ draw_game_objects(viewport_t *viewport, int layers, frame_t *frame)
   int draw_serfs = layers & VIEWPORT_LAYER_SERFS;
   if (!draw_landscape && !draw_objects && !draw_serfs) return;
 
-  int cols = VIEWPORT_COLS(viewport);
+  int cols = VIEWPORT_COLS(this);
   int short_row_len = ((cols + 1) >> 1) + 1;
   int long_row_len = ((cols + 2) >> 1) + 1;
 
-  int x = -(viewport->offset_x + 16*(viewport->offset_y/20)) % 32;
-  int y = -(viewport->offset_y) % 20;
+  int x = -(offset_x + 16*(offset_y/20)) % 32;
+  int y = -(offset_y) % 20;
 
-  int col_0 = (viewport->offset_x/16 + viewport->offset_y/20)/2 & game.map.col_mask;
-  int row_0 = (viewport->offset_y/MAP_TILE_HEIGHT) & game.map.row_mask;
+  int col_0 = (offset_x/16 + offset_y/20)/2 & game.map.col_mask;
+  int row_0 = (offset_y/MAP_TILE_HEIGHT) & game.map.row_mask;
   map_pos_t pos = MAP_POS(col_0, row_0);
-
-  uint32_t *animation_table = viewport->interface->serf_animation_table;
 
   /* Loop until objects drawn fall outside the frame. */
   while (1) {
     /* short row */
     if (draw_landscape) draw_water_waves_row(pos, y, short_row_len, x, frame);
     if (draw_serfs) {
-      draw_serf_row_behind(pos, y, short_row_len, x, animation_table, frame);
+      draw_serf_row_behind(pos, y, short_row_len, x, serf_animation_table, frame);
     }
     if (draw_objects) {
-      draw_map_objects_row(viewport, pos, y, short_row_len, x, frame);
+      draw_map_objects_row(pos, y, short_row_len, x, frame);
     }
     if (draw_serfs) {
-      draw_serf_row(pos, y, short_row_len, x, animation_table, frame);
+      draw_serf_row(pos, y, short_row_len, x, serf_animation_table, frame);
     }
 
     y += MAP_TILE_HEIGHT;
-    if (y >= viewport->height + 6*MAP_TILE_HEIGHT) break;
+    if (y >= height + 6*MAP_TILE_HEIGHT) break;
 
     pos = MAP_MOVE_DOWN(pos);
 
     /* long row */
     if (draw_landscape) draw_water_waves_row(pos, y, long_row_len, x - 16, frame);
     if (draw_serfs) {
-      draw_serf_row_behind(pos, y, long_row_len, x - 16, animation_table, frame);
+      draw_serf_row_behind(pos, y, long_row_len, x - 16, serf_animation_table, frame);
     }
     if (draw_objects) {
-      draw_map_objects_row(viewport, pos, y, long_row_len, x - 16, frame);
+      draw_map_objects_row(pos, y, long_row_len, x - 16, frame);
     }
     if (draw_serfs) {
-      draw_serf_row(pos, y, long_row_len, x - 16, animation_table, frame);
+      draw_serf_row(pos, y, long_row_len, x - 16, serf_animation_table, frame);
     }
 
     y += MAP_TILE_HEIGHT;
-    if (y >= viewport->height + 6*MAP_TILE_HEIGHT) break;
+    if (y >= height + 6*MAP_TILE_HEIGHT) break;
 
     pos = MAP_MOVE_DOWN_RIGHT(pos);
   }
@@ -2115,17 +2112,17 @@ draw_map_cursor_sprite(viewport_t *viewport, map_pos_t pos, int sprite, frame_t 
   draw_game_sprite(sx, sy, sprite, frame);
 }
 
-static void
-draw_map_cursor_possible_build(viewport_t *viewport, interface_t *interface, frame_t *frame)
+void
+viewport_t::draw_map_cursor_possible_build(interface_t *interface, frame_t *frame)
 {
-  int x_off = -(viewport->offset_x + 16*(viewport->offset_y/20)) % 32;
-  int y_off = -viewport->offset_y % 20;
+  int x_off = -(offset_x + 16*(offset_y/20)) % 32;
+  int y_off = -offset_y % 20;
 
-  int col_0 = (viewport->offset_x/16 + viewport->offset_y/20)/2 & game.map.col_mask;
-  int row_0 = (viewport->offset_y/MAP_TILE_HEIGHT) & game.map.row_mask;
+  int col_0 = (offset_x/16 + offset_y/20)/2 & game.map.col_mask;
+  int row_0 = (offset_y/MAP_TILE_HEIGHT) & game.map.row_mask;
   map_pos_t base_pos = MAP_POS(col_0, row_0);
 
-  for (int x_base = x_off; x_base < viewport->width + MAP_TILE_WIDTH; x_base += MAP_TILE_WIDTH) {
+  for (int x_base = x_off; x_base < width + MAP_TILE_WIDTH; x_base += MAP_TILE_WIDTH) {
     map_pos_t pos = base_pos;
     int y_base = y_off;
     int row = 0;
@@ -2136,15 +2133,15 @@ draw_map_cursor_possible_build(viewport_t *viewport, interface_t *interface, fra
       else x = x_base - MAP_TILE_WIDTH/2;
 
       int y = y_base - 4*MAP_HEIGHT(pos);
-      if (y >= viewport->height) break;
+      if (y >= height) break;
 
       /* Draw possible building */
       int sprite = -1;
-      if (game_can_build_castle(pos, interface->player)) {
+      if (game_can_build_castle(pos, interface->get_player())) {
         sprite = 50;
-      } else if (game_can_player_build(pos, interface->player) &&
+      } else if (game_can_player_build(pos, interface->get_player()) &&
            map_space_from_obj[MAP_OBJ(pos)] == MAP_SPACE_OPEN &&
-           (game_can_build_flag(MAP_MOVE_DOWN_RIGHT(pos), interface->player) ||
+           (game_can_build_flag(MAP_MOVE_DOWN_RIGHT(pos), interface->get_player()) ||
             MAP_HAS_FLAG(MAP_MOVE_DOWN_RIGHT(pos)))) {
         if (game_can_build_mine(pos)) {
           sprite = 48;
@@ -2170,49 +2167,50 @@ draw_map_cursor_possible_build(viewport_t *viewport, interface_t *interface, fra
   }
 }
 
-static void
-draw_map_cursor(viewport_t *viewport, interface_t *interface, frame_t *frame)
+void
+viewport_t::draw_map_cursor(frame_t *frame)
 {
-  if (viewport->show_possible_build) {
-    draw_map_cursor_possible_build(viewport, interface, frame);
+  if (show_possible_build) {
+    draw_map_cursor_possible_build(interface, frame);
   }
 
-  draw_map_cursor_sprite(viewport, interface->map_cursor_pos,
-             interface->map_cursor_sprites[0].sprite, frame);
+  map_pos_t map_pos = interface->get_map_cursor_pos();
+  draw_map_cursor_sprite(this, map_pos,
+             interface->get_map_cursor_sprites()[0], frame);
 
   for (int d = 0; d < 6; d++) {
-    draw_map_cursor_sprite(viewport, MAP_MOVE(interface->map_cursor_pos, d),
-               interface->map_cursor_sprites[1+d].sprite, frame);
+    draw_map_cursor_sprite(this, MAP_MOVE(map_pos, d),
+               interface->get_map_cursor_sprites()[1+d], frame);
   }
 }
 
-static void
-draw_base_grid_overlay(viewport_t *viewport, int color, frame_t *frame)
+void
+viewport_t::draw_base_grid_overlay(int color, frame_t *frame)
 {
-  int x_base = -(viewport->offset_x + 16*(viewport->offset_y/20)) % 32;
-  int y_base = -viewport->offset_y % 20;
+  int x_base = -(offset_x + 16*(offset_y/20)) % 32;
+  int y_base = -offset_y % 20;
 
   int row = 0;
-  for (int y = y_base; y < viewport->height; y += MAP_TILE_HEIGHT, row++) {
-    gfx_fill_rect(0, y, viewport->width, 1, color, frame);
+  for (int y = y_base; y < height; y += MAP_TILE_HEIGHT, row++) {
+    gfx_fill_rect(0, y, width, 1, color, frame);
     for (int x = x_base + ((row % 2 == 0) ? 0 : -MAP_TILE_WIDTH/2);
-         x < viewport->width; x += MAP_TILE_WIDTH) {
+         x < width; x += MAP_TILE_WIDTH) {
       gfx_fill_rect(x, y + y - 2, 1, 5, color, frame);
     }
   }
 }
 
-static void
-draw_height_grid_overlay(viewport_t *viewport, int color, frame_t *frame)
+void
+viewport_t::draw_height_grid_overlay(int color, frame_t *frame)
 {
-  int x_off = -(viewport->offset_x + 16*(viewport->offset_y/20)) % 32;
-  int y_off = -viewport->offset_y % 20;
+  int x_off = -(offset_x + 16*(offset_y/20)) % 32;
+  int y_off = -offset_y % 20;
 
-  int col_0 = (viewport->offset_x/16 + viewport->offset_y/20)/2 & game.map.col_mask;
-  int row_0 = (viewport->offset_y/MAP_TILE_HEIGHT) & game.map.row_mask;
+  int col_0 = (offset_x/16 + offset_y/20)/2 & game.map.col_mask;
+  int row_0 = (offset_y/MAP_TILE_HEIGHT) & game.map.row_mask;
   map_pos_t base_pos = MAP_POS(col_0, row_0);
 
-  for (int x_base = x_off; x_base < viewport->width + MAP_TILE_WIDTH; x_base += MAP_TILE_WIDTH) {
+  for (int x_base = x_off; x_base < width + MAP_TILE_WIDTH; x_base += MAP_TILE_WIDTH) {
     map_pos_t pos = base_pos;
     int y_base = y_off;
     int row = 0;
@@ -2223,7 +2221,7 @@ draw_height_grid_overlay(viewport_t *viewport, int color, frame_t *frame)
       else x = x_base - MAP_TILE_WIDTH/2;
 
       int y = y_base - 4*MAP_HEIGHT(pos);
-      if (y >= viewport->height) break;
+      if (y >= height) break;
 
       /* Draw cross. */
       if (pos != MAP_POS(0, 0)) {
@@ -2248,32 +2246,30 @@ draw_height_grid_overlay(viewport_t *viewport, int color, frame_t *frame)
 void
 viewport_t::internal_draw()
 {
-  if (layers & VIEWPORT_LAYER_LANDSCAPE) draw_landscape(this, frame);
+  if (layers & VIEWPORT_LAYER_LANDSCAPE) draw_landscape(frame);
   if (layers & VIEWPORT_LAYER_GRID) {
-    draw_base_grid_overlay(this, 72, frame);
-    draw_height_grid_overlay(this, 76, frame);
+    draw_base_grid_overlay(72, frame);
+    draw_height_grid_overlay(76, frame);
   }
-  if (layers & VIEWPORT_LAYER_PATHS) draw_paths_and_borders(this, frame);
-  draw_game_objects(this, layers, frame);
-  if (layers & VIEWPORT_LAYER_CURSOR) draw_map_cursor(this, interface, frame);
+  if (layers & VIEWPORT_LAYER_PATHS) draw_paths_and_borders(frame);
+  draw_game_objects(layers, frame);
+  if (layers & VIEWPORT_LAYER_CURSOR) draw_map_cursor(frame);
 }
 
-static int
-viewport_handle_event_click(viewport_t *viewport, int x, int y, gui_event_button_t button)
+int
+viewport_t::handle_event_click(int x, int y, gui_event_button_t button)
 {
   if (button != GUI_EVENT_BUTTON_LEFT) return 0;
 
-  viewport->set_redraw();
+  set_redraw();
 
-  interface_t *interface = viewport->interface;
-
-  map_pos_t clk_pos = viewport->map_pos_from_screen_pix(x, y);
+  map_pos_t clk_pos = map_pos_from_screen_pix(x, y);
   int clk_col = MAP_POS_COL(clk_pos);
   int clk_row = MAP_POS_ROW(clk_pos);
 
-  if (interface->building_road) {
-    int x = (clk_col - MAP_POS_COL(interface->map_cursor_pos) + 1) & game.map.col_mask;
-    int y = (clk_row - MAP_POS_ROW(interface->map_cursor_pos) + 1) & game.map.row_mask;
+  if (interface->get_building_road()) {
+    int x = (clk_col - MAP_POS_COL(interface->get_map_cursor_pos()) + 1) & game.map.col_mask;
+    int y = (clk_row - MAP_POS_ROW(interface->get_map_cursor_pos()) + 1) & game.map.row_mask;
     int dir = -1;
 
     if (x == 0) {
@@ -2287,10 +2283,10 @@ viewport_handle_event_click(viewport_t *viewport, int x, int y, gui_event_button
       else if (y == 2) dir = DIR_DOWN_RIGHT;
     }
 
-    if (BIT_TEST(interface->building_road_valid_dir, dir)) {
-      int length = interface->building_road_length;
+    if (BIT_TEST(interface->get_building_road_valid_dir(), dir)) {
+      int length = interface->get_building_road_length();
       dir_t last_dir = DIR_RIGHT;
-      if (length > 0) last_dir = interface->building_road_dirs[length-1];
+      if (length > 0) last_dir = interface->get_building_road_dirs()[length-1];
 
       if (length > 0 && DIR_REVERSE(last_dir) == dir) {
         /* Delete existing path */
@@ -2313,7 +2309,7 @@ viewport_handle_event_click(viewport_t *viewport, int x, int y, gui_event_button
       }
     }
   } else {
-    viewport->interface->update_map_cursor_pos(clk_pos);
+    interface->update_map_cursor_pos(clk_pos);
     sfx_play_clip(SFX_CLICK);
   }
 
@@ -2321,24 +2317,21 @@ viewport_handle_event_click(viewport_t *viewport, int x, int y, gui_event_button
 }
 
 int
-viewport_handle_event_dbl_click(viewport_t *viewport, int x, int y,
-        gui_event_button_t button)
+viewport_t::handle_event_dbl_click(int x, int y, gui_event_button_t button)
 {
   if (button != GUI_EVENT_BUTTON_LEFT) return 0;
 
-  viewport->set_redraw();
+  set_redraw();
 
-  interface_t *interface = viewport->interface;
+  map_pos_t clk_pos = map_pos_from_screen_pix(x, y);
 
-  map_pos_t clk_pos = viewport->map_pos_from_screen_pix(x, y);
-
-  if (interface->building_road) {
-    if (clk_pos != interface->map_cursor_pos) {
-      map_pos_t pos = interface->building_road_source;
+  if (interface->get_building_road()) {
+    if (clk_pos != interface->get_map_cursor_pos()) {
+      map_pos_t pos = interface->get_building_road_source();
       uint length;
       dir_t *dirs = pathfinder_map(pos, clk_pos, &length);
       if (dirs != NULL) {
-        interface->building_road_length = 0;
+        interface->set_building_road_length(0);
         int r = interface->extend_road(dirs, length);
         if (r < 0) sfx_play_clip(SFX_NOT_ACCEPTED);
         else if (r == 1) sfx_play_clip(SFX_ACCEPTED);
@@ -2348,19 +2341,19 @@ viewport_handle_event_dbl_click(viewport_t *viewport, int x, int y,
         sfx_play_clip(SFX_NOT_ACCEPTED);
       }
     } else {
-      int r = game_build_flag(interface->map_cursor_pos,
-            interface->player);
+      int r = game_build_flag(interface->get_map_cursor_pos(),
+            interface->get_player());
       if (r < 0) {
         sfx_play_clip(SFX_NOT_ACCEPTED);
       } else {
-        r = game_build_road(interface->building_road_source,
-                interface->building_road_dirs,
-                interface->building_road_length,
-                interface->player);
+        r = game_build_road(interface->get_building_road_source(),
+                interface->get_building_road_dirs(),
+                interface->get_building_road_length(),
+                interface->get_player());
         if (r < 0) {
           sfx_play_clip(SFX_NOT_ACCEPTED);
-          game_demolish_flag(interface->map_cursor_pos,
-                 interface->player);
+          game_demolish_flag(interface->get_map_cursor_pos(),
+                 interface->get_player());
         } else {
           sfx_play_clip(SFX_ACCEPTED);
           interface->build_road_end();
@@ -2375,14 +2368,14 @@ viewport_handle_event_dbl_click(viewport_t *viewport, int x, int y,
 
     if (MAP_OBJ(clk_pos) == MAP_OBJ_FLAG) {
       if (BIT_TEST(game.split, 5) || /* Demo mode */
-          MAP_OWNER(clk_pos) == interface->player->player_num) {
+          MAP_OWNER(clk_pos) == interface->get_player()->player_num) {
         interface->open_popup(BOX_TRANSPORT_INFO);
       }
 
-      interface->player->index = MAP_OBJ_INDEX(clk_pos);
+      interface->get_player()->index = MAP_OBJ_INDEX(clk_pos);
     } else { /* Building */
       if (BIT_TEST(game.split, 5) || /* Demo mode */
-          MAP_OWNER(clk_pos) == interface->player->player_num) {
+          MAP_OWNER(clk_pos) == interface->get_player()->player_num) {
         building_t *building = game_get_building(MAP_OBJ_INDEX(clk_pos));
         if (!BUILDING_IS_DONE(building)) {
           interface->open_popup(BOX_ORDERED_BLD);
@@ -2404,13 +2397,13 @@ viewport_handle_event_dbl_click(viewport_t *viewport, int x, int y,
           interface->open_popup(BOX_BLD_STOCK);
         }
 
-        interface->player->index = MAP_OBJ_INDEX(clk_pos);
+        interface->get_player()->index = MAP_OBJ_INDEX(clk_pos);
       } else if (BIT_TEST(game.split, 5)) { /* Demo mode*/
         return 0;
       } else { /* Foreign building */
         /* TODO handle coop mode*/
         building_t *building = game_get_building(MAP_OBJ_INDEX(clk_pos));
-        interface->player->building_attacked = BUILDING_INDEX(building);
+        interface->get_player()->building_attacked = BUILDING_INDEX(building);
 
         if (BUILDING_IS_DONE(building) &&
             (BUILDING_TYPE(building) == BUILDING_HUT ||
@@ -2431,7 +2424,7 @@ viewport_handle_event_dbl_click(viewport_t *viewport, int x, int y,
           for (int i = 257; i >= 0; i--) {
             map_pos_t pos = MAP_POS_ADD(building->pos, p[257-i]);
             if (MAP_HAS_OWNER(pos) &&
-                MAP_OWNER(pos) == interface->player->player_num) {
+                MAP_OWNER(pos) == interface->get_player()->player_num) {
               found = 1;
               break;
             }
@@ -2454,19 +2447,19 @@ viewport_handle_event_dbl_click(viewport_t *viewport, int x, int y,
           default: NOT_REACHED(); break;
           }
 
-          int knights = player_knights_available_for_attack(interface->player,
+          int knights = player_knights_available_for_attack(interface->get_player(),
                         building->pos);
-          interface->player->knights_attacking = std::min(knights, max_knights);
+          interface->get_player()->knights_attacking = std::min(knights, max_knights);
           interface->open_popup(BOX_START_ATTACK);
         }
       }
     }
 
-    interface->panel_btns[0] = PANEL_BTN_BUILD_INACTIVE;
-    interface->panel_btns[1] = PANEL_BTN_DESTROY_INACTIVE;
-    interface->panel_btns[2] = PANEL_BTN_MAP_INACTIVE;
-    interface->panel_btns[3] = PANEL_BTN_STATS_INACTIVE;
-    interface->panel_btns[4] = PANEL_BTN_SETT_INACTIVE;
+    interface->get_panel_bar()->set_button_type(0, PANEL_BTN_BUILD_INACTIVE);
+    interface->get_panel_bar()->set_button_type(1, PANEL_BTN_DESTROY_INACTIVE);
+    interface->get_panel_bar()->set_button_type(2, PANEL_BTN_MAP_INACTIVE);
+    interface->get_panel_bar()->set_button_type(3, PANEL_BTN_STATS_INACTIVE);
+    interface->get_panel_bar()->set_button_type(4, PANEL_BTN_SETT_INACTIVE);
   }
 
   return 0;
@@ -2494,20 +2487,18 @@ viewport_t::internal_handle_event(const gui_event_t *event)
 
   switch (event->type) {
   case GUI_EVENT_TYPE_CLICK:
-    return viewport_handle_event_click(this, x, y,
-               (gui_event_button_t)event->button);
+    return handle_event_click(x, y, (gui_event_button_t)event->button);
   case GUI_EVENT_TYPE_DBL_CLICK:
-    return viewport_handle_event_dbl_click(this, x, y,
-                   (gui_event_button_t)event->button);
+    return handle_event_dbl_click(x, y, (gui_event_button_t)event->button);
     break;
   case GUI_EVENT_TYPE_DRAG_START:
-    interface->cursor_lock_target = this;
+    interface->set_cursor_lock_target(this);
     return 0;
   case GUI_EVENT_TYPE_DRAG_MOVE:
     return viewport_handle_drag(this, x, y,
               (gui_event_button_t)event->button);
   case GUI_EVENT_TYPE_DRAG_END:
-    interface->cursor_lock_target = NULL;
+    interface->set_cursor_lock_target(NULL);
     return 0;
   default:
     break;
@@ -2524,6 +2515,8 @@ viewport_t::viewport_t(interface_t *interface)
 
   last_tick = 0;
   show_possible_build = 0;
+
+  load_serf_animation_table();
 }
 
 /* Space transformations. */
@@ -2714,4 +2707,69 @@ viewport_t::update()
 
   /* Viewport animation does not care about low bits in anim */
   if (tick_xor >= 1 << 3) set_redraw();
+}
+
+void
+viewport_t::switch_possible_build()
+{
+  show_possible_build = !show_possible_build;
+  set_redraw();
+}
+
+void
+viewport_t::switch_layer(viewport_layer_t layer)
+{
+  layers = static_cast<viewport_layer_t>(layers ^ layer);
+  set_redraw();
+}
+
+void
+viewport_t::set_layers(viewport_layer_t layers)
+{
+  this->layers = layers;
+  set_redraw();
+}
+
+void
+viewport_t::move_offset(int dx, int dy)
+{
+  offset_x += dx;
+  offset_y += dy;
+  set_redraw();
+}
+
+void
+viewport_t::load_serf_animation_table()
+{
+  /* The serf animation table is stored in big endian
+   order in the data file.
+
+   * The first uint32 is the byte length of the rest
+   of the table.
+   * Next is 199 uint32s that are offsets from the start
+   of this table to an animation table (one for each
+   animation).
+   * The animation tables are of varying lengths.
+   Each entry in the animation table is three bytes
+   long. First byte is used to determine the serf body
+   sprite. Second byte is a signed horizontal sprite
+   offset. Third byte is a signed vertical offset.
+   */
+
+  size_t size = 0;
+  serf_animation_table = (uint32_t *)data_get_object(DATA_SERF_ANIMATION_TABLE, &size);
+  if (NULL == serf_animation_table) {
+    return;
+  }
+
+  /* Endianess convert from big endian. */
+  for (int i = 0; i < 200; i++) {
+    serf_animation_table[i] = be32toh(serf_animation_table[i]);
+  }
+
+  if (size != *serf_animation_table) {
+    // TODO: report and assert
+  }
+
+  serf_animation_table++;
 }

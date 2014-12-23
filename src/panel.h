@@ -57,15 +57,25 @@ class interface_t;
 class panel_bar_t
   : public gui_object_t
 {
-public:
+protected:
   interface_t *interface;
+  int panel_btns[5];
 
+public:
   panel_bar_t(interface_t *interface);
 
+  void set_button_type(int button, panel_btn_t type);
+  void activate_button(int button);
+
+protected:
   virtual void internal_draw();
   virtual int internal_handle_event(const gui_event_t *event);
 
-  void activate_button(int button);
+  void draw_panel_frame(frame_t *frame);
+  void draw_panel_buttons(frame_t *frame);
+  void draw_message_notify(frame_t *frame);
+  int handle_event_click(int x, int y);
+  void handle_panel_button_click(int button);
 };
 
 #endif /* !_PANEL_H */

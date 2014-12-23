@@ -93,17 +93,101 @@ class minimap_t;
 class popup_box_t
   : public gui_container_t
 {
-public:
+protected:
   interface_t *interface;
   minimap_t *minimap;
 
   box_t box;
 
+  int current_stat_8_mode;
+  int current_stat_7_item;
+
+public:
   popup_box_t(interface_t *interface);
 
+  minimap_t *get_minimap() { return minimap; }
+  box_t get_box() { return box; }
+  void set_box(box_t box);
+
+protected:
   virtual void internal_draw();
   virtual int internal_handle_event(const gui_event_t *event);
   virtual int internal_get_child_position(gui_object_t *child, int *x, int *t);
+
+  void draw_transport_info_box(frame_t *frame);
+  void draw_mine_building_box(frame_t *frame);
+  void draw_basic_building_box(frame_t *frame, int flip);
+  void draw_adv_2_building_box(frame_t *frame);
+  void draw_stat_4_box(frame_t *frame);
+  void draw_stat_bld_1_box(frame_t *frame);
+  void draw_stat_bld_2_box(frame_t *frame);
+  void draw_stat_bld_3_box(frame_t *frame);
+  void draw_stat_bld_4_box(frame_t *frame);
+  void draw_stat_8_box(frame_t *frame);
+  void draw_stat_7_box(frame_t *frame);
+  void draw_stat_1_box(frame_t *frame);
+  void draw_stat_2_box(frame_t *frame);
+  void draw_stat_6_box(frame_t *frame);
+  void draw_stat_3_box(frame_t *frame);
+  void draw_start_attack_redraw_box(frame_t *frame);
+  void draw_start_attack_box(frame_t *frame);
+  void draw_ground_analysis_box(frame_t *frame);
+  void draw_sett_1_box(frame_t *frame);
+  void draw_sett_2_box(frame_t *frame);
+  void draw_sett_3_box(frame_t *frame);
+  void draw_knight_level_box(frame_t *frame);
+  void draw_sett_4_box(frame_t *frame);
+  void draw_sett_5_box(frame_t *frame);
+  void draw_options_box(frame_t *frame);
+  void draw_castle_res_box(frame_t *frame);
+  void draw_mine_output_box(frame_t *frame);
+  void draw_ordered_building_box(frame_t *frame);
+  void draw_defenders_box(frame_t *frame);
+  void draw_castle_serf_box(frame_t *frame);
+  void draw_resdir_box(frame_t *frame);
+  void draw_sett_8_box(frame_t *frame);
+  void draw_sett_6_box(frame_t *frame);
+  void draw_bld_1_box(frame_t *frame);
+  void draw_building_stock_box(frame_t *frame);
+  int handle_event_click(int x, int y);
+  void handle_action(int action, int x, int y);
+  int handle_clickmap(int x, int y, const int clkmap[]);
+  void handle_box_close_clk(int x, int y);
+  void handle_box_options_clk(int x, int y);
+  void handle_mine_building_clk(int x, int y);
+  void handle_basic_building_clk(int x, int y, int flip);
+  void handle_adv_1_building_clk(int x, int y);
+  void handle_adv_2_building_clk(int x, int y);
+  void handle_stat_select_click(int x, int y);
+  void handle_stat_3_4_6_click(int x, int y);
+  void handle_stat_bld_click(int x, int y);
+  void handle_stat_8_click(int x, int y);
+  void handle_stat_7_click(int x, int y);
+  void handle_stat_1_2_click(int x, int y);
+  void handle_start_attack_click(int x, int y);
+  void handle_ground_analysis_clk(int x, int y);
+  void handle_sett_select_clk(int x, int y);
+  void handle_sett_1_click(int x, int y);
+  void handle_sett_2_click(int x, int y);
+  void handle_sett_3_click(int x, int y);
+  void handle_knight_level_click(int x, int y);
+  void handle_sett_4_click(int x, int y);
+  void handle_sett_5_6_click(int x, int y);
+  void handle_quit_confirm_click(int x, int y);
+  void handle_no_save_quit_confirm_click(int x, int y);
+  void handle_castle_res_clk(int x, int y);
+  void handle_transport_info_clk(int x, int y);
+  void handle_castle_serf_clk(int x, int y);
+  void handle_resdir_clk(int x, int y);
+  void handle_sett_8_click(int x, int y);
+  void handle_message_clk(int x, int y);
+  void handle_player_faces_click(int x, int y);
+  void handle_box_demolish_clk(int x, int y);
+  void handle_minimap_clk(int x, int y);
+  void handle_box_bld_1(int x, int y);
+  void handle_box_bld_2(int x, int y);
+  void handle_box_bld_3(int x, int y);
+  void handle_box_bld_4(int x, int y);
 };
 
 #endif /* !_POPUP_H */

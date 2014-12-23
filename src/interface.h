@@ -23,17 +23,16 @@
 #define _INTERFACE_H
 
 #include "gui.h"
-#include "viewport.h"
 #include "panel.h"
-#include "game-init.h"
-#include "notification.h"
-#include "popup.h"
 
 #ifndef _MSC_VER
 extern "C" {
 #endif
   #include "list.h"
   #include "random.h"
+  #include "map.h"
+  #include "player.h"
+  #include "building.h"
 #ifndef _MSC_VER
 }
 #endif
@@ -62,22 +61,21 @@ typedef enum {
   MAP_CURSOR_TYPE_CLEAR
 } map_cursor_type_t;
 
-typedef struct {
-  int sprite;
-  int x, y;
-} sprite_loc_t;
+class viewport_t;
+class panel_bar_t;
+class popup_box_t;
+class game_init_box_t;
+class notification_box_t;
 
 class interface_t
   : public gui_container_t
 {
-public:
+protected:
   gui_object_t *top;
   int redraw_top;
   list_t floats;
 
   gui_object_t *cursor_lock_target;
-
-  uint32_t *serf_animation_table;
 
   random_state_t random;
 
@@ -93,7 +91,7 @@ public:
 
   uint last_const_tick;
 
-  int building_road;
+  bool building_road;
   map_pos_t building_road_source;
   dir_t building_road_dirs[MAX_ROAD_LENGTH];
   int building_road_length;
@@ -101,16 +99,11 @@ public:
 
   int sfx_queue[4];
 
-  int panel_btns[5];
-
   player_t *player;
   int config;
   int msg_flags;
 
-  sprite_loc_t map_cursor_sprites[7];
-
-  int current_stat_8_mode;
-  int current_stat_7_item;
+  int map_cursor_sprites[7];
 
   int water_in_view;
   int trees_in_view;
@@ -118,18 +111,13 @@ public:
   int return_timeout;
   int return_pos;
 
+public:
   interface_t();
-
-  virtual void internal_draw();
-  virtual int internal_handle_event(const gui_event_t *event);
-  virtual void internal_set_size(int width, int height);
-
-  virtual void internal_set_redraw_child(gui_object_t *child);
-  virtual int internal_get_child_position(gui_object_t *child, int *x, int *t);
 
   viewport_t *get_top_viewport();
   panel_bar_t *get_panel_bar();
   popup_box_t *get_popup_box();
+  notification_box_t *get_notification_box() { return notification_box; }
 
   void open_popup(int box);
   void close_popup();
@@ -141,8 +129,13 @@ public:
   void return_from_message();
   void close_message();
 
+  player_t *get_player() { return player; }
   void set_player(uint player);
+
+  map_pos_t get_map_cursor_pos() { return map_cursor_pos; }
   void update_map_cursor_pos(map_pos_t pos);
+  map_cursor_type_t current_map_cursor_type() { return map_cursor_type; }
+  dir_t *get_building_road_dirs() { return building_road_dirs; }
 
   void build_road_begin();
   void build_road_end();
@@ -160,6 +153,36 @@ public:
   void add_float(gui_object_t *obj, int x, int y, int width, int height);
 
   void update();
+
+  void set_cursor_lock_target(gui_object_t *cursor_lock_target) { this->cursor_lock_target = cursor_lock_target; }
+
+  int get_config() { return config; }
+  void set_config(int config) { this->config = config; }
+
+  bool get_building_road() { return building_road; }
+  map_pos_t get_building_road_source() { return building_road_source; }
+  int get_building_road_length() { return building_road_length; }
+  void set_building_road_length(int building_road_length) { this->building_road_length = building_road_length; }
+  int get_building_road_valid_dir() { return building_road_valid_dir; }
+
+  int get_msg_flags() { return msg_flags; }
+  void set_msg_flags(int msg_flags) { this->msg_flags = msg_flags; }
+
+  random_state_t *get_random() { return &random; }
+
+  int *get_map_cursor_sprites() { return map_cursor_sprites; }
+
+protected:
+  virtual void internal_draw();
+  virtual int internal_handle_event(const gui_event_t *event);
+  virtual void internal_set_size(int width, int height);
+
+  virtual void internal_set_redraw_child(gui_object_t *child);
+  virtual int internal_get_child_position(gui_object_t *child, int *x, int *t);
+
+  void interface_determine_map_cursor_type();
+  void interface_determine_map_cursor_type_road();
+  void interface_update_interface();
 };
 
 #endif /* !_INTERFACE_H */

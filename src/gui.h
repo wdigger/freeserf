@@ -56,26 +56,31 @@ class gui_container_t;
 
 class gui_object_t
 {
-public:
+protected:
   int width, height;
-  int displayed;
-  int enabled;
-  int redraw;
+  bool displayed;
+  bool enabled;
+  bool redraw;
   gui_container_t *parent;
   frame_t *frame;
-
-  gui_object_t();
 
   virtual void internal_draw() = 0;
   virtual int internal_handle_event(const gui_event_t *event) = 0;
   virtual void internal_set_size(int width, int height);
 
+public:
+  gui_object_t();
+
   void draw(frame_t *frame, int x, int y);
   int handle_event(const gui_event_t *event);
   void set_size(int width, int height);
-  void set_displayed(int displayed);
-  void set_enabled(int enabled);
+  void set_displayed(bool displayed);
+  void set_enabled(bool enabled);
   void set_redraw();
+  bool is_displayed() { return displayed; }
+  gui_container_t *get_parent() { return parent; }
+  void set_parent(gui_container_t *parent) { this->parent = parent; }
+  bool point_inside(int x, int y, int point_x, int point_y);
 };
 
 class gui_container_t

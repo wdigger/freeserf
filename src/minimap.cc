@@ -37,27 +37,27 @@ extern "C" {
 
 #define MINIMAP_MAX_SCALE  8
 
-static void
-draw_minimap_point(minimap_t *minimap, int col, int row, uint8_t color,
+void
+minimap_t::draw_minimap_point(int col, int row, uint8_t color,
        int density, frame_t *frame)
 {
-  int map_width = game.map.cols * minimap->scale;
-  int map_height = game.map.rows * minimap->scale;
+  int map_width = game.map.cols * scale;
+  int map_height = game.map.rows * scale;
 
   if (0 == map_width || 0 == map_height) {
     return;
   }
 
-  int mm_y = row*minimap->scale - minimap->offset_y;
+  int mm_y = row*scale - offset_y;
   col -= (game.map.rows/2) * (int)(mm_y / map_height);
   mm_y = mm_y % map_height;
 
-  while (mm_y < minimap->height) {
+  while (mm_y < height) {
     if (mm_y >= -density) {
-      int mm_x = col*minimap->scale -
-        (row*minimap->scale)/2 - minimap->offset_x;
+      int mm_x = col*scale -
+        (row*scale)/2 - offset_x;
       mm_x = mm_x % map_width;
-      while (mm_x < minimap->width) {
+      while (mm_x < width) {
         if (mm_x >= -density) {
           gfx_fill_rect(mm_x, mm_y, density,
                   density, color, frame);
@@ -70,50 +70,47 @@ draw_minimap_point(minimap_t *minimap, int col, int row, uint8_t color,
   }
 }
 
-static void
-draw_minimap_map(minimap_t *minimap, frame_t *frame)
+void
+minimap_t::draw_minimap_map(frame_t *frame)
 {
   uint8_t *color_data = game.minimap;
   for (uint row = 0; row < game.map.rows; row++) {
     for (uint col = 0; col < game.map.cols; col++) {
       uint8_t color = *(color_data++);
-      draw_minimap_point(minimap, col, row, color,
-             minimap->scale, frame);
+      draw_minimap_point(col, row, color, scale, frame);
     }
   }
 }
 
-static void
-draw_minimap_ownership(minimap_t *minimap, int density, frame_t *frame)
+void
+minimap_t::draw_minimap_ownership(int density, frame_t *frame)
 {
   for (uint row = 0; row < game.map.rows; row++) {
     for (uint col = 0; col < game.map.cols; col++) {
       map_pos_t pos = MAP_POS(col, row);
       if (MAP_HAS_OWNER(pos)) {
         int color = game.player[MAP_OWNER(pos)]->color;
-        draw_minimap_point(minimap, col, row, color,
-               density, frame);
+        draw_minimap_point(col, row, color, density, frame);
       }
     }
   }
 }
 
-static void
-draw_minimap_roads(minimap_t *minimap, frame_t *frame)
+void
+minimap_t::draw_minimap_roads(frame_t *frame)
 {
   for (uint row = 0; row < game.map.rows; row++) {
     for (uint col = 0; col < game.map.cols; col++) {
       int pos = MAP_POS(col, row);
       if (MAP_PATHS(pos)) {
-        draw_minimap_point(minimap, col, row, 1,
-               minimap->scale, frame);
+        draw_minimap_point(col, row, 1, scale, frame);
       }
     }
   }
 }
 
-static void
-draw_minimap_buildings(minimap_t *minimap, frame_t *frame)
+void
+minimap_t::draw_minimap_buildings(frame_t *frame)
 {
   const int building_remap[] = {
     BUILDING_CASTLE,
@@ -133,55 +130,52 @@ draw_minimap_buildings(minimap_t *minimap, frame_t *frame)
       int obj = MAP_OBJ(pos);
       if (obj > MAP_OBJ_FLAG && obj <= MAP_OBJ_CASTLE) {
         int color = game.player[MAP_OWNER(pos)]->color;
-        if (minimap->advanced > 0) {
+        if (advanced > 0) {
           building_t *bld = game_get_building(MAP_OBJ_INDEX(pos));
-          if (BUILDING_TYPE(bld) == building_remap[minimap->advanced]) {
-            draw_minimap_point(minimap, col, row, color,
-                   minimap->scale, frame);
+          if (BUILDING_TYPE(bld) == building_remap[advanced]) {
+            draw_minimap_point(col, row, color, scale, frame);
           }
         } else {
-          draw_minimap_point(minimap, col, row, color,
-                 minimap->scale, frame);
+          draw_minimap_point(col, row, color, scale, frame);
         }
       }
     }
   }
 }
 
-static void
-draw_minimap_traffic(minimap_t *minimap, frame_t *frame)
+void
+minimap_t::draw_minimap_traffic(frame_t *frame)
 {
   for (uint row = 0; row < game.map.rows; row++) {
     for (uint col = 0; col < game.map.cols; col++) {
       int pos = MAP_POS(col, row);
       if (MAP_IDLE_SERF(pos)) {
         int color = game.player[MAP_OWNER(pos)]->color;
-        draw_minimap_point(minimap, col, row, color,
-               minimap->scale, frame);
+        draw_minimap_point(col, row, color, scale, frame);
       }
     }
   }
 }
 
-static void
-draw_minimap_grid(minimap_t *minimap, frame_t *frame)
+void
+minimap_t::draw_minimap_grid(frame_t *frame)
 {
-  for (uint y = 0; y < game.map.rows * minimap->scale; y += 2) {
-    draw_minimap_point(minimap, 0, y, 47, 1, frame);
-    draw_minimap_point(minimap, 0, y+1, 1, 1, frame);
+  for (uint y = 0; y < game.map.rows * scale; y += 2) {
+    draw_minimap_point(0, y, 47, 1, frame);
+    draw_minimap_point(0, y+1, 1, 1, frame);
   }
 
-  for (uint x = 0; x < game.map.cols * minimap->scale; x += 2) {
-    draw_minimap_point(minimap, x, 0, 47, 1, frame);
-    draw_minimap_point(minimap, x+1, 0, 1, 1, frame);
+  for (uint x = 0; x < game.map.cols * scale; x += 2) {
+    draw_minimap_point(x, 0, 47, 1, frame);
+    draw_minimap_point(x+1, 0, 1, 1, frame);
   }
 }
 
-static void
-draw_minimap_rect(minimap_t *minimap, frame_t *frame)
+void
+minimap_t::draw_minimap_rect(frame_t *frame)
 {
-  int y = minimap->height/2;
-  int x = minimap->width/2;
+  int y = height/2;
+  int x = width/2;
   gfx_draw_transp_sprite(x, y, 354, 1, 0, 0, frame);
 }
 
@@ -190,53 +184,53 @@ minimap_t::internal_draw()
 {
   if (BIT_TEST(flags, 1)) {
     gfx_fill_rect(0, 0, 128, 128, 1, frame);
-    draw_minimap_ownership(this, 2, frame);
+    draw_minimap_ownership(2, frame);
   } else {
-    draw_minimap_map(this, frame);
+    draw_minimap_map(frame);
     if (BIT_TEST(flags, 0)) {
-      draw_minimap_ownership(this, 1, frame);
+      draw_minimap_ownership(1, frame);
     }
   }
 
   if (BIT_TEST(flags, 2)) {
-    draw_minimap_roads(this, frame);
+    draw_minimap_roads(frame);
   }
 
   if (BIT_TEST(flags, 3)) {
-    draw_minimap_buildings(this, frame);
+    draw_minimap_buildings(frame);
   }
 
   if (BIT_TEST(flags, 4)) {
-    draw_minimap_grid(this, frame);
+    draw_minimap_grid(frame);
   }
 
   if (advanced > 0) {
-    draw_minimap_traffic(this, frame);
+    draw_minimap_traffic(frame);
   }
 
-  draw_minimap_rect(this, frame);
+  draw_minimap_rect(frame);
 }
 
-static int
-minimap_handle_event_click(minimap_t *minimap, int x, int y)
+int
+minimap_t::handle_event_click(int x, int y)
 {
-  map_pos_t pos = minimap->map_pos_from_screen_pix(x, y);
-  minimap->interface->get_top_viewport()->move_to_map_pos(pos);
+  map_pos_t pos = map_pos_from_screen_pix(x, y);
+  interface->get_top_viewport()->move_to_map_pos(pos);
 
-  minimap->interface->update_map_cursor_pos(pos);
-  minimap->interface->close_popup();
+  interface->update_map_cursor_pos(pos);
+  interface->close_popup();
 
   return 0;
 }
 
-static int
-minimap_handle_scroll(minimap_t *minimap, int up)
+int
+minimap_t::handle_scroll(int up)
 {
   int scale = 0;
-  if (up) scale = minimap->scale + 1;
-  else scale = minimap->scale - 1;
+  if (up) scale = scale + 1;
+  else scale = scale - 1;
 
-  minimap->set_scale(clamp(1, scale, MINIMAP_MAX_SCALE));
+  scale = clamp(1, scale, MINIMAP_MAX_SCALE);
   return 0;
 }
 
@@ -262,22 +256,22 @@ minimap_t::internal_handle_event(const gui_event_t *event)
   switch (event->type) {
   case GUI_EVENT_TYPE_CLICK:
     if (event->button == GUI_EVENT_BUTTON_LEFT) {
-      return minimap_handle_event_click(this, x, y);
+      return handle_event_click(x, y);
     }
     break;
   case GUI_EVENT_TYPE_BUTTON_UP:
     if (event->button == 4 || event->button == 5) {
-      return minimap_handle_scroll(this, event->button == 4);
+      return handle_scroll(event->button == 4);
     }
     break;
   case GUI_EVENT_TYPE_DRAG_MOVE:
     return minimap_handle_drag(this, x, y,
       (gui_event_button_t)event->button);
   case GUI_EVENT_TYPE_DRAG_START:
-    interface->cursor_lock_target = this;
+    interface->set_cursor_lock_target(this);
     return 0;
   case GUI_EVENT_TYPE_DRAG_END:
-    interface->cursor_lock_target = NULL;
+    interface->set_cursor_lock_target(NULL);
     return 0;
   default:
     break;
@@ -310,36 +304,43 @@ minimap_t::set_scale(int scale)
 }
 
 void
-minimap_screen_pix_from_map_pix(minimap_t *minimap, int mx, int my, int *sx, int *sy)
+minimap_t::set_advanced(int advanced)
 {
-  int width = game.map.cols * minimap->scale;
-  int height = game.map.rows * minimap->scale;
+  this->advanced = advanced;
 
-  *sx = mx - minimap->offset_x;
-  *sy = my - minimap->offset_y;
-
-  while (*sy < 0) {
-    *sx -= height/2;
-    *sy += height;
-  }
-
-  while (*sy >= height) {
-    *sx += height/2;
-    *sy -= height;
-  }
-
-  while (*sx < 0) *sx += width;
-  while (*sx >= width) *sx -= width;
+  set_redraw();
 }
 
 void
-minimap_map_pix_from_map_coord(minimap_t *minimap, map_pos_t pos, int *mx, int *my)
+minimap_t::set_flags(int flags)
 {
-  int width = game.map.cols * minimap->scale;
-  int height = game.map.rows * minimap->scale;
+  this->flags |= flags;
 
-  *mx = minimap->scale*MAP_POS_COL(pos) - (minimap->scale*MAP_POS_ROW(pos))/2;
-  *my = minimap->scale*MAP_POS_ROW(pos);
+  set_redraw();
+}
+
+void
+minimap_t::clear_flags(int flags)
+{
+  this->flags &= ~flags;
+
+  set_redraw();
+}
+
+void
+minimap_t::invert_flags(int flags)
+{
+  BIT_INVERT(this->flags, flags);
+}
+
+void
+minimap_t::map_pix_from_map_coord(map_pos_t pos, int *mx, int *my)
+{
+  int width = game.map.cols * scale;
+  int height = game.map.rows * scale;
+
+  *mx = scale*MAP_POS_COL(pos) - (scale*MAP_POS_ROW(pos))/2;
+  *my = scale*MAP_POS_ROW(pos);
 
   if (*my < 0) {
     *mx -= height/2;
@@ -372,7 +373,7 @@ void
 minimap_t::move_to_map_pos(map_pos_t pos)
 {
   int mx, my;
-  minimap_map_pix_from_map_coord(this, pos, &mx, &my);
+  map_pix_from_map_coord(pos, &mx, &my);
 
   int map_width = game.map.cols*scale;
   int map_height = game.map.rows*scale;

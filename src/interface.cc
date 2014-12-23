@@ -20,6 +20,11 @@
  */
 
 #include "interface.h"
+#include "viewport.h"
+#include "panel.h"
+#include "game-init.h"
+#include "notification.h"
+#include "popup.h"
 
 #ifndef _MSC_VER
 extern "C" {
@@ -28,7 +33,6 @@ extern "C" {
   #include "gfx.h"
   #include "data.h"
   #include "debug.h"
-  #include "freeserf_endian.h"
 #ifndef _MSC_VER
 }
 #endif
@@ -67,7 +71,7 @@ interface_t::get_popup_box()
 void
 interface_t::open_popup(int box)
 {
-  popup->box = (box_t)box;
+  popup->set_box((box_t)box);
   popup->set_displayed(1);
 }
 
@@ -75,11 +79,11 @@ interface_t::open_popup(int box)
 void
 interface_t::close_popup()
 {
-  popup->box = (box_t)0;
+  popup->set_box((box_t)0);
   popup->set_displayed(0);
-  panel_btns[2] = PANEL_BTN_MAP;
-  panel_btns[3] = PANEL_BTN_STATS;
-  panel_btns[4] = PANEL_BTN_SETT;
+  panel->set_button_type(2, PANEL_BTN_MAP);
+  panel->set_button_type(3, PANEL_BTN_STATS);
+  panel->set_button_type(4, PANEL_BTN_SETT);
 
   update_map_cursor_pos(map_cursor_pos);
 }
@@ -162,7 +166,7 @@ interface_t::return_from_message()
     viewport_t *viewport = get_top_viewport();
     viewport->move_to_map_pos(return_pos);
 
-    if (popup->box == BOX_MESSAGE) close_popup();
+    if (popup->get_box() == BOX_MESSAGE) close_popup();
     sfx_play_clip(SFX_CLICK);
   }
 }
@@ -241,38 +245,38 @@ get_map_cursor_type(const player_t *player, map_pos_t pos, panel_btn_t *panel_bt
 
 /* Update the interface_t object with the information returned
    in get_map_cursor_type(). */
-static void
-interface_determine_map_cursor_type(interface_t *interface)
+void
+interface_t::interface_determine_map_cursor_type()
 {
-  map_pos_t cursor_pos = interface->map_cursor_pos;
-  get_map_cursor_type(interface->player, cursor_pos,
-          &interface->panel_btn_type,
-          &interface->map_cursor_type);
+  map_pos_t cursor_pos = get_map_cursor_pos();
+  get_map_cursor_type(get_player(), cursor_pos,
+          &panel_btn_type,
+          &map_cursor_type);
 }
 
 /* Update the interface_t object with the information returned
    in get_map_cursor_type(). This is sets the appropriate values
    when the player interface is in road construction mode. */
-static void
-interface_determine_map_cursor_type_road(interface_t *interface)
+void
+interface_t::interface_determine_map_cursor_type_road()
 {
-  map_pos_t pos = interface->map_cursor_pos;
+  map_pos_t pos = map_cursor_pos;
   int h = MAP_HEIGHT(pos);
   int valid_dir = 0;
-  int length = interface->building_road_length;
+  int length = building_road_length;
 
   for (int d = DIR_RIGHT; d <= DIR_UP; d++) {
     int sprite = 0;
 
-    if (length > 0 && interface->building_road_dirs[length-1] == DIR_REVERSE(d)) {
+    if (length > 0 && building_road_dirs[length-1] == DIR_REVERSE(d)) {
       sprite = 45; /* undo */
       valid_dir |= BIT(d);
     } else if (game_road_segment_valid(pos, (dir_t)d)) {
       /* Check that road does not cross itself. */
-      map_pos_t road_pos = interface->building_road_source;
+      map_pos_t road_pos = building_road_source;
       int crossing_self = 0;
       for (int i = 0; i < length; i++) {
-        road_pos = MAP_MOVE(road_pos, interface->building_road_dirs[i]);
+        road_pos = MAP_MOVE(road_pos, building_road_dirs[i]);
         if (road_pos == MAP_MOVE(pos, d)) {
           crossing_self = 1;
           break;
@@ -289,112 +293,112 @@ interface_determine_map_cursor_type_road(interface_t *interface)
     } else {
       sprite = 44; /* striped */
     }
-    interface->map_cursor_sprites[d+1].sprite = sprite;
+    map_cursor_sprites[d+1] = sprite;
   }
 
-  interface->building_road_valid_dir = valid_dir;
+  building_road_valid_dir = valid_dir;
 }
 
 /* Set the appropriate sprites for the panel buttons and the map cursor. */
-static void
-interface_update_interface(interface_t *interface)
+void
+interface_t::interface_update_interface()
 {
-  if (interface->building_road) {
-    interface->panel_btns[0] = PANEL_BTN_BUILD_ROAD_STARRED;
-    interface->panel_btns[1] = PANEL_BTN_BUILD_INACTIVE;
+  if (building_road) {
+    panel->set_button_type(0, PANEL_BTN_BUILD_ROAD_STARRED);
+    panel->set_button_type(1, PANEL_BTN_BUILD_INACTIVE);
   } else {
-    switch (interface->map_cursor_type) {
+    switch (map_cursor_type) {
     case MAP_CURSOR_TYPE_NONE:
-      interface->panel_btns[0] = PANEL_BTN_BUILD_INACTIVE;
-      if (PLAYER_HAS_CASTLE(interface->player)) {
-        interface->panel_btns[1] = PANEL_BTN_DESTROY_INACTIVE;
+      panel->set_button_type(0, PANEL_BTN_BUILD_INACTIVE);
+      if (PLAYER_HAS_CASTLE(player)) {
+        panel->set_button_type(1, PANEL_BTN_DESTROY_INACTIVE);
       } else {
-        interface->panel_btns[1] = PANEL_BTN_GROUND_ANALYSIS;
+        panel->set_button_type(1, PANEL_BTN_GROUND_ANALYSIS);
       }
-      interface->map_cursor_sprites[0].sprite = 32;
-      interface->map_cursor_sprites[2].sprite = 33;
+      map_cursor_sprites[0] = 32;
+      map_cursor_sprites[2] = 33;
       break;
     case MAP_CURSOR_TYPE_FLAG:
-      interface->panel_btns[0] = PANEL_BTN_BUILD_ROAD;
-      interface->panel_btns[1] = PANEL_BTN_DESTROY_INACTIVE;
-      interface->map_cursor_sprites[0].sprite = 51;
-      interface->map_cursor_sprites[2].sprite = 33;
+      panel->set_button_type(0, PANEL_BTN_BUILD_ROAD);
+      panel->set_button_type(1, PANEL_BTN_DESTROY_INACTIVE);
+      map_cursor_sprites[0] = 51;
+      map_cursor_sprites[2] = 33;
       break;
     case MAP_CURSOR_TYPE_REMOVABLE_FLAG:
-      interface->panel_btns[0] = PANEL_BTN_BUILD_ROAD;
-      interface->panel_btns[1] = PANEL_BTN_DESTROY;
-      interface->map_cursor_sprites[0].sprite = 51;
-      interface->map_cursor_sprites[2].sprite = 33;
+      panel->set_button_type(0, PANEL_BTN_BUILD_ROAD);
+      panel->set_button_type(1, PANEL_BTN_DESTROY);
+      map_cursor_sprites[0] = 51;
+      map_cursor_sprites[2] = 33;
       break;
     case MAP_CURSOR_TYPE_BUILDING:
-      interface->panel_btns[0] = interface->panel_btn_type;
-      interface->panel_btns[1] = PANEL_BTN_DESTROY;
-      interface->map_cursor_sprites[0].sprite = 32;
-      interface->map_cursor_sprites[2].sprite = 33;
+      panel->set_button_type(0, panel_btn_type);
+      panel->set_button_type(1, PANEL_BTN_DESTROY);
+      map_cursor_sprites[0] = 32;
+      map_cursor_sprites[2] = 33;
       break;
     case MAP_CURSOR_TYPE_PATH:
-      interface->panel_btns[0] = PANEL_BTN_BUILD_INACTIVE;
-      interface->panel_btns[1] = PANEL_BTN_DESTROY_ROAD;
-      interface->map_cursor_sprites[0].sprite = 52;
-      interface->map_cursor_sprites[2].sprite = 33;
-      if (interface->panel_btn_type != PANEL_BTN_BUILD_INACTIVE) {
-        interface->panel_btns[0] = PANEL_BTN_BUILD_FLAG;
-        interface->map_cursor_sprites[0].sprite = 47;
+      panel->set_button_type(0, PANEL_BTN_BUILD_INACTIVE);
+      panel->set_button_type(1, PANEL_BTN_DESTROY_ROAD);
+      map_cursor_sprites[0] = 52;
+      map_cursor_sprites[2] = 33;
+      if (panel_btn_type != PANEL_BTN_BUILD_INACTIVE) {
+        panel->set_button_type(0, PANEL_BTN_BUILD_FLAG);
+        map_cursor_sprites[0] = 47;
       }
       break;
     case MAP_CURSOR_TYPE_CLEAR_BY_FLAG:
-      if (interface->panel_btn_type < PANEL_BTN_BUILD_MINE) {
-        interface->panel_btns[0] = PANEL_BTN_BUILD_INACTIVE;
-        if (PLAYER_HAS_CASTLE(interface->player)) {
-          interface->panel_btns[1] = PANEL_BTN_DESTROY_INACTIVE;
+      if (panel_btn_type < PANEL_BTN_BUILD_MINE) {
+        panel->set_button_type(0, PANEL_BTN_BUILD_INACTIVE);
+        if (PLAYER_HAS_CASTLE(player)) {
+          panel->set_button_type(1, PANEL_BTN_DESTROY_INACTIVE);
         } else {
-          interface->panel_btns[1] = PANEL_BTN_GROUND_ANALYSIS;
+          panel->set_button_type(1, PANEL_BTN_GROUND_ANALYSIS);
         }
-        interface->map_cursor_sprites[0].sprite = 32;
-        interface->map_cursor_sprites[2].sprite = 33;
+        map_cursor_sprites[0] = 32;
+        map_cursor_sprites[2] = 33;
       } else {
-        interface->panel_btns[0] = interface->panel_btn_type;
-        interface->panel_btns[1] = PANEL_BTN_DESTROY_INACTIVE;
-        interface->map_cursor_sprites[0].sprite = 46 + interface->panel_btn_type;
-        interface->map_cursor_sprites[2].sprite = 33;
+        panel->set_button_type(0, panel_btn_type);
+        panel->set_button_type(1, PANEL_BTN_DESTROY_INACTIVE);
+        map_cursor_sprites[0] = 46 + panel_btn_type;
+        map_cursor_sprites[2] = 33;
       }
       break;
     case MAP_CURSOR_TYPE_CLEAR_BY_PATH:
-      interface->panel_btns[0] = interface->panel_btn_type;
-      interface->panel_btns[1] = PANEL_BTN_DESTROY_INACTIVE;
-      if (interface->panel_btn_type != PANEL_BTN_BUILD_INACTIVE) {
-        interface->map_cursor_sprites[0].sprite = 46 + interface->panel_btn_type;
-        if (interface->panel_btn_type == PANEL_BTN_BUILD_FLAG) {
-          interface->map_cursor_sprites[2].sprite = 33;
+      panel->set_button_type(0, panel_btn_type);
+      panel->set_button_type(1, PANEL_BTN_DESTROY_INACTIVE);
+      if (panel_btn_type != PANEL_BTN_BUILD_INACTIVE) {
+        map_cursor_sprites[0] = 46 + panel_btn_type;
+        if (panel_btn_type == PANEL_BTN_BUILD_FLAG) {
+          map_cursor_sprites[2] = 33;
         } else {
-          interface->map_cursor_sprites[2].sprite = 47;
+          map_cursor_sprites[2] = 47;
         }
       } else {
-        interface->map_cursor_sprites[0].sprite = 32;
-        interface->map_cursor_sprites[2].sprite = 33;
+        map_cursor_sprites[0] = 32;
+        map_cursor_sprites[2] = 33;
       }
       break;
     case MAP_CURSOR_TYPE_CLEAR:
-      interface->panel_btns[0] = interface->panel_btn_type;
-      if (PLAYER_HAS_CASTLE(interface->player)) {
-        interface->panel_btns[1] = PANEL_BTN_DESTROY_INACTIVE;
+      panel->set_button_type(0, panel_btn_type);
+      if (PLAYER_HAS_CASTLE(player)) {
+        panel->set_button_type(1, PANEL_BTN_DESTROY_INACTIVE);
       } else {
-        interface->panel_btns[1] = PANEL_BTN_GROUND_ANALYSIS;
+        panel->set_button_type(1, PANEL_BTN_GROUND_ANALYSIS);
       }
-      if (interface->panel_btn_type) {
-        if (interface->panel_btn_type == PANEL_BTN_BUILD_CASTLE) {
-          interface->map_cursor_sprites[0].sprite = 50;
+      if (panel_btn_type) {
+        if (panel_btn_type == PANEL_BTN_BUILD_CASTLE) {
+          map_cursor_sprites[0] = 50;
         } else {
-          interface->map_cursor_sprites[0].sprite = 46 + interface->panel_btn_type;
+          map_cursor_sprites[0] = 46 + panel_btn_type;
         }
-        if (interface->panel_btn_type == PANEL_BTN_BUILD_FLAG) {
-          interface->map_cursor_sprites[2].sprite = 33;
+        if (panel_btn_type == PANEL_BTN_BUILD_FLAG) {
+          map_cursor_sprites[2] = 33;
         } else {
-          interface->map_cursor_sprites[2].sprite = 47;
+          map_cursor_sprites[2] = 47;
         }
       } else {
-        interface->map_cursor_sprites[0].sprite = 32;
-        interface->map_cursor_sprites[2].sprite = 33;
+        map_cursor_sprites[0] = 32;
+        map_cursor_sprites[2] = 33;
       }
       break;
     default:
@@ -426,11 +430,11 @@ interface_t::update_map_cursor_pos(map_pos_t pos)
 {
   map_cursor_pos = pos;
   if (building_road) {
-    interface_determine_map_cursor_type_road(this);
+    interface_determine_map_cursor_type_road();
   } else {
-    interface_determine_map_cursor_type(this);
+    interface_determine_map_cursor_type();
   }
-  interface_update_interface(this);
+  interface_update_interface();
 }
 
 
@@ -438,19 +442,19 @@ interface_t::update_map_cursor_pos(map_pos_t pos)
 void
 interface_t::build_road_begin()
 {
-  interface_determine_map_cursor_type(this);
+  interface_determine_map_cursor_type();
 
   if (map_cursor_type != MAP_CURSOR_TYPE_FLAG &&
       map_cursor_type != MAP_CURSOR_TYPE_REMOVABLE_FLAG) {
-    interface_update_interface(this);
+    interface_update_interface();
     return;
   }
 
-  panel_btns[0] = PANEL_BTN_BUILD_ROAD_STARRED;
-  panel_btns[1] = PANEL_BTN_BUILD_INACTIVE;
-  panel_btns[2] = PANEL_BTN_MAP_INACTIVE;
-  panel_btns[3] = PANEL_BTN_STATS_INACTIVE;
-  panel_btns[4] = PANEL_BTN_SETT_INACTIVE;
+  panel->set_button_type(0, PANEL_BTN_BUILD_ROAD_STARRED);
+  panel->set_button_type(1, PANEL_BTN_BUILD_INACTIVE);
+  panel->set_button_type(2, PANEL_BTN_MAP_INACTIVE);
+  panel->set_button_type(3, PANEL_BTN_STATS_INACTIVE);
+  panel->set_button_type(4, PANEL_BTN_SETT_INACTIVE);
 
   building_road = 1;
   building_road_length = 0;
@@ -463,16 +467,16 @@ interface_t::build_road_begin()
 void
 interface_t::build_road_end()
 {
-  panel_btns[2] = PANEL_BTN_MAP;
-  panel_btns[3] = PANEL_BTN_STATS;
-  panel_btns[4] = PANEL_BTN_SETT;
+  panel->set_button_type(2, PANEL_BTN_MAP);
+  panel->set_button_type(3, PANEL_BTN_STATS);
+  panel->set_button_type(4, PANEL_BTN_SETT);
 
-  map_cursor_sprites[1].sprite = 33;
-  map_cursor_sprites[2].sprite = 33;
-  map_cursor_sprites[3].sprite = 33;
-  map_cursor_sprites[4].sprite = 33;
-  map_cursor_sprites[5].sprite = 33;
-  map_cursor_sprites[6].sprite = 33;
+  map_cursor_sprites[1] = 33;
+  map_cursor_sprites[2] = 33;
+  map_cursor_sprites[3] = 33;
+  map_cursor_sprites[4] = 33;
+  map_cursor_sprites[5] = 33;
+  map_cursor_sprites[6] = 33;
 
   building_road = 0;
   update_map_cursor_pos(map_cursor_pos);
@@ -575,15 +579,13 @@ interface_t::extend_road(dir_t *dirs, uint length)
 void
 interface_t::demolish_object()
 {
-  interface_determine_map_cursor_type(this);
-
-  map_pos_t cursor_pos = map_cursor_pos;
+  interface_determine_map_cursor_type();
 
   if (map_cursor_type == MAP_CURSOR_TYPE_REMOVABLE_FLAG) {
     sfx_play_clip(SFX_CLICK);
-    game_demolish_flag(cursor_pos, player);
+    game_demolish_flag(map_cursor_pos, player);
   } else if (map_cursor_type == MAP_CURSOR_TYPE_BUILDING) {
-    building_t *building = game_get_building(MAP_OBJ_INDEX(cursor_pos));
+    building_t *building = game_get_building(MAP_OBJ_INDEX(map_cursor_pos));
 
     if (BUILDING_IS_DONE(building) &&
         (BUILDING_TYPE(building) == BUILDING_HUT ||
@@ -593,10 +595,10 @@ interface_t::demolish_object()
     }
 
     sfx_play_clip(SFX_AHHH);
-    game_demolish_building(cursor_pos, player);
+    game_demolish_building(map_cursor_pos, player);
   } else {
     sfx_play_clip(SFX_NOT_ACCEPTED);
-    interface_update_interface(this);
+    interface_update_interface();
   }
 }
 
@@ -649,7 +651,7 @@ interface_t::build_castle()
 static void
 update_map_height(map_pos_t pos, interface_t *interface)
 {
-  interface->viewport->redraw_map_pos(pos);
+  interface->get_top_viewport()->redraw_map_pos(pos);
 }
 
 void
@@ -657,7 +659,7 @@ interface_t::internal_draw()
 {
   int redraw_above = redraw;
 
-  if (top->displayed &&
+  if (top->is_displayed() &&
       (redraw_top || redraw_above)) {
     top->draw(frame, 0, 0);
     redraw_top = 0;
@@ -667,7 +669,7 @@ interface_t::internal_draw()
   list_elm_t *elm;
   list_foreach(&floats, elm) {
     interface_float_t *fl = (interface_float_t *)elm;
-    if (fl->obj->displayed &&
+    if (fl->obj->is_displayed() &&
         (fl->redraw || redraw_above)) {
       fl->obj->draw(frame, fl->x, fl->y);
       fl->redraw = 0;
@@ -682,10 +684,10 @@ interface_t::internal_handle_event(const gui_event_t *event)
   /* Handle locked cursor */
   if (cursor_lock_target != NULL) {
     if (cursor_lock_target == top) {
-      return top->internal_handle_event(event);
+      return top->handle_event(event);
     } else {
       if (event->type == GUI_EVENT_TYPE_DRAG_MOVE) {
-        return cursor_lock_target->internal_handle_event(event);
+        return cursor_lock_target->handle_event(event);
       }
       gui_event_t float_event;
       float_event.type = event->type;
@@ -693,19 +695,19 @@ interface_t::internal_handle_event(const gui_event_t *event)
       float_event.y = event->y;
       float_event.button = event->button;
       gui_object_t *obj = cursor_lock_target;
-      while (obj->parent != NULL) {
+      while (obj->get_parent() != NULL) {
         int x, y;
-        int r = obj->parent->get_child_position(obj, &x, &y);
+        int r = obj->get_parent()->get_child_position(obj, &x, &y);
         if (r < 0) return -1;
 
         float_event.x -= x;
         float_event.y -= y;
 
-        obj = obj->parent;
+        obj = obj->get_parent();
       }
 
       if (obj != this) return -1;
-      return cursor_lock_target->internal_handle_event(&float_event);
+      return cursor_lock_target->handle_event(&float_event);
     }
   }
 
@@ -713,10 +715,8 @@ interface_t::internal_handle_event(const gui_event_t *event)
   list_elm_t *elm;
   list_foreach_reverse(&floats, elm) {
     interface_float_t *fl = (interface_float_t *)elm;
-    if (fl->obj->displayed &&
-        event->x >= fl->x && event->y >= fl->y &&
-        event->x < fl->x + fl->obj->width &&
-        event->y < fl->y + fl->obj->height) {
+    if (fl->obj->is_displayed() &&
+      fl->obj->point_inside(fl->x, fl->y, event->x, event->y)) {
       gui_event_t float_event;
       float_event.type = event->type;
       float_event.x = event->x - fl->x;
@@ -726,7 +726,7 @@ interface_t::internal_handle_event(const gui_event_t *event)
     }
   }
 
-  return top->internal_handle_event(event);
+  return top->handle_event(event);
 }
 
 void
@@ -755,7 +755,7 @@ interface_t::internal_set_size(int width, int height)
   int notification_box_x = panel_x + 40;
   int notification_box_y = panel_y - notification_box_height;
 
-  top->internal_set_size(width, height);
+  top->set_size(width, height);
   redraw_top = 1;
 
   /* Reassign position of floats. */
@@ -832,42 +832,6 @@ interface_t::internal_get_child_position(gui_object_t *child, int *x, int *y)
   return -1;
 }
 
-static void
-load_serf_animation_table(interface_t *interface)
-{
-  /* The serf animation table is stored in big endian
-     order in the data file.
-
-     * The first uint32 is the byte length of the rest
-     of the table.
-     * Next is 199 uint32s that are offsets from the start
-     of this table to an animation table (one for each
-     animation).
-     * The animation tables are of varying lengths.
-     Each entry in the animation table is three bytes
-     long. First byte is used to determine the serf body
-     sprite. Second byte is a signed horizontal sprite
-     offset. Third byte is a signed vertical offset.
-  */
-
-  size_t size = 0;
-  interface->serf_animation_table = (uint32_t *)data_get_object(DATA_SERF_ANIMATION_TABLE, &size);
-  if (NULL == interface->serf_animation_table) {
-    return;
-  }
-
-  /* Endianess convert from big endian. */
-  for (int i = 0; i < 200; i++) {
-    interface->serf_animation_table[i] = be32toh(interface->serf_animation_table[i]);
-  }
-
-  if (size != *interface->serf_animation_table) {
-    // TODO: report and assert
-  }
-
-  interface->serf_animation_table++;
-}
-
 interface_t::interface_t()
   : gui_container_t()
 {
@@ -875,8 +839,6 @@ interface_t::interface_t()
   redraw_top = 0;
   list_init(&floats);
   cursor_lock_target = NULL;
-
-  load_serf_animation_table(this);
 
   /* Viewport */
   viewport = new viewport_t(this);
@@ -917,22 +879,13 @@ interface_t::interface_t()
   msg_flags = 0;
   return_timeout = 0;
 
-  panel_btns[0] = PANEL_BTN_BUILD_INACTIVE;
-  panel_btns[1] = PANEL_BTN_DESTROY_INACTIVE;
-  panel_btns[2] = PANEL_BTN_MAP;
-  panel_btns[3] = PANEL_BTN_STATS;
-  panel_btns[4] = PANEL_BTN_SETT;
-
-  current_stat_8_mode = 0;
-  current_stat_7_item = 7;
-
-  map_cursor_sprites[0].sprite = 32;
-  map_cursor_sprites[1].sprite = 33;
-  map_cursor_sprites[2].sprite = 33;
-  map_cursor_sprites[3].sprite = 33;
-  map_cursor_sprites[4].sprite = 33;
-  map_cursor_sprites[5].sprite = 33;
-  map_cursor_sprites[6].sprite = 33;
+  map_cursor_sprites[0] = 32;
+  map_cursor_sprites[1] = 33;
+  map_cursor_sprites[2] = 33;
+  map_cursor_sprites[3] = 33;
+  map_cursor_sprites[4] = 33;
+  map_cursor_sprites[5] = 33;
+  map_cursor_sprites[6] = 33;
 
   /* Randomness for interface */
   srand((uint)time(NULL));
@@ -953,7 +906,7 @@ void
 interface_t::set_top(gui_object_t *obj)
 {
   top = obj;
-  obj->parent = this;
+  obj->set_parent(this);
   top->set_size(width, height);
   redraw_top = 1;
   set_redraw();
@@ -972,7 +925,7 @@ interface_t::add_float(gui_object_t *obj,
   fl->y = y;
   fl->redraw = 1;
 
-  obj->parent = this;
+  obj->set_parent(this);
   list_append(&floats, (list_elm_t *)fl);
   obj->set_size(width, height);
   set_redraw();

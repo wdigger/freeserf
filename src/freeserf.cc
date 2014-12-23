@@ -20,6 +20,9 @@
  */
 
 #include "interface.h"
+#include "viewport.h"
+#include "notification.h"
+#include "popup.h"
 
 #ifndef _MSC_VER
 extern "C" {
@@ -33,6 +36,7 @@ extern "C" {
   #include "savegame.h"
   #include "mission.h"
   #include "version.h"
+  #include "game.h"
 
   #ifdef HAVE_CONFIG_H
   # include <config.h>
@@ -357,26 +361,30 @@ game_loop()
 
               /* Misc */
             case SDLK_ESCAPE:
-              if (interface->notification_box->displayed) {
+              if (interface->get_notification_box()->is_displayed()) {
                 interface->close_message();
-              } else if (interface->popup->displayed) {
+              } else if (interface->get_popup_box()->is_displayed()) {
                 interface->close_popup();
-              } else if (interface->building_road) {
+              } else if (interface->get_building_road()) {
                 interface->build_road_end();
               }
               break;
 
               /* Debug */
-            case SDLK_g:
-              interface->viewport->layers = static_cast<viewport_layer_t>(interface->viewport->layers ^ VIEWPORT_LAYER_GRID);
+            case SDLK_g: {
+              viewport_t *viewport = interface->get_top_viewport();
+              viewport->switch_layer(VIEWPORT_LAYER_GRID);
+            }
               break;
-            case SDLK_b:
-              interface->viewport->show_possible_build = !interface->viewport->show_possible_build;
+            case SDLK_b: {
+              viewport_t *viewport = interface->get_top_viewport();
+              viewport->switch_possible_build();
+            }
               break;
             case SDLK_j: {
               int current = 0;
               for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
-                if (interface->player == game.player[i]) {
+                if (interface->get_player() == game.player[i]) {
                   current = i;
                   break;
                 }
@@ -609,7 +617,7 @@ main(int argc, char *argv[])
 
     interface->set_player(0);
   } else {
-    int r = game_load_random_map(3, &interface->random);
+    int r = game_load_random_map(3, interface->get_random());
     if (r < 0) exit(EXIT_FAILURE);
 
     /* Add default player */
@@ -619,7 +627,8 @@ main(int argc, char *argv[])
     interface->set_player(r);
   }
 
-  interface->viewport->map_reinit();
+  viewport_t *viewport = interface->get_top_viewport();
+  viewport->map_reinit();
 
   if (save_file != NULL) {
     interface->close_game_init();
@@ -632,7 +641,7 @@ main(int argc, char *argv[])
 
   /* Clean up */
   map_deinit();
-  interface->viewport->map_deinit();
+  viewport->map_deinit();
   audio_deinit();
   gfx_deinit();
   data_deinit();
