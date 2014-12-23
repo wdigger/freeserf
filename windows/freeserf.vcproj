@@ -256,16 +256,8 @@
 				>
 			</File>
 			<File
-				RelativePath="..\src\game-init.c"
+				RelativePath="..\src\game-init.cc"
 				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="..\src\game.c"
@@ -296,28 +288,12 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\src\gui.c"
+				RelativePath="..\src\gui.cc"
 				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\src\interface.c"
+				RelativePath="..\src\interface.cc"
 				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="..\src\list.c"
@@ -356,16 +332,8 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\src\minimap.c"
+				RelativePath="..\src\minimap.cc"
 				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="..\src\mission.c"
@@ -380,40 +348,16 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\src\notification.c"
+				RelativePath="..\src\notification.cc"
 				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\src\panel.c"
+				RelativePath="..\src\panel.cc"
 				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\src\pathfinder.c"
+				RelativePath="..\src\pathfinder.cc"
 				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="..\src\player.c"
@@ -428,16 +372,8 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\src\popup.c"
+				RelativePath="..\src\popup.cc"
 				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="..\src\pqueue.c"
@@ -476,26 +412,6 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\src\video-sdl.c"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
 				RelativePath="..\src\serf.c"
 				>
 				<FileConfiguration
@@ -520,7 +436,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\src\viewport.c"
+				RelativePath="..\src\video-sdl.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -530,6 +446,18 @@
 						CompileAs="2"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\src\viewport.cc"
+				>
 			</File>
 		</Filter>
 		<Filter
@@ -646,10 +574,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\src\video.h"
-				>
-			</File>
-			<File
 				RelativePath="..\src\serf.h"
 				>
 			</File>
@@ -659,6 +583,10 @@
 			</File>
 			<File
 				RelativePath="..\src\version.h"
+				>
+			</File>
+			<File
+				RelativePath="..\src\video.h"
 				>
 			</File>
 			<File

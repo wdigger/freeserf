@@ -23,23 +23,36 @@
 #define _GAME_INIT_H
 
 #include "gui.h"
-#include "game.h"
 
-struct interface;
+#ifndef _MSC_VER
+extern "C" {
+#endif
+  #include "game.h"
+#ifndef _MSC_VER
+}
+#endif
 
-typedef struct {
-	gui_object_t obj;
-	struct interface *interface;
+class interface_t;
 
-	int map_size;
-	int game_mission;
+class game_init_box_t : public gui_object_t {
+public:
+  interface_t *interface;
 
-	uint face[GAME_MAX_PLAYER_COUNT];
-	uint intelligence[GAME_MAX_PLAYER_COUNT];
-	uint supplies[GAME_MAX_PLAYER_COUNT];
-	uint reproduction[GAME_MAX_PLAYER_COUNT];
-} game_init_box_t;
+  int map_size;
+  int game_mission;
 
-void game_init_box_init(game_init_box_t *box, struct interface *interface);
+  uint face[GAME_MAX_PLAYER_COUNT];
+  uint intelligence[GAME_MAX_PLAYER_COUNT];
+  uint supplies[GAME_MAX_PLAYER_COUNT];
+  uint reproduction[GAME_MAX_PLAYER_COUNT];
+
+  game_init_box_t(interface_t *interface);
+
+  virtual void draw(frame_t *frame);
+  virtual int handle_event(const gui_event_t *event);
+
+protected:
+  int game_init_box_handle_event_click(int x, int y);
+};
 
 #endif /* !_GAME_INIT_H */

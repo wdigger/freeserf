@@ -2001,7 +2001,7 @@ handle_serf_delivering_state(serf_t *serf)
 			if (!BUILDING_IS_BURNING(building)) {
 				if (BUILDING_HAS_INVENTORY(building)) {
 					inventory_t *inventory = building->u.inventory;
-					inventory->resources[res] = min(inventory->resources[res]+1, 50000);
+					inventory->resources[res] = MIN(inventory->resources[res]+1, 50000);
 				} else {
 					if (res == RESOURCE_FISH ||
 					    res == RESOURCE_MEAT ||

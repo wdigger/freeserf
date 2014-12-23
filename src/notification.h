@@ -24,15 +24,21 @@
 
 #include "gui.h"
 
-typedef struct {
-	gui_object_t obj;
-	struct interface *interface;
+class interface_t;
 
-	int type;
-	int param;
-} notification_box_t;
+class notification_box_t
+  : public gui_object_t
+{
+public:
+  interface_t *interface;
 
-void notification_box_init(notification_box_t *box,
-			   struct interface *interface);
+  int type;
+  int param;
+
+  notification_box_t(interface_t *interface);
+
+  virtual void draw(frame_t *frame);
+  virtual int handle_event(const gui_event_t *event);
+};
 
 #endif /* !_NOTIFICATION_H */

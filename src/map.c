@@ -219,7 +219,7 @@ init_map_heights_squares()
 	for (uint y = 0; y < game.map.rows; y += 16) {
 		for (uint x = 0; x < game.map.cols; x += 16) {
 			int rnd = game_random_int() & 0xff;
-			tiles[MAP_POS(x,y)].height = min(rnd, 250);
+			tiles[MAP_POS(x,y)].height = MIN(rnd, 250);
 		}
 	}
 }
@@ -230,7 +230,7 @@ calc_height_displacement(int avg, int base, int offset)
 	int r = game_random_int();
 	int h = ((r * base) >> 16) - offset + avg;
 
-	return max(0,min(h,250));
+	return MAX(0,MIN(h,250));
 }
 
 #define TERRAIN_SPIKYNESS  0x9999

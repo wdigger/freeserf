@@ -19,10 +19,15 @@
  * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "pathfinder.h"
+
+#ifndef _MSC_VER
 extern "C" {
-  #include "pathfinder.h"
+#endif
   #include "game.h"
+#ifndef _MSC_VER
 }
+#endif
 
 #include <cstdlib>
 #include <list>

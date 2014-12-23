@@ -19,11 +19,12 @@
  * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "interface.h"
+
 #ifndef _MSC_VER
 extern "C" {
 #endif
   #include "freeserf.h"
-  #include "interface.h"
   #include "gfx.h"
   #include "data.h"
   #include "video.h"
@@ -78,7 +79,7 @@ extern "C" {
 
 static int game_loop_run;
 
-static interface_t interface;
+static interface_t *interface;
 
 /* In target, replace any character from needle with replacement character. */
 static void
@@ -181,7 +182,7 @@ game_loop()
             ev.x = event.button.x;
             ev.y = event.button.y;
             ev.button = drag_button;
-            gui_object_handle_event(reinterpret_cast<gui_object_t*>(&interface), &ev);
+            interface->gui_object_handle_event(&ev);
 
             drag_button = 0;
           }
@@ -190,7 +191,7 @@ game_loop()
           ev.x = event.button.x;
           ev.y = event.button.y;
           ev.button = event.button.button;
-          gui_object_handle_event(reinterpret_cast<gui_object_t*>(&interface), &ev);
+          interface->gui_object_handle_event(&ev);
 
           if (event.button.button <= 3 &&
               current_ticks - last_down[event.button.button-1] < MOUSE_TIME_SENSITIVITY) {
@@ -198,7 +199,7 @@ game_loop()
             ev.x = event.button.x;
             ev.y = event.button.y;
             ev.button = event.button.button;
-            gui_object_handle_event(reinterpret_cast<gui_object_t*>(&interface), &ev);
+            interface->gui_object_handle_event(&ev);
 
             if (current_ticks - last_click[event.button.button-1] < MOUSE_TIME_SENSITIVITY &&
                 event.button.x >= static_cast<int>(last_click_x - MOUSE_MOVE_SENSITIVITY) &&
@@ -209,7 +210,7 @@ game_loop()
               ev.x = event.button.x;
               ev.y = event.button.y;
               ev.button = event.button.button;
-              gui_object_handle_event(reinterpret_cast<gui_object_t *>(&interface), &ev);
+              interface->gui_object_handle_event(&ev);
             }
 
             last_click[event.button.button-1] = current_ticks;
@@ -222,7 +223,7 @@ game_loop()
           ev.x = event.button.x;
           ev.y = event.button.y;
           ev.button = event.button.button;
-          gui_object_handle_event(reinterpret_cast<gui_object_t*>(&interface), &ev);
+          interface->gui_object_handle_event(&ev);
 
           if (event.button.button <= 3) last_down[event.button.button-1] = current_ticks;
           break;
@@ -238,14 +239,14 @@ game_loop()
                 ev.x = event.motion.x;
                 ev.y = event.motion.y;
                 ev.button = drag_button;
-                gui_object_handle_event(reinterpret_cast<gui_object_t*>(&interface), &ev);
+                interface->gui_object_handle_event(&ev);
               }
 
               ev.type = GUI_EVENT_TYPE_DRAG_MOVE;
               ev.x = event.motion.x - drag_x;
               ev.y = event.motion.y - drag_y;
               ev.button = drag_button;
-              gui_object_handle_event(reinterpret_cast<gui_object_t*>(&interface), &ev);
+              interface->gui_object_handle_event(&ev);
 
               video_warp_mouse(drag_x, drag_y);
 
@@ -263,58 +264,58 @@ game_loop()
           switch (event.key.keysym.sym) {
             /* Map scroll */
             case SDLK_UP: {
-              viewport_t *viewport = interface_get_top_viewport(&interface);
-              viewport_move_by_pixels(viewport, 0, -32);
+              viewport_t *viewport = interface->interface_get_top_viewport();
+              viewport->viewport_move_by_pixels(0, -32);
             }
               break;
             case SDLK_DOWN: {
-              viewport_t *viewport = interface_get_top_viewport(&interface);
-              viewport_move_by_pixels(viewport, 0, 32);
+              viewport_t *viewport = interface->interface_get_top_viewport();
+              viewport->viewport_move_by_pixels(0, 32);
             }
               break;
             case SDLK_LEFT: {
-              viewport_t *viewport = interface_get_top_viewport(&interface);
-              viewport_move_by_pixels(viewport, -32, 0);
+              viewport_t *viewport = interface->interface_get_top_viewport();
+              viewport->viewport_move_by_pixels(-32, 0);
             }
               break;
             case SDLK_RIGHT: {
-              viewport_t *viewport = interface_get_top_viewport(&interface);
-              viewport_move_by_pixels(viewport, 32, 0);
+              viewport_t *viewport = interface->interface_get_top_viewport();
+              viewport->viewport_move_by_pixels(32, 0);
             }
               break;
 
               /* Panel click shortcuts */
             case SDLK_1: {
-              panel_bar_t *panel = interface_get_panel_bar(&interface);
-              panel_bar_activate_button(panel, 0);
+              panel_bar_t *panel = interface->interface_get_panel_bar();
+              panel->panel_bar_activate_button(0);
             }
               break;
             case SDLK_2: {
-              panel_bar_t *panel = interface_get_panel_bar(&interface);
-              panel_bar_activate_button(panel, 1);
+              panel_bar_t *panel = interface->interface_get_panel_bar();
+              panel->panel_bar_activate_button(1);
             }
               break;
             case SDLK_3: {
-              panel_bar_t *panel = interface_get_panel_bar(&interface);
-              panel_bar_activate_button(panel, 2);
+              panel_bar_t *panel = interface->interface_get_panel_bar();
+              panel->panel_bar_activate_button(2);
             }
               break;
             case SDLK_4: {
-              panel_bar_t *panel = interface_get_panel_bar(&interface);
-              panel_bar_activate_button(panel, 3);
+              panel_bar_t *panel = interface->interface_get_panel_bar();
+              panel->panel_bar_activate_button(3);
             }
               break;
             case SDLK_5: {
-              panel_bar_t *panel = interface_get_panel_bar(&interface);
-              panel_bar_activate_button(panel, 4);
+              panel_bar_t *panel = interface->interface_get_panel_bar();
+              panel->panel_bar_activate_button(4);
             }
               break;
 
             case SDLK_TAB:
               if (event.key.keysym.mod & KMOD_SHIFT) {
-                interface_return_from_message(&interface);
+                interface->interface_return_from_message();
               } else {
-                interface_open_message(&interface);
+                interface->interface_open_message();
               }
               break;
 
@@ -356,26 +357,26 @@ game_loop()
 
               /* Misc */
             case SDLK_ESCAPE:
-              if (GUI_OBJECT(&interface.notification_box)->displayed) {
-                interface_close_message(&interface);
-              } else if (GUI_OBJECT(&interface.popup)->displayed) {
-                interface_close_popup(&interface);
-              } else if (interface.building_road) {
-                interface_build_road_end(&interface);
+              if (interface->notification_box->displayed) {
+                interface->interface_close_message();
+              } else if (interface->popup->displayed) {
+                interface->interface_close_popup();
+              } else if (interface->building_road) {
+                interface->interface_build_road_end();
               }
               break;
 
               /* Debug */
             case SDLK_g:
-              interface.viewport.layers = static_cast<viewport_layer_t>(interface.viewport.layers ^ VIEWPORT_LAYER_GRID);
+              interface->viewport->layers = static_cast<viewport_layer_t>(interface->viewport->layers ^ VIEWPORT_LAYER_GRID);
               break;
             case SDLK_b:
-              interface.viewport.show_possible_build = !interface.viewport.show_possible_build;
+              interface->viewport->show_possible_build = !interface->viewport->show_possible_build;
               break;
             case SDLK_j: {
               int current = 0;
               for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
-                if (interface.player == game.player[i]) {
+                if (interface->player == game.player[i]) {
                   current = i;
                   break;
                 }
@@ -384,7 +385,7 @@ game_loop()
               for (int i = (current+1) % GAME_MAX_PLAYER_COUNT;
                    i != current; i = (i+1) % GAME_MAX_PLAYER_COUNT) {
                 if (PLAYER_IS_ACTIVE(game.player[i])) {
-                  interface_set_player(&interface, i);
+                  interface->interface_set_player(i);
                   LOGD("main", "Switched to player %i.", i);
                   break;
                 }
@@ -397,7 +398,7 @@ game_loop()
               }
               break;
             case SDLK_F10:
-              interface_open_game_init(&interface);
+              interface->interface_open_game_init();
               break;
 
             default:
@@ -413,7 +414,7 @@ game_loop()
             int height = 0;
             gfx_get_resolution(&width, &height);
             video_set_resolution(width, height, gfx_is_fullscreen());
-            gui_object_set_size(reinterpret_cast<gui_object_t*>(&interface), width, height);
+            interface->gui_object_set_size(width, height);
           }
           break;
       }
@@ -448,10 +449,10 @@ game_loop()
     }
 
     /* Update and draw interface */
-    interface_update(&interface);
+    interface->interface_update();
 
     frame_t *screen = video_get_screen_frame();
-    gui_object_redraw(GUI_OBJECT(&interface), screen);
+    interface->gui_object_redraw(screen);
 
     /* Swap video buffers */
     video_swap_buffers();
@@ -541,7 +542,7 @@ main(int argc, char *argv[])
           save_file = static_cast<char*>(malloc(strlen(optarg)+1));
           if (save_file == NULL) exit(EXIT_FAILURE);
           strcpy(save_file, optarg);
-		}
+        }
         break;
       case 'r':
         {
@@ -594,11 +595,10 @@ main(int argc, char *argv[])
   game_init();
 
   /* Initialize interface */
-  interface_init(&interface);
+  interface = new interface_t();
   gfx_get_resolution(&screen_width, &screen_height);
-  gui_object_set_size(reinterpret_cast<gui_object_t*>(&interface),
-      screen_width, screen_height);
-  gui_object_set_displayed(reinterpret_cast<gui_object_t*>(&interface), 1);
+  interface->gui_object_set_size(screen_width, screen_height);
+  interface->gui_object_set_displayed(1);
 
   /* Either load a save game if specified or
      start a new game. */
@@ -607,22 +607,22 @@ main(int argc, char *argv[])
     if (r < 0) exit(EXIT_FAILURE);
     free(save_file);
 
-    interface_set_player(&interface, 0);
+    interface->interface_set_player(0);
   } else {
-    int r = game_load_random_map(3, &interface.random);
+    int r = game_load_random_map(3, &interface->random);
     if (r < 0) exit(EXIT_FAILURE);
 
     /* Add default player */
     r = game_add_player(12, 64, 40, 40, 40);
     if (r < 0) exit(EXIT_FAILURE);
 
-    interface_set_player(&interface, r);
+    interface->interface_set_player(r);
   }
 
-  viewport_map_reinit();
+  interface->viewport->viewport_map_reinit();
 
   if (save_file != NULL) {
-    interface_close_game_init(&interface);
+    interface->interface_close_game_init();
   }
 
   /* Start game loop */
@@ -632,7 +632,7 @@ main(int argc, char *argv[])
 
   /* Clean up */
   map_deinit();
-  viewport_map_deinit();
+  interface->viewport->viewport_map_deinit();
   audio_deinit();
   gfx_deinit();
   data_deinit();

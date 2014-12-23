@@ -526,7 +526,7 @@ update_knight_morale()
 				map_gold >>= 1;
 				depot >>= 1;
 			}
-			depot = min(depot, map_gold-1);
+			depot = MIN(depot, map_gold-1);
 			player->knight_morale = 1024 + (game.map_gold_morale_factor * depot)/map_gold;
 		} else {
 			player->knight_morale = 4096;
@@ -535,9 +535,9 @@ update_knight_morale()
 		/* Adjust based on castle score. */
 		int castle_score = player->castle_score;
 		if (castle_score < 0) {
-			player->knight_morale = max(1, player->knight_morale - 1023);
+			player->knight_morale = MAX(1, player->knight_morale - 1023);
 		} else if (castle_score > 0) {
-			player->knight_morale = min(player->knight_morale + 1024*castle_score, 0xffff);
+			player->knight_morale = MIN(player->knight_morale + 1024*castle_score, 0xffff);
 		}
 
 		uint military_score = player->total_military_score;
@@ -2240,7 +2240,7 @@ record_player_history(player_t *player[], int pl_count, int max_level, int aspec
 {
 	uint total = 0;
 	for (int i = 0; i < pl_count; i++) total += values[i];
-	total = max(1, total);
+	total = MAX(1, total);
 
 	for (int i = 0; i < max_level+1; i++) {
 		int mode = (aspect << 2) | i;
@@ -2260,7 +2260,7 @@ calculate_clear_winner(int pl_count, const uint values[])
 {
 	int total = 0;
 	for (int i = 0; i < pl_count; i++) total += values[i];
-	total = max(1, total);
+	total = MAX(1, total);
 
 	for (int i = 0; i < pl_count; i++) {
 		uint64_t value = values[i];
@@ -2539,7 +2539,7 @@ game_prepare_ground_analysis(map_pos_t pos, int estimates[5])
 	/* Process the samples. */
 	for (int i = 0; i < 5; i++) {
 		estimates[i] >>= 4;
-		estimates[i] = min(estimates[i], 999);
+		estimates[i] = MIN(estimates[i], 999);
 	}
 }
 
@@ -3276,13 +3276,13 @@ restore_path_serf_info(flag_t *flag, dir_t dir, serf_path_info_t *data)
 		}
 	}
 
-	if (min(data->serf_count, max_serfs) > 0) {
+	if (MIN(data->serf_count, max_serfs) > 0) {
 		/* There are still transporters on the paths. */
 		flag->transporter |= BIT(dir);
 		other_flag->transporter |= BIT(other_dir);
 
-		flag->length[dir] |= min(data->serf_count, max_serfs);
-		other_flag->length[other_dir] |= min(data->serf_count, max_serfs);
+		flag->length[dir] |= MIN(data->serf_count, max_serfs);
+		other_flag->length[other_dir] |= MIN(data->serf_count, max_serfs);
 	}
 }
 
@@ -3499,7 +3499,7 @@ game_get_leveling_height(map_pos_t pos)
 	h_mean >>= 3;
 
 	/* Calcualte height after leveling */
-	int h_new_min = max((h_max > 4) ? (h_max - 4) : 1, 1);
+	int h_new_min = MAX((h_max > 4) ? (h_max - 4) : 1, 1);
 	int h_new_max = h_min + 4;
 	int h_new = clamp(h_new_min, h_mean, h_new_max);
 
@@ -4696,16 +4696,16 @@ game_update_land_ownership(map_pos_t init_pos)
 				    !BUILDING_IS_BURNING(building)) {
 					const int *influence = military_influence + 10*mil_type;
 					const int *closeness = map_closeness +
-						influence_diameter*max(-i, 0) + max(-j, 0);
+						influence_diameter*MAX(-i, 0) + MAX(-j, 0);
 					int *arr = temp_arr +
 						(BUILDING_PLAYER(building) * calculate_diameter*calculate_diameter) +
-						calculate_diameter*max(i, 0) + max(j, 0);
+						calculate_diameter*MAX(i, 0) + MAX(j, 0);
 
 					for (int k = 0; k < influence_diameter - abs(i); k++) {
 						for (int l = 0; l < influence_diameter - abs(j); l++) {
 							int inf = influence[*closeness];
 							if (inf < 0) *arr = 128;
-							else if (*arr < 128) *arr = min(*arr + inf, 127);
+							else if (*arr < 128) *arr = MIN(*arr + inf, 127);
 
 							closeness += 1;
 							arr += 1;

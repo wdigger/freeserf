@@ -26,13 +26,13 @@
 #define BIT_TEST(x, n)    ((x) & BIT(n))
 #define BIT_INVERT(x, n)  ((x) ^= 1 << (n))
 
-#ifndef max
-# define max(x,y)     (((x) > (y)) ? (x) : (y))
+#ifndef MAX
+# define MAX(x,y)     (((x) > (y)) ? (x) : (y))
 #endif
-#ifndef min
-# define min(x,y)     (((x) < (y)) ? (x) : (y))
+#ifndef MIN
+# define MIN(x,y)     (((x) < (y)) ? (x) : (y))
 #endif
-#define clamp(l,x,h)  (max((l),min((x),(h))))
+#define clamp(l,x,h)  (MAX((l),MIN((x),(h))))
 
 typedef unsigned int uint;
 

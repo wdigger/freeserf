@@ -23,30 +23,42 @@
 #define _MINIMAP_H
 
 #include "gui.h"
-#include "map.h"
 
-typedef struct {
-	gui_object_t obj;
-	struct interface *interface;
+#ifndef _MSC_VER
+extern "C" {
+#endif
+  #include "map.h"
+#ifndef _MSC_VER
+}
+#endif
 
-	int offset_x, offset_y;
-	int scale;
+class interface_t;
 
-	int advanced;
-	int flags;
-} minimap_t;
+class minimap_t
+  : public gui_object_t
+{
+public:
+  interface_t *interface;
 
+  int offset_x, offset_y;
+  int scale;
 
-void minimap_init(minimap_t *minimap, struct interface *interface);
+  int advanced;
+  int flags;
 
-void minimap_set_scale(minimap_t *minimap, int scale);
+  minimap_t(interface_t *interface);
 
-void minimap_move_to_map_pos(minimap_t *minimap, map_pos_t pos);
-void minimap_move_by_pixels(minimap_t *minimap, int x, int y);
-map_pos_t minimap_get_current_map_pos(minimap_t *minimap);
+  virtual void draw(frame_t *frame);
+  virtual int handle_event(const gui_event_t *event);
 
-void minimap_screen_pix_from_map_pos(minimap_t *minimap, map_pos_t pos, int *sx, int *sy);
-map_pos_t minimap_map_pos_from_screen_pix(minimap_t *minimap, int x, int y);
+  void minimap_set_scale(int scale);
 
+  void minimap_move_to_map_pos(map_pos_t pos);
+  void minimap_move_by_pixels(int x, int y);
+  map_pos_t minimap_get_current_map_pos();
+
+  void minimap_screen_pix_from_map_pos(map_pos_t pos, int *sx, int *sy);
+  map_pos_t minimap_map_pos_from_screen_pix(int x, int y);
+};
 
 #endif /* !_MINIMAP_H */
