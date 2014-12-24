@@ -39,5 +39,4 @@ random_state_t random_generate_random_state();
 char *random_to_string(const random_state_t *random);
 random_state_t string_to_random(const char *str);
 
-
 #endif /* ! _RANDOM_H */
