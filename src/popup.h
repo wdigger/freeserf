@@ -149,6 +149,8 @@ protected:
   void draw_sett_6_box(frame_t *frame);
   void draw_bld_1_box(frame_t *frame);
   void draw_building_stock_box(frame_t *frame);
+  void draw_map_box(frame_t *frame);
+
   int handle_event_click(int x, int y);
   void handle_action(int action, int x, int y);
   int handle_clickmap(int x, int y, const int clkmap[]);

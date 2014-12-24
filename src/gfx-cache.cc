@@ -19,9 +19,6 @@
  * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <map>
-#include <string>
-
 #ifndef _MSC_VER
 extern "C" {
 #endif
@@ -33,9 +30,8 @@ extern "C" {
 #ifdef HAVE_CONFIG_H
 # include <config.h>
 #endif
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
+
+#include <map>
 
 static uint64_t
 gfx_image_id(int sprite, int mask, int offset)

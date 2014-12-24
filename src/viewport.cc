@@ -2463,7 +2463,7 @@ viewport_handle_drag(viewport_t *viewport, int x, int y,
     }
   }
 
-  return 0;
+  return 1;
 }
 
 int
@@ -2474,18 +2474,15 @@ viewport_t::internal_handle_event(const gui_event_t *event)
 
   switch (event->type) {
   case GUI_EVENT_TYPE_CLICK:
-    return handle_event_click(x, y, (gui_event_button_t)event->button);
+    return handle_event_click(x, y, event->button);
   case GUI_EVENT_TYPE_DBL_CLICK:
-    return handle_event_dbl_click(x, y, (gui_event_button_t)event->button);
+    return handle_event_dbl_click(x, y, event->button);
     break;
   case GUI_EVENT_TYPE_DRAG_START:
-    interface->set_cursor_lock_target(this);
     return 0;
   case GUI_EVENT_TYPE_DRAG_MOVE:
-    return viewport_handle_drag(this, x, y,
-              (gui_event_button_t)event->button);
+    return viewport_handle_drag(this, event->dx, event->dy, event->button);
   case GUI_EVENT_TYPE_DRAG_END:
-    interface->set_cursor_lock_target(NULL);
     return 0;
   default:
     break;

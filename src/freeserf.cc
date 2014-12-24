@@ -185,7 +185,7 @@ game_loop()
             ev.type = GUI_EVENT_TYPE_DRAG_END;
             ev.x = event.button.x;
             ev.y = event.button.y;
-            ev.button = drag_button;
+            ev.button = (gui_event_button_t)drag_button;
             interface->handle_event(&ev);
 
             drag_button = 0;
@@ -194,7 +194,7 @@ game_loop()
           ev.type = GUI_EVENT_TYPE_BUTTON_UP;
           ev.x = event.button.x;
           ev.y = event.button.y;
-          ev.button = event.button.button;
+          ev.button = (gui_event_button_t)event.button.button;
           interface->handle_event(&ev);
 
           if (event.button.button <= 3 &&
@@ -202,7 +202,7 @@ game_loop()
             ev.type = GUI_EVENT_TYPE_CLICK;
             ev.x = event.button.x;
             ev.y = event.button.y;
-            ev.button = event.button.button;
+            ev.button = (gui_event_button_t)event.button.button;
             interface->handle_event(&ev);
 
             if (current_ticks - last_click[event.button.button-1] < MOUSE_TIME_SENSITIVITY &&
@@ -213,7 +213,7 @@ game_loop()
               ev.type = GUI_EVENT_TYPE_DBL_CLICK;
               ev.x = event.button.x;
               ev.y = event.button.y;
-              ev.button = event.button.button;
+              ev.button = (gui_event_button_t)event.button.button;
               interface->handle_event(&ev);
             }
 
@@ -226,7 +226,7 @@ game_loop()
           ev.type = GUI_EVENT_TYPE_BUTTON_DOWN;
           ev.x = event.button.x;
           ev.y = event.button.y;
-          ev.button = event.button.button;
+          ev.button = (gui_event_button_t)event.button.button;
           interface->handle_event(&ev);
 
           if (event.button.button <= 3) last_down[event.button.button-1] = current_ticks;
@@ -242,14 +242,16 @@ game_loop()
                 ev.type = GUI_EVENT_TYPE_DRAG_START;
                 ev.x = event.motion.x;
                 ev.y = event.motion.y;
-                ev.button = drag_button;
+                ev.button = (gui_event_button_t)drag_button;
                 interface->handle_event(&ev);
               }
 
               ev.type = GUI_EVENT_TYPE_DRAG_MOVE;
-              ev.x = event.motion.x - drag_x;
-              ev.y = event.motion.y - drag_y;
-              ev.button = drag_button;
+              ev.x = drag_x;
+              ev.y = drag_y;
+              ev.dx = event.motion.x - drag_x;
+              ev.dy = event.motion.y - drag_y;
+              ev.button = (gui_event_button_t)drag_button;
               interface->handle_event(&ev);
 
               video_warp_mouse(drag_x, drag_y);
@@ -460,7 +462,7 @@ game_loop()
     interface->update();
 
     frame_t *screen = video_get_screen_frame();
-    interface->draw(screen, 0, 0);
+    interface->draw(screen);
 
     /* Swap video buffers */
     video_swap_buffers();

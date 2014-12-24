@@ -232,17 +232,17 @@ minimap_t::handle_scroll(int up)
   return 0;
 }
 
-static int
-minimap_handle_drag(minimap_t *minimap, int x, int y,
-        gui_event_button_t button)
+int
+minimap_t::handle_drag(int x, int y, gui_event_button_t button)
 {
-  if (button == GUI_EVENT_BUTTON_RIGHT) {
+  printf("dx = %d, dy = %d\n", x, y);
+  if (button == GUI_EVENT_BUTTON_RIGHT || button == GUI_EVENT_BUTTON_LEFT) {
     if (x != 0 || y != 0) {
-      minimap->move_by_pixels(x, y);
+      move_by_pixels(x, y);
     }
   }
 
-  return 0;
+  return 1;
 }
 
 int
@@ -258,18 +258,15 @@ minimap_t::internal_handle_event(const gui_event_t *event)
     }
     break;
   case GUI_EVENT_TYPE_BUTTON_UP:
-    if (event->button == 4 || event->button == 5) {
-      return handle_scroll(event->button == 4);
-    }
+//    if (event->button == 4 || event->button == 5) {
+//      return handle_scroll(event->button == 4);
+//    }
     break;
   case GUI_EVENT_TYPE_DRAG_MOVE:
-    return minimap_handle_drag(this, x, y,
-      (gui_event_button_t)event->button);
+    return handle_drag(event->dx, event->dy, event->button);
   case GUI_EVENT_TYPE_DRAG_START:
-    interface->set_cursor_lock_target(this);
     return 0;
   case GUI_EVENT_TYPE_DRAG_END:
-    interface->set_cursor_lock_target(NULL);
     return 0;
   default:
     break;

@@ -452,22 +452,22 @@ prepare_res_amount_text(int amount)
   return "Perfect";
 }
 
-static void
-draw_map_box(popup_box_t *popup, frame_t *frame)
+void
+popup_box_t::draw_map_box(frame_t *frame)
 {
   /* Icons */
-  draw_popup_icon(0, 128, popup->get_minimap()->get_flags() & 3, frame); /* Mode */
-  draw_popup_icon(4, 128, BIT_TEST(popup->get_minimap()->get_flags(), 2) ? 3 : 4, frame); /* Roads */
-  if (popup->get_minimap()->get_advanced() >= 0) {
-    draw_popup_icon(8, 128, popup->get_minimap()->get_advanced() == 0 ? 306 : 305, frame); /* Unknown mode */
+  draw_popup_icon(0, 128, minimap->get_flags() & 3, frame); /* Mode */
+  draw_popup_icon(4, 128, BIT_TEST(minimap->get_flags(), 2) ? 3 : 4, frame); /* Roads */
+  if (minimap->get_advanced() >= 0) {
+    draw_popup_icon(8, 128, minimap->get_advanced() == 0 ? 306 : 305, frame); /* Unknown mode */
   } else {
-    draw_popup_icon(8, 128, BIT_TEST(popup->get_minimap()->get_flags(), 3) ? 5 : 6, frame); /* Buildings */
+    draw_popup_icon(8, 128, BIT_TEST(minimap->get_flags(), 3) ? 5 : 6, frame); /* Buildings */
   }
-  draw_popup_icon(12, 128, BIT_TEST(popup->get_minimap()->get_flags(), 4) ? 7 : 8, frame); /* Grid */
-  draw_popup_icon(14, 128, BIT_TEST(popup->get_minimap()->get_flags(), 5) ? 91 : 92, frame); /* Scale */
+  draw_popup_icon(12, 128, BIT_TEST(minimap->get_flags(), 4) ? 7 : 8, frame); /* Grid */
+  draw_popup_icon(14, 128, BIT_TEST(minimap->get_flags(), 5) ? 91 : 92, frame); /* Scale */
 
   /* Draw minimap */
-  popup->get_minimap()->draw(frame, 8, 9);
+  minimap->draw(frame);
 }
 
 /* Draw building mine popup box. */
@@ -2261,7 +2261,8 @@ popup_box_t::draw_transport_info_box(frame_t *frame)
   flag_view.move_to_map_pos(flag->pos);
   flag_view.move_offset(0,-10);
 
-  flag_view.draw(frame, 8, 24);
+  flag_view.move_to(8, 24);
+  flag_view.draw(frame);
 #else
   /* Static flag */
   draw_popup_building(8, 40, 0x80 + 4*popup->interface->player->player_num, frame);
@@ -2674,7 +2675,7 @@ popup_box_t::internal_draw()
   /* Dispatch to one of the popup box functions above. */
   switch (box) {
   case BOX_MAP:
-    draw_map_box(this, frame);
+    draw_map_box(frame);
     break;
   case BOX_MINE_BUILDING:
     draw_mine_building_box(frame);
@@ -4410,6 +4411,8 @@ popup_box_t::internal_handle_event(const gui_event_t *event)
     minimap_event.x = event->x - 8;
     minimap_event.y = event->y - 9;
     minimap_event.button = event->button;
+    minimap_event.dx = event->dx;
+    minimap_event.dy = event->dy;
     return minimap->handle_event(&minimap_event);
   }
 
@@ -4449,6 +4452,7 @@ popup_box_t::popup_box_t(interface_t *interface)
   minimap = new minimap_t(interface);
   minimap->set_displayed(1);
   minimap->set_parent(this);
+  minimap->move_to(8, 9);
   minimap->set_size(128, 128);
 }
 

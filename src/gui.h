@@ -49,7 +49,8 @@ typedef enum {
 typedef struct {
   gui_event_type_t type;
   int x, y;
-  int button;
+  int dx, dy;
+  gui_event_button_t button;
 } gui_event_t;
 
 class gui_container_t;
@@ -57,6 +58,7 @@ class gui_container_t;
 class gui_object_t
 {
 protected:
+  int x, y;
   int width, height;
   bool displayed;
   bool enabled;
@@ -74,8 +76,10 @@ public:
   gui_object_t();
   virtual ~gui_object_t();
 
-  void draw(frame_t *frame, int x, int y);
+  void draw(frame_t *frame);
   int handle_event(const gui_event_t *event);
+  void move_to(int x, int y);
+  void get_position(int &x, int &y);
   void set_size(int width, int height);
   void set_displayed(bool displayed);
   void set_enabled(bool enabled);
@@ -83,7 +87,7 @@ public:
   bool is_displayed() { return displayed; }
   gui_container_t *get_parent() { return parent; }
   void set_parent(gui_container_t *parent) { this->parent = parent; }
-  bool point_inside(int x, int y, int point_x, int point_y);
+  bool point_inside(int point_x, int point_y);
 };
 
 class gui_container_t

@@ -647,56 +647,19 @@ interface_t::internal_draw()
 {
   float_list_t::iterator fl = floats.begin();
   for( ; fl != floats.end() ; fl++) {
-    if (fl->obj->is_displayed()) {
-      fl->obj->draw(frame, fl->x, fl->y);
-    }
+    (*fl)->draw(frame);
   }
 }
 
 int
 interface_t::internal_handle_event(const gui_event_t *event)
 {
-  /* Handle locked cursor */
-  if (cursor_lock_target != NULL) {
-    if (cursor_lock_target == viewport) {
-      return viewport->handle_event(event);
-    } else {
-      if (event->type == GUI_EVENT_TYPE_DRAG_MOVE) {
-        return cursor_lock_target->handle_event(event);
-      }
-      gui_event_t float_event;
-      float_event.type = event->type;
-      float_event.x = event->x;
-      float_event.y = event->y;
-      float_event.button = event->button;
-      gui_object_t *obj = cursor_lock_target;
-      while (obj->get_parent() != NULL) {
-        int x, y;
-        int r = obj->get_parent()->get_child_position(obj, &x, &y);
-        if (r < 0) return -1;
-
-        float_event.x -= x;
-        float_event.y -= y;
-
-        obj = obj->get_parent();
-      }
-
-      if (obj != this) return -1;
-      return cursor_lock_target->handle_event(&float_event);
-    }
-  }
-
   /* Find the corresponding float element if any */
   float_list_t::reverse_iterator fl = floats.rbegin();
   for( ; fl != floats.rend() ; fl++) {
-    if (fl->obj->is_displayed() &&
-      fl->obj->point_inside(fl->x, fl->y, event->x, event->y)) {
-      gui_event_t float_event;
-      float_event.type = event->type;
-      float_event.x = event->x - fl->x;
-      float_event.y = event->y - fl->y;
-      float_event.button = event->button;
-      return fl->obj->handle_event(&float_event);
+    int result = (*fl)->handle_event(event);
+    if (result != 0) {
+      return result;
     }
   }
 
@@ -731,22 +694,21 @@ interface_t::layout()
   /* Reassign position of floats. */
   float_list_t::iterator fl = floats.begin();
   for( ; fl != floats.end() ; fl++) {
-    if (fl->obj == popup) {
-      fl->x = popup_x;
-      fl->y = popup_y;
-      fl->obj->set_size(popup_width, popup_height);
-    } else if (fl->obj == panel) {
-      fl->x = panel_x;
-      fl->y = panel_y;
-      fl->obj->set_size(panel_width, panel_height);
-    } else if (fl->obj == init_box) {
-      fl->x = init_box_x;
-      fl->y = init_box_y;
-      fl->obj->set_size(init_box_width, init_box_height);
-    } else if (fl->obj == notification_box) {
-      fl->x = notification_box_x;
-      fl->y = notification_box_y;
-      fl->obj->set_size(notification_box_width, notification_box_height);
+    if (*fl == popup) {
+      (*fl)->move_to(popup_x, popup_y);
+      (*fl)->set_size(popup_width, popup_height);
+    }
+    else if (*fl == panel) {
+      (*fl)->move_to(panel_x, panel_y);
+      (*fl)->set_size(panel_width, panel_height);
+    }
+    else if (*fl == init_box) {
+      (*fl)->move_to(init_box_x, init_box_y);
+      (*fl)->set_size(init_box_width, init_box_height);
+    }
+    else if (*fl == notification_box) {
+      (*fl)->move_to(notification_box_x, notification_box_y);
+      (*fl)->set_size(notification_box_width, notification_box_height);
     }
   }
 
@@ -758,9 +720,8 @@ interface_t::internal_get_child_position(gui_object_t *child, int *x, int *y)
 {
   float_list_t::iterator fl = floats.begin();
   for( ; fl != floats.end() ; fl++) {
-    if (fl->obj == child) {
-      *x = fl->x;
-      *y = fl->y;
+    if ((*fl) == child) {
+      (*fl)->get_position(*x, *y);
       return 0;
     }
   }
@@ -772,8 +733,6 @@ interface_t::interface_t()
   : gui_container_t()
 {
   displayed = true;
-
-  cursor_lock_target = NULL;
 
   /* Viewport */
   viewport = new viewport_t(this);
@@ -836,15 +795,9 @@ void
 interface_t::add_float(gui_object_t *obj,
         int x, int y, int width, int height)
 {
-  float_t fl;
-
-  /* Store currect location with object. */
-  fl.obj = obj;
-  fl.x = x;
-  fl.y = y;
-
   obj->set_parent(this);
-  floats.push_back(fl);
+  floats.push_back(obj);
+  obj->move_to(x, y);
   obj->set_size(width, height);
   set_redraw();
 }

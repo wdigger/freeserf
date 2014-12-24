@@ -72,15 +72,8 @@ class interface_t
   : public gui_container_t
 {
 protected:
-  typedef struct {
-    gui_object_t *obj;
-    int x, y;
-  } float_t;
-  typedef std::list<float_t> float_list_t;
-
+  typedef std::list<gui_object_t*> float_list_t;
   float_list_t floats;
-
-  gui_object_t *cursor_lock_target;
 
   random_state_t random;
 
@@ -157,8 +150,6 @@ public:
   void add_float(gui_object_t *obj, int x, int y, int width, int height);
 
   void update();
-
-  void set_cursor_lock_target(gui_object_t *cursor_lock_target) { this->cursor_lock_target = cursor_lock_target; }
 
   int get_config() { return config; }
   void set_config(int config) { this->config = config; }

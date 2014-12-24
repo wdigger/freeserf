@@ -80,6 +80,7 @@ protected:
   void draw_minimap_rect(frame_t *frame);
 
   int handle_event_click(int x, int y);
+  int handle_drag(int x, int y, gui_event_button_t button);
   int handle_scroll(int up);
 
   void map_pix_from_map_coord(map_pos_t pos, int *mx, int *my);

@@ -46,6 +46,8 @@ gui_object_t::layout()
 
 gui_object_t::gui_object_t()
 {
+  x = 0;
+  y = 0;
   width = 0;
   height = 0;
   displayed = false;
@@ -70,7 +72,7 @@ gui_object_t::delete_frame()
 }
 
 void
-gui_object_t::draw(frame_t *frame, int x, int y)
+gui_object_t::draw(frame_t *frame)
 {
   if(!displayed) {
     return;
@@ -89,8 +91,42 @@ gui_object_t::draw(frame_t *frame, int x, int y)
 int
 gui_object_t::handle_event(const gui_event_t *event)
 {
-  if (!enabled) return 0;
-  return internal_handle_event(event);
+  if (!enabled || !displayed) {
+    return 0;
+  }
+
+  int event_x = event->x - x;
+  int event_y = event->y - y;
+  if (event_x < 0 || event_y < 0 ||
+      event_x > width || event_y > height)
+  {
+    return 0;
+  }
+
+  gui_event_t internal_event;
+  internal_event.type = event->type;
+  internal_event.x = event_x;
+  internal_event.y = event_y;
+  internal_event.dx = event->dx;
+  internal_event.dy = event->dy;
+  internal_event.button = event->button;
+
+  return internal_handle_event(&internal_event);
+}
+
+void
+gui_object_t::move_to(int x, int y)
+{
+  this->x = x;
+  this->y = y;
+  set_redraw();
+}
+
+void
+gui_object_t::get_position(int &x, int &y)
+{
+  x = this->x;
+  y = this->y;
 }
 
 void
@@ -123,7 +159,7 @@ gui_object_t::set_redraw()
 }
 
 bool
-gui_object_t::point_inside(int x, int y, int point_x, int point_y)
+gui_object_t::point_inside(int point_x, int point_y)
 {
   return (point_x >= x && point_y >= y &&
           point_x < x + width &&
