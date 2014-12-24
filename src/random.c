@@ -19,13 +19,14 @@
  * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "random.h"
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
-
-#include "random.h"
 
 uint16_t
 random_int(random_state_t *random)
@@ -39,4 +40,25 @@ random_int(random_state_t *random)
 	rnd[0] = r;
 
 	return r;
+}
+
+random_state_t
+random_generate_random_state()
+{
+	random_state_t random = {{ 0x5a5a, (uint16_t)(time(NULL) >> 16), (uint16_t)time(NULL) }};
+	return random;
+}
+
+random_state_t
+random_generate_random_state2()
+{
+  random_state_t random;
+
+  srand((unsigned int)time(NULL));
+  random.state[0] = rand();
+  random.state[1] = rand();
+  random.state[2] = rand();
+  random_int(&random);
+
+  return random;
 }

@@ -28,7 +28,6 @@
 #ifndef _MSC_VER
 extern "C" {
 #endif
-  #include "list.h"
   #include "random.h"
   #include "map.h"
   #include "player.h"
@@ -36,6 +35,8 @@ extern "C" {
 #ifndef _MSC_VER
 }
 #endif
+
+#include <list>
 
 /* The length between game updates in miliseconds. */
 #define TICK_LENGTH  20
@@ -71,9 +72,13 @@ class interface_t
   : public gui_container_t
 {
 protected:
-  gui_object_t *top;
-  int redraw_top;
-  list_t floats;
+  typedef struct {
+    gui_object_t *obj;
+    int x, y;
+  } float_t;
+  typedef std::list<float_t> float_list_t;
+
+  float_list_t floats;
 
   gui_object_t *cursor_lock_target;
 
@@ -114,7 +119,7 @@ protected:
 public:
   interface_t();
 
-  viewport_t *get_top_viewport();
+  viewport_t *get_viewport();
   panel_bar_t *get_panel_bar();
   popup_box_t *get_popup_box();
   notification_box_t *get_notification_box() { return notification_box; }
@@ -149,7 +154,6 @@ public:
   void build_building(building_type_t type);
   void build_castle();
 
-  void set_top(gui_object_t *obj);
   void add_float(gui_object_t *obj, int x, int y, int width, int height);
 
   void update();
@@ -175,9 +179,8 @@ public:
 protected:
   virtual void internal_draw();
   virtual int internal_handle_event(const gui_event_t *event);
-  virtual void internal_set_size(int width, int height);
+  virtual void layout();
 
-  virtual void internal_set_redraw_child(gui_object_t *child);
   virtual int internal_get_child_position(gui_object_t *child, int *x, int *t);
 
   void interface_determine_map_cursor_type();

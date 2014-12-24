@@ -35,5 +35,7 @@ typedef struct {
 } random_state_t;
 
 uint16_t random_int(random_state_t *random);
+random_state_t random_generate_random_state();
+random_state_t random_generate_random_state2();
 
 #endif /* ! _RANDOM_H */

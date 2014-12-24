@@ -29,7 +29,7 @@ extern "C" {
 }
 #endif
 
-#include <stdlib.h>
+#include <cstdlib>
 
 /* Get the resulting value from a click on a slider bar. */
 int
@@ -40,32 +40,50 @@ gui_get_slider_click_value(int x)
 
 
 void
-gui_object_t::internal_set_size(int width, int height)
+gui_object_t::layout()
 {
-  this->width = width;
-  this->height = height;
 }
 
 gui_object_t::gui_object_t()
 {
   width = 0;
   height = 0;
-  displayed = 0;
-  enabled = 1;
-  redraw = 0;
+  displayed = false;
+  enabled = true;
+  redraw = true;
   parent = NULL;
   frame = NULL;
+}
+
+gui_object_t::~gui_object_t()
+{
+  delete_frame();
+}
+
+void
+gui_object_t::delete_frame()
+{
+  if(frame != NULL) {
+    gfx_frame_destroy(frame);
+    frame = NULL;
+  }
 }
 
 void
 gui_object_t::draw(frame_t *frame, int x, int y)
 {
+  if(!displayed) {
+    return;
+  }
+
   if(this->frame == NULL) {
     this->frame = gfx_frame_create(width, height);
   }
-  internal_draw();
+  if(redraw) {
+    internal_draw();
+    redraw = 0;
+  }
   gfx_draw_frame(x, y, frame, 0, 0, this->frame, width, height);
-  redraw = 0;
 }
 
 int
@@ -78,22 +96,18 @@ gui_object_t::handle_event(const gui_event_t *event)
 void
 gui_object_t::set_size(int width, int height)
 {
-  if(frame != NULL) {
-    gfx_frame_destroy(frame);
-    frame = NULL;
-  }
-  internal_set_size(width, height);
+  delete_frame();
+  this->width = width;
+  this->height = height;
+  layout();
+  set_redraw();
 }
 
 void
 gui_object_t::set_displayed(bool displayed)
 {
   this->displayed = displayed;
-  if (displayed) {
-    set_redraw();
-  } else if (parent != NULL) {
-    parent->set_redraw();
-  }
+  set_redraw();
 }
 
 void
@@ -105,10 +119,7 @@ gui_object_t::set_enabled(bool enabled)
 void
 gui_object_t::set_redraw()
 {
-  redraw = 1;
-  if (parent != NULL) {
-    parent->set_redraw_child(this);
-  }
+  redraw = true;
 }
 
 bool
@@ -119,21 +130,9 @@ gui_object_t::point_inside(int x, int y, int point_x, int point_y)
           point_y < y + height);
 }
 
-void
-gui_container_t::internal_set_redraw_child(gui_object_t *child)
-{
-  set_redraw();
-}
-
 gui_container_t::gui_container_t()
   : gui_object_t()
 {
-}
-
-void
-gui_container_t::set_redraw_child(gui_object_t *child)
-{
-  internal_set_redraw_child(child);
 }
 
 int

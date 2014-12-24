@@ -283,7 +283,8 @@ video_draw_frame(int dx, int dy, frame_t *dest, int sx, int sy, frame_t *src, in
 }
 
 void
-video_fill_rect(int x, int y, int width, int height, const color_t *color, frame_t *dest)
+video_fill_rect(int x, int y, int width, int height,
+                const color_t *color, frame_t *dest)
 {
 	SDL_Rect rect = {
 		x, y,

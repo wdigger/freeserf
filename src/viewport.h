@@ -29,9 +29,12 @@ extern "C" {
 #endif
   #include "map.h"
   #include "building.h"
+  #include "serf.h"
 #ifndef _MSC_VER
 }
 #endif
+
+#include <map>
 
 typedef enum {
   VIEWPORT_LAYER_LANDSCAPE = 1<<0,
@@ -58,11 +61,17 @@ protected:
 
   uint32_t *serf_animation_table;
 
+  /* Cache prerendered tiles of the landscape. */
+  typedef std::map<uint, frame_t*> tiles_map_t;
+  tiles_map_t landscape_tiles;
+
 public:
   viewport_t(interface_t *interface);
+  virtual ~viewport_t();
 
   virtual void internal_draw();
   virtual int internal_handle_event(const gui_event_t *event);
+  virtual void layout();
 
   void move_to_map_pos(map_pos_t pos);
   void move_by_pixels(int x, int y);
@@ -73,7 +82,6 @@ public:
   map_pos_t map_pos_from_screen_pix(int x, int y);
 
   void map_reinit();
-  void map_deinit();
   void redraw_map_pos(map_pos_t pos);
 
   void update();
@@ -84,6 +92,9 @@ public:
   void move_offset(int dx, int dy);
 
 protected:
+  void map_deinit();
+  frame_t *get_tile_frame(uint tid, int tc, int tr);
+
   void draw_landscape(frame_t *frame);
   void draw_paths_and_borders(frame_t *frame);
   void draw_game_objects(int layers, frame_t *frame);
@@ -96,6 +107,12 @@ protected:
   void draw_building(map_pos_t pos, int x, int y, frame_t *frame);
   void draw_map_objects_row(map_pos_t pos, int y_base, 
                             int cols, int x_base, frame_t *frame);
+  void draw_active_serf(serf_t *serf, map_pos_t pos, int x_base, int y_base,
+                        frame_t *frame);
+  void draw_serf_row_behind(map_pos_t pos, int y_base, int cols, int x_base,
+                            frame_t *frame);
+  void draw_serf_row(map_pos_t pos, int y_base, int cols, int x_base,
+                     frame_t *frame);
   int handle_event_click(int x, int y, gui_event_button_t button);
   int handle_event_dbl_click(int x, int y, gui_event_button_t button);
 

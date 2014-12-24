@@ -32,8 +32,6 @@ extern "C" {
 }
 #endif
 
-#include <stdlib.h>
-
 static void
 draw_icon(int x, int y, int sprite, frame_t *frame)
 {

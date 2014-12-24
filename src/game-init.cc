@@ -28,12 +28,11 @@ extern "C" {
 #endif
   #include "mission.h"
   #include "data.h"
+  #include "random.h"
 #ifndef _MSC_VER
 }
 #endif
 
-#include <time.h>
-#include <stdio.h>
 #include <algorithm>
 
 typedef enum {
@@ -156,8 +155,8 @@ game_init_box_t::internal_draw()
   draw_box_icon(38, 128, 60, frame); /* exit */
 }
 
-static void
-handle_action(game_init_box_t *box, int action)
+void
+game_init_box_t::handle_action(int action)
 {
   const uint default_player_colors[] = {
     64, 72, 68, 76
@@ -166,57 +165,58 @@ handle_action(game_init_box_t *box, int action)
   switch (action) {
   case ACTION_START_GAME:
     game_init();
-    if (box->game_mission < 0) {
-      random_state_t rnd = {{ 0x5a5a, (uint16_t)(time(NULL) >> 16), (uint16_t)time(NULL) }};
-      int r = game_load_random_map(box->map_size, &rnd);
+    if (game_mission < 0) {
+      random_state_t rnd = random_generate_random_state();
+      int r = game_load_random_map(map_size, &rnd);
       if (r < 0) return;
 
       for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
-        if (box->face[i] == 0) continue;
-        int p = game_add_player(box->face[i],
+        if (face[i] == 0) continue;
+        int p = game_add_player(face[i],
               default_player_colors[i],
-              box->supplies[i],
-              box->reproduction[i],
-              box->intelligence[i]);
+              supplies[i],
+              reproduction[i],
+              intelligence[i]);
         if (p < 0) return;
       }
     } else {
-      int r = game_load_mission_map(box->game_mission);
+      int r = game_load_mission_map(game_mission);
       if (r < 0) return;
     }
 
-    box->interface->get_top_viewport()->map_reinit();
-    box->interface->set_player(0);
-    box->interface->close_game_init();
+    interface->get_viewport()->map_reinit();
+    interface->set_player(0);
+    interface->close_game_init();
     break;
   case ACTION_TOGGLE_GAME_TYPE:
-    if (box->game_mission < 0) {
-      box->game_mission = 0;
+    if (game_mission < 0) {
+      game_mission = 0;
     } else {
-      box->game_mission = -1;
-      box->map_size = 3;
+      game_mission = -1;
+      map_size = 3;
     }
+    set_redraw();
     break;
   case ACTION_SHOW_OPTIONS:
     break;
   case ACTION_SHOW_LOAD_GAME:
     break;
   case ACTION_INCREMENT:
-    if (box->game_mission < 0) {
-      box->map_size = std::min(box->map_size+1, 10);
+    if (game_mission < 0) {
+      map_size = std::min(map_size+1, 10);
     } else {
-      box->game_mission = std::min(box->game_mission+1, mission_count-1);
+      game_mission = std::min(game_mission+1, mission_count-1);
     }
     break;
   case ACTION_DECREMENT:
-    if (box->game_mission < 0) {
-      box->map_size = std::max(3, box->map_size-1);
+    if (game_mission < 0) {
+      map_size = std::max(3, map_size-1);
     } else {
-      box->game_mission = std::max(0, box->game_mission-1);
+      game_mission = std::max(0, game_mission-1);
     }
     break;
   case ACTION_CLOSE:
-    box->interface->close_game_init();
+    interface->close_game_init();
     break;
   default:
     break;
@@ -241,7 +241,7 @@ game_init_box_t::handle_event_click(int x, int y)
   while (i[0] >= 0) {
     if (x >= i[1] && x < i[1]+i[3] &&
         y >= i[2] && y < i[2]+i[4]) {
-      handle_action(this, i[0]);
+      handle_action(i[0]);
       break;
     }
     i += 5;

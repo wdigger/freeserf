@@ -53,6 +53,7 @@ public:
 
 protected:
   int handle_event_click(int x, int y);
+  void handle_action(int action);
 };
 
 #endif /* !_GAME_INIT_H */

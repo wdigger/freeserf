@@ -268,22 +268,22 @@ game_loop()
           switch (event.key.keysym.sym) {
             /* Map scroll */
             case SDLK_UP: {
-              viewport_t *viewport = interface->get_top_viewport();
+              viewport_t *viewport = interface->get_viewport();
               viewport->move_by_pixels(0, -32);
             }
               break;
             case SDLK_DOWN: {
-              viewport_t *viewport = interface->get_top_viewport();
+              viewport_t *viewport = interface->get_viewport();
               viewport->move_by_pixels(0, 32);
             }
               break;
             case SDLK_LEFT: {
-              viewport_t *viewport = interface->get_top_viewport();
+              viewport_t *viewport = interface->get_viewport();
               viewport->move_by_pixels(-32, 0);
             }
               break;
             case SDLK_RIGHT: {
-              viewport_t *viewport = interface->get_top_viewport();
+              viewport_t *viewport = interface->get_viewport();
               viewport->move_by_pixels(32, 0);
             }
               break;
@@ -372,12 +372,12 @@ game_loop()
 
               /* Debug */
             case SDLK_g: {
-              viewport_t *viewport = interface->get_top_viewport();
+              viewport_t *viewport = interface->get_viewport();
               viewport->switch_layer(VIEWPORT_LAYER_GRID);
             }
               break;
             case SDLK_b: {
-              viewport_t *viewport = interface->get_top_viewport();
+              viewport_t *viewport = interface->get_viewport();
               viewport->switch_possible_build();
             }
               break;
@@ -627,7 +627,7 @@ main(int argc, char *argv[])
     interface->set_player(r);
   }
 
-  viewport_t *viewport = interface->get_top_viewport();
+  viewport_t *viewport = interface->get_viewport();
   viewport->map_reinit();
 
   if (save_file != NULL) {
@@ -641,7 +641,6 @@ main(int argc, char *argv[])
 
   /* Clean up */
   map_deinit();
-  viewport->map_deinit();
   audio_deinit();
   gfx_deinit();
   data_deinit();

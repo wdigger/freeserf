@@ -348,6 +348,8 @@ frame_t *
 gfx_frame_create(int width, int height)
 {
 	frame_t *frame = (frame_t*)calloc(sizeof(frame_t), 1);
+	frame->width = width;
+	frame->height = height;
 	video_frame_init(frame, width, height);
 	return frame;
 }

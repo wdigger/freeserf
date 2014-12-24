@@ -49,26 +49,15 @@ extern "C" {
 
 #define VIEWPORT_COLS(viewport)  (2*((viewport)->width / MAP_TILE_WIDTH) + 1)
 
-
-/* Cache prerendered tiles of the landscape. */
-typedef struct {
-  frame_t *frame;
-  int dirty;
-} landscape_tile_t;
-
 /* Number of cols,rows in each landscape tile */
 #define MAP_TILE_COLS  16
 #define MAP_TILE_ROWS  16
-
-static uint landscape_tile_count;
-static landscape_tile_t *landscape_tile;
-
 
 static const uint8_t tri_spr[] = {
   32, 32, 32, 32, 32, 32, 32, 32,
   32, 32, 32, 32, 32, 32,  32, 32,
   32, 32, 32, 32, 32, 32, 32, 32,
-  32, 32, 32, 32,  32, 32, 32, 32,
+  32, 32, 32, 32, 32, 32, 32, 32,
   0, 1, 2, 3, 4, 5, 6, 7,
   0, 1, 2, 3, 4, 5, 6, 7,
   0, 1, 2, 3, 4, 5, 6, 7,
@@ -271,12 +260,10 @@ draw_down_tile_col(map_pos_t pos, int x_base, int y_base, int max_y, frame_t *fr
 void
 viewport_t::map_deinit()
 {
-  if (landscape_tile != NULL) {
-    for (uint i = 0; i < landscape_tile_count; i++) {
-      gfx_frame_destroy(landscape_tile[i].frame);
-    }
-    free(landscape_tile);
-    landscape_tile = NULL;
+  while(landscape_tiles.size()) {
+    tiles_map_t::iterator it = landscape_tiles.begin();
+    gfx_frame_destroy(it->second);
+    landscape_tiles.erase(it);
   }
 }
 
@@ -285,33 +272,17 @@ void
 viewport_t::map_reinit()
 {
   map_deinit();
+}
 
-  int horiz_tiles = game.map.cols/MAP_TILE_COLS;
-  int vert_tiles = game.map.rows/MAP_TILE_ROWS;
-  landscape_tile_count = horiz_tiles*vert_tiles;
-
-  int tile_width = MAP_TILE_COLS*MAP_TILE_WIDTH;
-  int tile_height = MAP_TILE_ROWS*MAP_TILE_HEIGHT;
-
-  landscape_tile = (landscape_tile_t*)malloc(landscape_tile_count*sizeof(landscape_tile_t));
-  if (landscape_tile == NULL) abort();
-
-  LOGV("viewport", "map: %i,%i, cols,rows: %i,%i, tcs,trs: %i,%i, tw,th: %i,%i",
-       game.map.cols*MAP_TILE_WIDTH, game.map.rows*MAP_TILE_HEIGHT,
-       game.map.cols, game.map.rows, horiz_tiles, vert_tiles,
-       tile_width, tile_height);
-
-  for (uint i = 0; i < landscape_tile_count; i++) {
-    landscape_tile[i].frame = NULL;
-    landscape_tile[i].dirty = 1;
-  }
+void
+viewport_t::layout()
+{
+  map_deinit();
 }
 
 void
 viewport_t::redraw_map_pos(map_pos_t pos)
 {
-  if (landscape_tile == NULL) return;
-
   int mx, my;
   map_pix_from_map_coord(pos, MAP_HEIGHT(pos), &mx, &my);
 
@@ -325,7 +296,57 @@ viewport_t::redraw_map_pos(map_pos_t pos)
   int tr = (my / tile_height) % vert_tiles;
   int tid = tc + horiz_tiles*tr;
 
-  landscape_tile[tid].dirty = 1;
+  landscape_tiles.erase(tid);
+}
+
+frame_t *
+viewport_t::get_tile_frame(uint tid, int tc, int tr)
+{
+  frame_t *tile_frame = NULL;
+
+  int tile_width = MAP_TILE_COLS*MAP_TILE_WIDTH;
+  int tile_height = MAP_TILE_ROWS*MAP_TILE_HEIGHT;
+
+  tiles_map_t::iterator it = landscape_tiles.find(tid);
+  if(it != landscape_tiles.end()) {
+    tile_frame = it->second;
+  }
+  else {
+    tile_frame = gfx_frame_create(tile_width, tile_height);
+    gfx_fill_rect(0, 0, tile_width, tile_height, 0, tile_frame);
+
+    int col = (tc*MAP_TILE_COLS + (tr*MAP_TILE_ROWS)/2) % game.map.cols;
+    int row = tr*MAP_TILE_ROWS;
+    map_pos_t pos = MAP_POS(col, row);
+
+    int x_base = -(MAP_TILE_WIDTH/2);
+
+    /* Draw one extra column as half a column will be outside the
+       map tile on both right and left side.. */
+    for (int col = 0; col < MAP_TILE_COLS+1; col++) {
+      draw_up_tile_col(pos, x_base, 0, tile_height, tile_frame);
+      draw_down_tile_col(pos, x_base + MAP_TILE_WIDTH/2, 0, tile_height, tile_frame);
+
+      pos = MAP_MOVE_RIGHT(pos);
+      x_base += MAP_TILE_WIDTH;
+    }
+
+#if 0
+    /* Draw a border around the tile for debug. */
+    gfx_draw_rect(0, 0, tile_width, tile_height,
+            76, tile_frame);
+#endif
+
+    LOGV("viewport", "map: %i,%i, cols,rows: %i,%i, tc,tr: %i,%i, tw,th: %i,%i",
+         game.map.cols*MAP_TILE_WIDTH, game.map.rows*MAP_TILE_HEIGHT,
+         game.map.cols, game.map.rows,
+         tc, tr,
+         tile_width, tile_height);
+
+    landscape_tiles[tid] = tile_frame;
+  }
+
+  return tile_frame;
 }
 
 void
@@ -360,39 +381,7 @@ viewport_t::draw_landscape(frame_t *frame)
       int tr = (my / tile_height) % vert_tiles;
       int tid = tc + horiz_tiles*tr;
 
-      /* Redraw tile if marked dirty */
-      if (landscape_tile[tid].dirty) {
-        if (landscape_tile[tid].frame == NULL) {
-          landscape_tile[tid].frame = gfx_frame_create(tile_width, tile_height);
-          gfx_fill_rect(0, 0, tile_width, tile_height, 0, landscape_tile[tid].frame);
-        }
-
-        int col = (tc*MAP_TILE_COLS + (tr*MAP_TILE_ROWS)/2) % game.map.cols;
-        int row = tr*MAP_TILE_ROWS;
-        map_pos_t pos = MAP_POS(col, row);
-
-        int x_base = -(MAP_TILE_WIDTH/2);
-
-        /* Draw one extra column as half a column will be outside the
-           map tile on both right and left side.. */
-        for (int col = 0; col < MAP_TILE_COLS+1; col++) {
-          draw_up_tile_col(pos, x_base, 0, tile_height,
-               landscape_tile[tid].frame);
-          draw_down_tile_col(pos, x_base + MAP_TILE_WIDTH/2, 0, tile_height,
-                 landscape_tile[tid].frame);
-
-          pos = MAP_MOVE_RIGHT(pos);
-          x_base += MAP_TILE_WIDTH;
-        }
-
-#if 0
-        /* Draw a border around the tile for debug. */
-        gfx_draw_rect(0, 0, tile_width, tile_height,
-                76, landscape_tile[tid].frame);
-#endif
-
-        landscape_tile[tid].dirty = 0;
-      }
+      frame_t *tile_frame = get_tile_frame(tid, tc, tr);
 
       int w = tile_width - tx;
       if (x+w > width) {
@@ -404,7 +393,7 @@ viewport_t::draw_landscape(frame_t *frame)
       }
 
       gfx_draw_frame(x, y, frame,
-                     tx, ty, landscape_tile[tid].frame,
+                     tx, ty, tile_frame,
                      w, h);
       x += tile_width - tx;
       mx += tile_width - tx;
@@ -1848,9 +1837,9 @@ serf_get_body(serf_t *serf, uint32_t *animation_table)
   return t;
 }
 
-static void
-draw_active_serf(serf_t *serf, map_pos_t pos, int x_base, int y_base,
-     uint32_t *animation_table, frame_t *frame)
+void
+viewport_t::draw_active_serf(serf_t *serf, map_pos_t pos, int x_base, int y_base,
+     frame_t *frame)
 {
   const int arr_4[] = {
     9, 5, 10, 7, 10, 2, 8, 6,
@@ -1860,13 +1849,13 @@ draw_active_serf(serf_t *serf, map_pos_t pos, int x_base, int y_base,
     5, 8, 0, 0, 0, 0, 0, 0
   };
 
-  uint8_t *tbl_ptr = ((uint8_t *)animation_table) +
-    animation_table[serf->animation] +
+  uint8_t *tbl_ptr = ((uint8_t *)serf_animation_table) +
+    serf_animation_table[serf->animation] +
     3*(serf->counter >> 3);
 
   int x = x_base + ((int8_t *)tbl_ptr)[1];
   int y = y_base + ((int8_t *)tbl_ptr)[2] - 4*MAP_HEIGHT(pos);
-  int body = serf_get_body(serf, animation_table);
+  int body = serf_get_body(serf, serf_animation_table);
 
   if (body > -1) {
     int color = game.player[SERF_PLAYER(serf)]->color;
@@ -1885,13 +1874,13 @@ draw_active_serf(serf_t *serf, map_pos_t pos, int x_base, int y_base,
     if (index != 0) {
       serf_t *def_serf = game_get_serf(index);
 
-      uint8_t *tbl_ptr = ((uint8_t *)animation_table) +
-        animation_table[def_serf->animation] +
+      uint8_t *tbl_ptr = ((uint8_t *)serf_animation_table) +
+        serf_animation_table[def_serf->animation] +
         3*(def_serf->counter >> 3);
 
       int x = x_base + ((int8_t *)tbl_ptr)[1];
       int y = y_base + ((int8_t *)tbl_ptr)[2] - 4*MAP_HEIGHT(pos);
-      int body = serf_get_body(def_serf, animation_table);
+      int body = serf_get_body(def_serf, serf_animation_table);
 
       if (body > -1) {
         int color = game.player[SERF_PLAYER(def_serf)]->color;
@@ -1934,9 +1923,9 @@ draw_active_serf(serf_t *serf, map_pos_t pos, int x_base, int y_base,
    sprites (arm, torso, possibly head). A shadow is also drawn if appropriate.
    Note that idle serfs do not have their serf_t object linked from the map
    so they are drawn seperately from active serfs. */
-static void
-draw_serf_row(map_pos_t pos, int y_base, int cols, int x_base,
-        uint32_t *animation_table, frame_t *frame)
+void
+viewport_t::draw_serf_row(map_pos_t pos, int y_base, int cols, int x_base,
+        frame_t *frame)
 {
   const int arr_1[] = {
     0x240, 0x40, 0x380, 0x140, 0x300, 0x80, 0x180, 0x200,
@@ -1993,8 +1982,7 @@ draw_serf_row(map_pos_t pos, int y_base, int cols, int x_base,
            serf->s.mining.substate != 4 &&
            serf->s.mining.substate != 9 &&
            serf->s.mining.substate != 10)) {
-        draw_active_serf(serf, pos, x_base, y_base,
-             animation_table, frame);
+        draw_active_serf(serf, pos, x_base, y_base, frame);
       }
     }
 
@@ -2019,9 +2007,9 @@ draw_serf_row(map_pos_t pos, int y_base, int cols, int x_base,
 
 /* Draw serfs that should appear behind the building at their
    current position. */
-static void
-draw_serf_row_behind(map_pos_t pos, int y_base, int cols, int x_base,
-         uint32_t *animation_table, frame_t *frame)
+void
+viewport_t::draw_serf_row_behind(map_pos_t pos, int y_base, int cols, int x_base,
+         frame_t *frame)
 {
   for (int i = 0; i < cols; i++, x_base += MAP_TILE_WIDTH, pos = MAP_MOVE_RIGHT(pos)) {
     /* Active serf */
@@ -2033,8 +2021,7 @@ draw_serf_row_behind(map_pos_t pos, int y_base, int cols, int x_base,
            serf->s.mining.substate == 4 ||
            serf->s.mining.substate == 9 ||
            serf->s.mining.substate == 10)) {
-        draw_active_serf(serf, pos, x_base, y_base,
-             animation_table, frame);
+        draw_active_serf(serf, pos, x_base, y_base, frame);
       }
     }
   }
@@ -2067,13 +2054,13 @@ viewport_t::draw_game_objects(int layers, frame_t *frame)
     /* short row */
     if (draw_landscape) draw_water_waves_row(pos, y, short_row_len, x, frame);
     if (draw_serfs) {
-      draw_serf_row_behind(pos, y, short_row_len, x, serf_animation_table, frame);
+      draw_serf_row_behind(pos, y, short_row_len, x, frame);
     }
     if (draw_objects) {
       draw_map_objects_row(pos, y, short_row_len, x, frame);
     }
     if (draw_serfs) {
-      draw_serf_row(pos, y, short_row_len, x, serf_animation_table, frame);
+      draw_serf_row(pos, y, short_row_len, x, frame);
     }
 
     y += MAP_TILE_HEIGHT;
@@ -2084,13 +2071,13 @@ viewport_t::draw_game_objects(int layers, frame_t *frame)
     /* long row */
     if (draw_landscape) draw_water_waves_row(pos, y, long_row_len, x - 16, frame);
     if (draw_serfs) {
-      draw_serf_row_behind(pos, y, long_row_len, x - 16, serf_animation_table, frame);
+      draw_serf_row_behind(pos, y, long_row_len, x - 16, frame);
     }
     if (draw_objects) {
       draw_map_objects_row(pos, y, long_row_len, x - 16, frame);
     }
     if (draw_serfs) {
-      draw_serf_row(pos, y, long_row_len, x - 16, serf_animation_table, frame);
+      draw_serf_row(pos, y, long_row_len, x - 16, frame);
     }
 
     y += MAP_TILE_HEIGHT;
@@ -2519,6 +2506,11 @@ viewport_t::viewport_t(interface_t *interface)
   load_serf_animation_table();
 }
 
+viewport_t::~viewport_t()
+{
+  map_deinit();
+}
+
 /* Space transformations. */
 /* The game world space is a three dimensional space with the axes
    named "column", "row" and "height". The (column, row) coordinate
@@ -2762,14 +2754,13 @@ viewport_t::load_serf_animation_table()
     return;
   }
 
+  if(size != be32toh(serf_animation_table[0])) {
+    // TODO: report and assert
+  }
+  serf_animation_table++;
+
   /* Endianess convert from big endian. */
   for (int i = 0; i < 200; i++) {
     serf_animation_table[i] = be32toh(serf_animation_table[i]);
   }
-
-  if (size != *serf_animation_table) {
-    // TODO: report and assert
-  }
-
-  serf_animation_table++;
 }

@@ -66,10 +66,13 @@ protected:
 
   virtual void internal_draw() = 0;
   virtual int internal_handle_event(const gui_event_t *event) = 0;
-  virtual void internal_set_size(int width, int height);
+  virtual void layout();
+
+  void delete_frame();
 
 public:
   gui_object_t();
+  virtual ~gui_object_t();
 
   void draw(frame_t *frame, int x, int y);
   int handle_event(const gui_event_t *event);
@@ -89,10 +92,8 @@ class gui_container_t
 public:
   gui_container_t();
 
-  virtual void internal_set_redraw_child(gui_object_t *child);
   virtual int internal_get_child_position(gui_object_t *child, int *x, int *t) = 0;
 
-  void set_redraw_child(gui_object_t *child);
   int get_child_position(gui_object_t *child, int *x, int *y);
 };
 

@@ -37,19 +37,8 @@ extern "C" {
 }
 #endif
 
-#include <time.h>
-#include <assert.h>
-
-typedef struct {
-  list_elm_t elm;
-  gui_object_t *obj;
-  int x, y;
-  int redraw;
-} interface_float_t;
-
-
 viewport_t *
-interface_t::get_top_viewport()
+interface_t::get_viewport()
 {
   return viewport;
 }
@@ -117,7 +106,6 @@ interface_t::open_message()
   } else if (!BIT_TEST(msg_flags, 3)) {
     msg_flags |= BIT(4);
     msg_flags |= BIT(3);
-    viewport_t *viewport = get_top_viewport();
     map_pos_t pos = viewport->get_current_map_pos();
     return_pos = pos;
   }
@@ -137,7 +125,6 @@ interface_t::open_message()
     /* Move screen to new position */
     map_pos_t new_pos = player->msg_queue_pos[0];
 
-    viewport_t *viewport = get_top_viewport();
     viewport->move_to_map_pos(new_pos);
     update_map_cursor_pos(new_pos);
   }
@@ -163,7 +150,6 @@ interface_t::return_from_message()
     msg_flags &= ~BIT(3);
 
     return_timeout = 0;
-    viewport_t *viewport = get_top_viewport();
     viewport->move_to_map_pos(return_pos);
 
     if (popup->get_box() == BOX_MESSAGE) close_popup();
@@ -411,7 +397,9 @@ interface_t::interface_update_interface()
 void
 interface_t::set_player(uint player)
 {
-  assert(PLAYER_IS_ACTIVE(game.player[player]));
+  if(!PLAYER_IS_ACTIVE(game.player[player])) {
+    return;
+  }
   this->player = game.player[player];
 
   /* Move viewport to initial position */
@@ -651,29 +639,16 @@ interface_t::build_castle()
 static void
 update_map_height(map_pos_t pos, interface_t *interface)
 {
-  interface->get_top_viewport()->redraw_map_pos(pos);
+  interface->get_viewport()->redraw_map_pos(pos);
 }
 
 void
 interface_t::internal_draw()
 {
-  int redraw_above = redraw;
-
-  if (top->is_displayed() &&
-      (redraw_top || redraw_above)) {
-    top->draw(frame, 0, 0);
-    redraw_top = 0;
-    redraw_above = 1;
-  }
-
-  list_elm_t *elm;
-  list_foreach(&floats, elm) {
-    interface_float_t *fl = (interface_float_t *)elm;
-    if (fl->obj->is_displayed() &&
-        (fl->redraw || redraw_above)) {
+  float_list_t::iterator fl = floats.begin();
+  for( ; fl != floats.end() ; fl++) {
+    if (fl->obj->is_displayed()) {
       fl->obj->draw(frame, fl->x, fl->y);
-      fl->redraw = 0;
-      redraw_above = 1;
     }
   }
 }
@@ -683,8 +658,8 @@ interface_t::internal_handle_event(const gui_event_t *event)
 {
   /* Handle locked cursor */
   if (cursor_lock_target != NULL) {
-    if (cursor_lock_target == top) {
-      return top->handle_event(event);
+    if (cursor_lock_target == viewport) {
+      return viewport->handle_event(event);
     } else {
       if (event->type == GUI_EVENT_TYPE_DRAG_MOVE) {
         return cursor_lock_target->handle_event(event);
@@ -712,9 +687,8 @@ interface_t::internal_handle_event(const gui_event_t *event)
   }
 
   /* Find the corresponding float element if any */
-  list_elm_t *elm;
-  list_foreach_reverse(&floats, elm) {
-    interface_float_t *fl = (interface_float_t *)elm;
+  float_list_t::reverse_iterator fl = floats.rbegin();
+  for( ; fl != floats.rend() ; fl++) {
     if (fl->obj->is_displayed() &&
       fl->obj->point_inside(fl->x, fl->y, event->x, event->y)) {
       gui_event_t float_event;
@@ -726,15 +700,12 @@ interface_t::internal_handle_event(const gui_event_t *event)
     }
   }
 
-  return top->handle_event(event);
+  return viewport->handle_event(event);
 }
 
 void
-interface_t::internal_set_size(int width, int height)
+interface_t::layout()
 {
-  this->width = width;
-  this->height = height;
-
   int panel_width = 352;
   int panel_height = 40;
   int panel_x = (width - panel_width) / 2;
@@ -755,32 +726,26 @@ interface_t::internal_set_size(int width, int height)
   int notification_box_x = panel_x + 40;
   int notification_box_y = panel_y - notification_box_height;
 
-  top->set_size(width, height);
-  redraw_top = 1;
+  viewport->set_size(width, height);
 
   /* Reassign position of floats. */
-  list_elm_t *elm;
-  list_foreach(&floats, elm) {
-    interface_float_t *fl = (interface_float_t *)elm;
+  float_list_t::iterator fl = floats.begin();
+  for( ; fl != floats.end() ; fl++) {
     if (fl->obj == popup) {
       fl->x = popup_x;
       fl->y = popup_y;
-      fl->redraw = 1;
       fl->obj->set_size(popup_width, popup_height);
     } else if (fl->obj == panel) {
       fl->x = panel_x;
       fl->y = panel_y;
-      fl->redraw = 1;
       fl->obj->set_size(panel_width, panel_height);
     } else if (fl->obj == init_box) {
       fl->x = init_box_x;
       fl->y = init_box_y;
-      fl->redraw = 1;
       fl->obj->set_size(init_box_width, init_box_height);
     } else if (fl->obj == notification_box) {
       fl->x = notification_box_x;
       fl->y = notification_box_y;
-      fl->redraw = 1;
       fl->obj->set_size(notification_box_width, notification_box_height);
     }
   }
@@ -788,40 +753,11 @@ interface_t::internal_set_size(int width, int height)
   set_redraw();
 }
 
-void
-interface_t::internal_set_redraw_child(gui_object_t *child)
-{
-  if (parent != NULL) {
-    parent->internal_set_redraw_child(this);
-  }
-
-  if (top == child) {
-    redraw_top = 1;
-    return;
-  }
-
-  list_elm_t *elm;
-  list_foreach(&floats, elm) {
-    interface_float_t *fl = (interface_float_t *)elm;
-    if (fl->obj == child) {
-      fl->redraw = 1;
-      break;
-    }
-  }
-}
-
 int
 interface_t::internal_get_child_position(gui_object_t *child, int *x, int *y)
 {
-  if (top == child) {
-    *x = 0;
-    *y = 0;
-    return 0;
-  }
-
-  list_elm_t *elm;
-  list_foreach(&floats, elm) {
-    interface_float_t *fl = (interface_float_t *)elm;
+  float_list_t::iterator fl = floats.begin();
+  for( ; fl != floats.end() ; fl++) {
     if (fl->obj == child) {
       *x = fl->x;
       *y = fl->y;
@@ -835,31 +771,29 @@ interface_t::internal_get_child_position(gui_object_t *child, int *x, int *y)
 interface_t::interface_t()
   : gui_container_t()
 {
-  top = NULL;
-  redraw_top = 0;
-  list_init(&floats);
+  displayed = true;
+
   cursor_lock_target = NULL;
 
   /* Viewport */
   viewport = new viewport_t(this);
-  viewport->set_displayed(1);
+  viewport->set_displayed(true);
 
   /* Panel bar */
   panel = new panel_bar_t(this);
-  panel->set_displayed(1);
+  panel->set_displayed(true);
 
   /* Popup box */
   popup = new popup_box_t(this);
 
   /* Add objects to interface container. */
-  set_top(viewport);
-
+  add_float(viewport, 0, 0, 0, 0);
   add_float(popup, 0, 0, 0, 0);
   add_float(panel, 0, 0, 0, 0);
 
   /* Game init box */
   init_box = new game_init_box_t(this);
-  init_box->set_displayed(1);
+  init_box->set_displayed(true);
   add_float(init_box, 0, 0, 0, 0);
 
   /* Notification box */
@@ -888,11 +822,7 @@ interface_t::interface_t()
   map_cursor_sprites[6] = 33;
 
   /* Randomness for interface */
-  srand((uint)time(NULL));
-  random.state[0] = rand();
-  random.state[1] = rand();
-  random.state[2] = rand();
-  random_int(&random);
+  random = random_generate_random_state2();
 
   last_const_tick = 0;
 
@@ -903,30 +833,18 @@ interface_t::interface_t()
 }
 
 void
-interface_t::set_top(gui_object_t *obj)
-{
-  top = obj;
-  obj->set_parent(this);
-  top->set_size(width, height);
-  redraw_top = 1;
-  set_redraw();
-}
-
-void
 interface_t::add_float(gui_object_t *obj,
         int x, int y, int width, int height)
 {
-  interface_float_t *fl = (interface_float_t*)malloc(sizeof(interface_float_t));
-  if (fl == NULL) abort();
+  float_t fl;
 
   /* Store currect location with object. */
-  fl->obj = obj;
-  fl->x = x;
-  fl->y = y;
-  fl->redraw = 1;
+  fl.obj = obj;
+  fl.x = x;
+  fl.y = y;
 
   obj->set_parent(this);
-  list_append(&floats, (list_elm_t *)fl);
+  floats.push_back(fl);
   obj->set_size(width, height);
   set_redraw();
 }
@@ -1013,4 +931,5 @@ interface_t::update()
   }
 
   viewport->update();
+  set_redraw();
 }

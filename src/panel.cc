@@ -157,7 +157,7 @@ panel_bar_t::handle_panel_button_click(int button)
       panel_btns[4] = PANEL_BTN_SETT_INACTIVE;
 
       /* Synchronize minimap window with viewport. */
-      viewport_t *viewport = interface->get_top_viewport();
+      viewport_t *viewport = interface->get_viewport();
       popup_box_t *popup = interface->get_popup_box();
       map_pos_t pos = viewport->get_current_map_pos();
       popup->get_minimap()->move_to_map_pos(pos);
@@ -391,4 +391,5 @@ void
 panel_bar_t::set_button_type(int button, panel_btn_t type)
 {
   panel_btns[button] = type;
+  set_redraw();
 }

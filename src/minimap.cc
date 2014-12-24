@@ -33,8 +33,6 @@ extern "C" {
 }
 #endif
 
-#include <stdlib.h>
-
 #define MINIMAP_MAX_SCALE  8
 
 void
@@ -215,7 +213,7 @@ int
 minimap_t::handle_event_click(int x, int y)
 {
   map_pos_t pos = map_pos_from_screen_pix(x, y);
-  interface->get_top_viewport()->move_to_map_pos(pos);
+  interface->get_viewport()->move_to_map_pos(pos);
 
   interface->update_map_cursor_pos(pos);
   interface->close_popup();
