@@ -645,25 +645,12 @@ update_map_height(map_pos_t pos, interface_t *interface)
 void
 interface_t::internal_draw()
 {
-  float_list_t::iterator fl = floats.begin();
-  for( ; fl != floats.end() ; fl++) {
-    (*fl)->draw(frame);
-  }
 }
 
 int
 interface_t::internal_handle_event(const gui_event_t *event)
 {
-  /* Find the corresponding float element if any */
-  float_list_t::reverse_iterator fl = floats.rbegin();
-  for( ; fl != floats.rend() ; fl++) {
-    int result = (*fl)->handle_event(event);
-    if (result != 0) {
-      return result;
-    }
-  }
-
-  return viewport->handle_event(event);
+  return 0;
 }
 
 void
@@ -673,64 +660,37 @@ interface_t::layout()
   int panel_height = 40;
   int panel_x = (width - panel_width) / 2;
   int panel_y = height - panel_height;
+  panel->move_to(panel_x, panel_y);
+  panel->set_size(panel_width, panel_height);
 
   int popup_width = 144;
   int popup_height = 160;
   int popup_x = (width - popup_width) / 2;
   int popup_y = (height - popup_height) / 2;
+  popup->move_to(popup_x, popup_y);
+  popup->set_size(popup_width, popup_height);
 
   int init_box_width = 360;
   int init_box_height = 174;
   int init_box_x = (width - init_box_width) / 2;
   int init_box_y = (height - init_box_height) / 2;
+  init_box->move_to(init_box_x, init_box_y);
+  init_box->set_size(init_box_width, init_box_height);
 
   int notification_box_width = 200;
   int notification_box_height = 88;
   int notification_box_x = panel_x + 40;
   int notification_box_y = panel_y - notification_box_height;
+  notification_box->move_to(notification_box_x, notification_box_y);
+  notification_box->set_size(notification_box_width, notification_box_height);
 
   viewport->set_size(width, height);
-
-  /* Reassign position of floats. */
-  float_list_t::iterator fl = floats.begin();
-  for( ; fl != floats.end() ; fl++) {
-    if (*fl == popup) {
-      (*fl)->move_to(popup_x, popup_y);
-      (*fl)->set_size(popup_width, popup_height);
-    }
-    else if (*fl == panel) {
-      (*fl)->move_to(panel_x, panel_y);
-      (*fl)->set_size(panel_width, panel_height);
-    }
-    else if (*fl == init_box) {
-      (*fl)->move_to(init_box_x, init_box_y);
-      (*fl)->set_size(init_box_width, init_box_height);
-    }
-    else if (*fl == notification_box) {
-      (*fl)->move_to(notification_box_x, notification_box_y);
-      (*fl)->set_size(notification_box_width, notification_box_height);
-    }
-  }
 
   set_redraw();
 }
 
-int
-interface_t::internal_get_child_position(gui_object_t *child, int *x, int *y)
-{
-  float_list_t::iterator fl = floats.begin();
-  for( ; fl != floats.end() ; fl++) {
-    if ((*fl) == child) {
-      (*fl)->get_position(*x, *y);
-      return 0;
-    }
-  }
-
-  return -1;
-}
-
 interface_t::interface_t()
-  : gui_container_t()
+  : gui_object_t()
 {
   displayed = true;
 
@@ -789,17 +749,6 @@ interface_t::interface_t()
   game.update_map_height_cb =
     (game_update_map_height_func *)update_map_height;
   game.update_map_height_data = this;
-}
-
-void
-interface_t::add_float(gui_object_t *obj,
-        int x, int y, int width, int height)
-{
-  obj->set_parent(this);
-  floats.push_back(obj);
-  obj->move_to(x, y);
-  obj->set_size(width, height);
-  set_redraw();
 }
 
 /* Called periodically when the game progresses. */

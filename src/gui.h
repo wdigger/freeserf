@@ -30,6 +30,8 @@ extern "C" {
 }
 #endif
 
+#include <list>
+
 typedef enum {
   GUI_EVENT_TYPE_CLICK,
   GUI_EVENT_TYPE_DBL_CLICK,
@@ -53,17 +55,19 @@ typedef struct {
   gui_event_button_t button;
 } gui_event_t;
 
-class gui_container_t;
-
 class gui_object_t
 {
+private:
+  typedef std::list<gui_object_t*> float_list_t;
+  float_list_t floats;
+
 protected:
   int x, y;
   int width, height;
   bool displayed;
   bool enabled;
   bool redraw;
-  gui_container_t *parent;
+  gui_object_t *parent;
   frame_t *frame;
 
   virtual void internal_draw() = 0;
@@ -85,20 +89,11 @@ public:
   void set_enabled(bool enabled);
   void set_redraw();
   bool is_displayed() { return displayed; }
-  gui_container_t *get_parent() { return parent; }
-  void set_parent(gui_container_t *parent) { this->parent = parent; }
+  gui_object_t *get_parent() { return parent; }
+  void set_parent(gui_object_t *parent) { this->parent = parent; }
   bool point_inside(int point_x, int point_y);
-};
 
-class gui_container_t
-  : public gui_object_t
-{
-public:
-  gui_container_t();
-
-  virtual int internal_get_child_position(gui_object_t *child, int *x, int *t) = 0;
-
-  int get_child_position(gui_object_t *child, int *x, int *y);
+  void add_float(gui_object_t *obj, int x, int y, int width, int height);
 };
 
 int gui_get_slider_click_value(int x);

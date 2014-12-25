@@ -235,7 +235,6 @@ minimap_t::handle_scroll(int up)
 int
 minimap_t::handle_drag(int x, int y, gui_event_button_t button)
 {
-  printf("dx = %d, dy = %d\n", x, y);
   if (button == GUI_EVENT_BUTTON_RIGHT || button == GUI_EVENT_BUTTON_LEFT) {
     if (x != 0 || y != 0) {
       move_by_pixels(x, y);

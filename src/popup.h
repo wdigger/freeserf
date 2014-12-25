@@ -91,7 +91,7 @@ class interface_t;
 class minimap_t;
 
 class popup_box_t
-  : public gui_container_t
+  : public gui_object_t
 {
 protected:
   interface_t *interface;
@@ -112,7 +112,6 @@ public:
 protected:
   virtual void internal_draw();
   virtual int internal_handle_event(const gui_event_t *event);
-  virtual int internal_get_child_position(gui_object_t *child, int *x, int *t);
 
   void draw_transport_info_box(frame_t *frame);
   void draw_mine_building_box(frame_t *frame);

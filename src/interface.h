@@ -36,8 +36,6 @@ extern "C" {
 }
 #endif
 
-#include <list>
-
 /* The length between game updates in miliseconds. */
 #define TICK_LENGTH  20
 #define TICKS_PER_SEC  (1000/TICK_LENGTH)
@@ -69,12 +67,9 @@ class game_init_box_t;
 class notification_box_t;
 
 class interface_t
-  : public gui_container_t
+  : public gui_object_t
 {
 protected:
-  typedef std::list<gui_object_t*> float_list_t;
-  float_list_t floats;
-
   random_state_t random;
 
   viewport_t *viewport;
@@ -147,8 +142,6 @@ public:
   void build_building(building_type_t type);
   void build_castle();
 
-  void add_float(gui_object_t *obj, int x, int y, int width, int height);
-
   void update();
 
   int get_config() { return config; }
@@ -171,8 +164,6 @@ protected:
   virtual void internal_draw();
   virtual int internal_handle_event(const gui_event_t *event);
   virtual void layout();
-
-  virtual int internal_get_child_position(gui_object_t *child, int *x, int *t);
 
   void interface_determine_map_cursor_type();
   void interface_determine_map_cursor_type_road();

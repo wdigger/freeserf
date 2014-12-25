@@ -465,9 +465,6 @@ popup_box_t::draw_map_box(frame_t *frame)
   }
   draw_popup_icon(12, 128, BIT_TEST(minimap->get_flags(), 4) ? 7 : 8, frame); /* Grid */
   draw_popup_icon(14, 128, BIT_TEST(minimap->get_flags(), 5) ? 91 : 92, frame); /* Scale */
-
-  /* Draw minimap */
-  minimap->draw(frame);
 }
 
 /* Draw building mine popup box. */
@@ -4400,26 +4397,10 @@ popup_box_t::handle_event_click(int x, int y)
 int
 popup_box_t::internal_handle_event(const gui_event_t *event)
 {
-  int x = event->x;
-  int y = event->y;
-
-  /* Pass event on to minimap */
-  if (box == BOX_MAP &&
-      x >= 8 && x < 128+8 && y >= 9 && y < 128+9) {
-    gui_event_t minimap_event;
-    minimap_event.type = event->type;
-    minimap_event.x = event->x - 8;
-    minimap_event.y = event->y - 9;
-    minimap_event.button = event->button;
-    minimap_event.dx = event->dx;
-    minimap_event.dy = event->dy;
-    return minimap->handle_event(&minimap_event);
-  }
-
   switch (event->type) {
   case GUI_EVENT_TYPE_CLICK:
     if (event->button == GUI_EVENT_BUTTON_LEFT) {
-      return handle_event_click(x, y);
+      return handle_event_click(event->x, event->y);
     }
   default:
     break;
@@ -4428,20 +4409,8 @@ popup_box_t::internal_handle_event(const gui_event_t *event)
   return 0;
 }
 
-int
-popup_box_t::internal_get_child_position(gui_object_t *child, int *x, int *y)
-{
-  if (child == minimap) {
-    *x = 8;
-    *y = 9;
-    return 0;
-  }
-
-  return -1;
-}
-
 popup_box_t::popup_box_t(interface_t *interface)
-  : gui_container_t()
+  : gui_object_t()
 {
   this->interface = interface;
 
@@ -4450,15 +4419,19 @@ popup_box_t::popup_box_t(interface_t *interface)
 
   /* Initialize minimap */
   minimap = new minimap_t(interface);
-  minimap->set_displayed(1);
-  minimap->set_parent(this);
-  minimap->move_to(8, 9);
-  minimap->set_size(128, 128);
+  minimap->set_displayed(0);
+  add_float(minimap, 8, 9, 128, 128);
 }
 
 void
 popup_box_t::set_box(box_t box)
 {
   this->box = box;
+  if (box == BOX_MAP) {
+    minimap->set_displayed(true);
+  }
+  else {
+    minimap->set_displayed(false);
+  }
   set_redraw();
 }

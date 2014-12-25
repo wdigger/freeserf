@@ -83,6 +83,12 @@ gui_object_t::draw(frame_t *frame)
   }
   if(redraw) {
     internal_draw();
+
+    float_list_t::iterator fl = floats.begin();
+    for( ; fl != floats.end() ; fl++) {
+      (*fl)->draw(this->frame);
+    }
+
     redraw = 0;
   }
   gfx_draw_frame(x, y, frame, 0, 0, this->frame, width, height);
@@ -110,6 +116,15 @@ gui_object_t::handle_event(const gui_event_t *event)
   internal_event.dx = event->dx;
   internal_event.dy = event->dy;
   internal_event.button = event->button;
+
+  /* Find the corresponding float element if any */
+  float_list_t::reverse_iterator fl = floats.rbegin();
+  for( ; fl != floats.rend() ; fl++) {
+    int result = (*fl)->handle_event(&internal_event);
+    if (result != 0) {
+      return result;
+    }
+  }
 
   return internal_handle_event(&internal_event);
 }
@@ -156,6 +171,9 @@ void
 gui_object_t::set_redraw()
 {
   redraw = true;
+  if (parent != NULL) {
+    parent->set_redraw();
+  }
 }
 
 bool
@@ -166,14 +184,13 @@ gui_object_t::point_inside(int point_x, int point_y)
           point_y < y + height);
 }
 
-gui_container_t::gui_container_t()
-  : gui_object_t()
+void
+gui_object_t::add_float(gui_object_t *obj,
+                        int x, int y, int width, int height)
 {
-}
-
-int
-gui_container_t::get_child_position(gui_object_t *child,
-         int *x, int *y)
-{
-  return internal_get_child_position(child, x, y);
+  obj->set_parent(this);
+  floats.push_back(obj);
+  obj->move_to(x, y);
+  obj->set_size(width, height);
+  set_redraw();
 }
