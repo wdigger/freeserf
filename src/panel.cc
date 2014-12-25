@@ -293,7 +293,7 @@ panel_bar_t::handle_panel_button_click(int button)
 }
 
 int
-panel_bar_t::handle_event_click(int x, int y)
+panel_bar_t::handle_click_left(int x, int y)
 {
   set_redraw();
 
@@ -346,24 +346,6 @@ panel_bar_t::handle_event_click(int x, int y)
       x -= 48;
     }
     handle_panel_button_click(button);
-  }
-
-  return 0;
-}
-
-int
-panel_bar_t::internal_handle_event(const gui_event_t *event)
-{
-  int x = event->x;
-  int y = event->y;
-
-  switch (event->type) {
-  case GUI_EVENT_TYPE_CLICK:
-    if (event->button == GUI_EVENT_BUTTON_LEFT) {
-      return handle_event_click(x, y);
-    }
-  default:
-    break;
   }
 
   return 0;

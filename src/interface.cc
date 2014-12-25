@@ -647,12 +647,6 @@ interface_t::internal_draw()
 {
 }
 
-int
-interface_t::internal_handle_event(const gui_event_t *event)
-{
-  return 0;
-}
-
 void
 interface_t::layout()
 {

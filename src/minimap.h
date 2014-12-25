@@ -47,7 +47,6 @@ protected:
   int flags;
 
   virtual void internal_draw();
-  virtual int internal_handle_event(const gui_event_t *event);
 
 public:
   minimap_t(interface_t *interface);
@@ -79,8 +78,8 @@ protected:
   void draw_minimap_grid(frame_t *frame);
   void draw_minimap_rect(frame_t *frame);
 
-  int handle_event_click(int x, int y);
-  int handle_drag(int x, int y, gui_event_button_t button);
+  virtual int handle_click_left(int x, int y);
+  virtual int handle_drag(int dx, int dy);
   int handle_scroll(int up);
 
   void map_pix_from_map_coord(map_pos_t pos, int *mx, int *my);

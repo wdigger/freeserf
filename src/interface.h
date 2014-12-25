@@ -162,7 +162,6 @@ public:
 
 protected:
   virtual void internal_draw();
-  virtual int internal_handle_event(const gui_event_t *event);
   virtual void layout();
 
   void interface_determine_map_cursor_type();

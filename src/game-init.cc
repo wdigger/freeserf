@@ -224,7 +224,7 @@ game_init_box_t::handle_action(int action)
 }
 
 int
-game_init_box_t::handle_event_click(int x, int y)
+game_init_box_t::handle_click_left(int x, int y)
 {
   const int clickmap[] = {
     ACTION_START_GAME, 20, 16, 32, 32,
@@ -291,21 +291,6 @@ game_init_box_t::handle_event_click(int x, int y)
       }
       break;
     }
-  }
-
-  return 0;
-}
-
-int
-game_init_box_t::internal_handle_event(const gui_event_t *event)
-{
-  switch (event->type) {
-  case GUI_EVENT_TYPE_CLICK:
-    if (event->button == GUI_EVENT_BUTTON_LEFT) {
-      return handle_event_click(event->x, event->y);
-    }
-  default:
-    break;
   }
 
   return 0;

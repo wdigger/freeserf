@@ -4248,7 +4248,7 @@ popup_box_t::handle_box_bld_4(int x, int y)
 }
 
 int
-popup_box_t::handle_event_click(int x, int y)
+popup_box_t::handle_click_left(int x, int y)
 {
   x -= 8;
   y -= 8;
@@ -4388,21 +4388,6 @@ popup_box_t::handle_event_click(int x, int y)
     break;
   default:
     LOGD("popup", "unhandled box: %i", box);
-    break;
-  }
-
-  return 0;
-}
-
-int
-popup_box_t::internal_handle_event(const gui_event_t *event)
-{
-  switch (event->type) {
-  case GUI_EVENT_TYPE_CLICK:
-    if (event->button == GUI_EVENT_BUTTON_LEFT) {
-      return handle_event_click(event->x, event->y);
-    }
-  default:
     break;
   }
 

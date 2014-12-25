@@ -111,7 +111,6 @@ public:
 
 protected:
   virtual void internal_draw();
-  virtual int internal_handle_event(const gui_event_t *event);
 
   void draw_transport_info_box(frame_t *frame);
   void draw_mine_building_box(frame_t *frame);
@@ -150,7 +149,7 @@ protected:
   void draw_building_stock_box(frame_t *frame);
   void draw_map_box(frame_t *frame);
 
-  int handle_event_click(int x, int y);
+  virtual int handle_click_left(int x, int y);
   void handle_action(int action, int x, int y);
   int handle_clickmap(int x, int y, const int clkmap[]);
   void handle_box_close_clk(int x, int y);

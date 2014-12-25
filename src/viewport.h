@@ -70,7 +70,6 @@ public:
   virtual ~viewport_t();
 
   virtual void internal_draw();
-  virtual int internal_handle_event(const gui_event_t *event);
   virtual void layout();
 
   void move_to_map_pos(map_pos_t pos);
@@ -113,8 +112,9 @@ protected:
                             frame_t *frame);
   void draw_serf_row(map_pos_t pos, int y_base, int cols, int x_base,
                      frame_t *frame);
-  int handle_event_click(int x, int y, gui_event_button_t button);
-  int handle_event_dbl_click(int x, int y, gui_event_button_t button);
+  virtual int handle_click_left(int x, int y);
+  virtual int handle_dbl_click(int x, int y, gui_event_button_t button);
+  virtual int handle_drag(int x, int y);
 
   void load_serf_animation_table();
 };

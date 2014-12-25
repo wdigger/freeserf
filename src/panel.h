@@ -69,12 +69,11 @@ public:
 
 protected:
   virtual void internal_draw();
-  virtual int internal_handle_event(const gui_event_t *event);
 
   void draw_panel_frame(frame_t *frame);
   void draw_panel_buttons(frame_t *frame);
   void draw_message_notify(frame_t *frame);
-  int handle_event_click(int x, int y);
+  virtual int handle_click_left(int x, int y);
   void handle_panel_button_click(int button);
 };
 

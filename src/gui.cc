@@ -126,7 +126,21 @@ gui_object_t::handle_event(const gui_event_t *event)
     }
   }
 
-  return internal_handle_event(&internal_event);
+  switch (event->type) {
+    case GUI_EVENT_TYPE_CLICK:
+      if (event->button == GUI_EVENT_BUTTON_LEFT) {
+        return handle_click_left(event_x, event_y);
+      }
+      break;
+    case GUI_EVENT_TYPE_DRAG_MOVE:
+      return handle_drag(event->dx, event->dy);
+    case GUI_EVENT_TYPE_DBL_CLICK:
+      return handle_dbl_click(x, y, event->button);
+    default:
+      break;
+  }
+
+  return 0;
 }
 
 void

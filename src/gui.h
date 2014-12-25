@@ -71,8 +71,11 @@ protected:
   frame_t *frame;
 
   virtual void internal_draw() = 0;
-  virtual int internal_handle_event(const gui_event_t *event) = 0;
   virtual void layout();
+
+  virtual int handle_click_left(int x, int y) { return 0; }
+  virtual int handle_dbl_click(int x, int y, gui_event_button_t button) { return 0; }
+  virtual int handle_drag(int dx, int dy) { return 0; }
 
   void delete_frame();
 

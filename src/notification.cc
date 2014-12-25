@@ -340,25 +340,10 @@ notification_box_t::internal_draw()
   }
 }
 
-static int
-notification_box_handle_event_click(notification_box_t *box, int x, int y)
-{
-  box->set_displayed(0);
-  return 0;
-}
-
 int
-notification_box_t::internal_handle_event(const gui_event_t *event)
+notification_box_t::handle_click_left(int x, int y)
 {
-  switch (event->type) {
-  case GUI_EVENT_TYPE_CLICK:
-    if (event->button == GUI_EVENT_BUTTON_LEFT) {
-      return notification_box_handle_event_click(this, event->x, event->y);
-    }
-  default:
-    break;
-  }
-
+  set_displayed(0);
   return 0;
 }
 

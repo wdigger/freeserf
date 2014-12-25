@@ -2244,10 +2244,8 @@ viewport_t::internal_draw()
 }
 
 int
-viewport_t::handle_event_click(int x, int y, gui_event_button_t button)
+viewport_t::handle_click_left(int x, int y)
 {
-  if (button != GUI_EVENT_BUTTON_LEFT) return 0;
-
   set_redraw();
 
   map_pos_t clk_pos = map_pos_from_screen_pix(x, y);
@@ -2304,7 +2302,7 @@ viewport_t::handle_event_click(int x, int y, gui_event_button_t button)
 }
 
 int
-viewport_t::handle_event_dbl_click(int x, int y, gui_event_button_t button)
+viewport_t::handle_dbl_click(int x, int y, gui_event_button_t button)
 {
   if (button != GUI_EVENT_BUTTON_LEFT) return 0;
 
@@ -2452,43 +2450,14 @@ viewport_t::handle_event_dbl_click(int x, int y, gui_event_button_t button)
   return 0;
 }
 
-static int
-viewport_handle_drag(viewport_t *viewport, int x, int y,
-         gui_event_button_t button)
+int
+viewport_t::handle_drag(int x, int y)
 {
-  if (button == GUI_EVENT_BUTTON_RIGHT ||
-      button == GUI_EVENT_BUTTON_LEFT) {
-    if (x != 0 || y != 0) {
-      viewport->move_by_pixels(x, y);
-    }
+  if (x != 0 || y != 0) {
+    move_by_pixels(x, y);
   }
 
   return 1;
-}
-
-int
-viewport_t::internal_handle_event(const gui_event_t *event)
-{
-  int x = event->x;
-  int y = event->y;
-
-  switch (event->type) {
-  case GUI_EVENT_TYPE_CLICK:
-    return handle_event_click(x, y, event->button);
-  case GUI_EVENT_TYPE_DBL_CLICK:
-    return handle_event_dbl_click(x, y, event->button);
-    break;
-  case GUI_EVENT_TYPE_DRAG_START:
-    return 0;
-  case GUI_EVENT_TYPE_DRAG_MOVE:
-    return viewport_handle_drag(this, event->dx, event->dy, event->button);
-  case GUI_EVENT_TYPE_DRAG_END:
-    return 0;
-  default:
-    break;
-  }
-
-  return 0;
 }
 
 viewport_t::viewport_t(interface_t *interface)

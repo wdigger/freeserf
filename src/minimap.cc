@@ -210,7 +210,7 @@ minimap_t::internal_draw()
 }
 
 int
-minimap_t::handle_event_click(int x, int y)
+minimap_t::handle_click_left(int x, int y)
 {
   map_pos_t pos = map_pos_from_screen_pix(x, y);
   interface->get_viewport()->move_to_map_pos(pos);
@@ -233,45 +233,13 @@ minimap_t::handle_scroll(int up)
 }
 
 int
-minimap_t::handle_drag(int x, int y, gui_event_button_t button)
+minimap_t::handle_drag(int x, int y)
 {
-  if (button == GUI_EVENT_BUTTON_RIGHT || button == GUI_EVENT_BUTTON_LEFT) {
-    if (x != 0 || y != 0) {
-      move_by_pixels(x, y);
-    }
+  if (x != 0 || y != 0) {
+    move_by_pixels(x, y);
   }
 
   return 1;
-}
-
-int
-minimap_t::internal_handle_event(const gui_event_t *event)
-{
-  int x = event->x;
-  int y = event->y;
-
-  switch (event->type) {
-  case GUI_EVENT_TYPE_CLICK:
-    if (event->button == GUI_EVENT_BUTTON_LEFT) {
-      return handle_event_click(x, y);
-    }
-    break;
-  case GUI_EVENT_TYPE_BUTTON_UP:
-//    if (event->button == 4 || event->button == 5) {
-//      return handle_scroll(event->button == 4);
-//    }
-    break;
-  case GUI_EVENT_TYPE_DRAG_MOVE:
-    return handle_drag(event->dx, event->dy, event->button);
-  case GUI_EVENT_TYPE_DRAG_START:
-    return 0;
-  case GUI_EVENT_TYPE_DRAG_END:
-    return 0;
-  default:
-    break;
-  }
-
-  return 0;
 }
 
 minimap_t::minimap_t(interface_t *interface)

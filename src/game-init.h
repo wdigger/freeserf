@@ -49,10 +49,9 @@ public:
   game_init_box_t(interface_t *interface);
 
   virtual void internal_draw();
-  virtual int internal_handle_event(const gui_event_t *event);
 
 protected:
-  int handle_event_click(int x, int y);
+  virtual int handle_click_left(int x, int y);
   void handle_action(int action);
 };
 
