@@ -4403,7 +4403,7 @@ popup_box_t::popup_box_t(interface_t *interface)
   current_stat_7_item = 7;
 
   /* Initialize minimap */
-  minimap = new minimap_t(interface);
+  minimap = new game_minimap_t(interface, &game);
   minimap->set_displayed(0);
   minimap->set_size(128, 128);
   add_float(minimap, 8, 9);

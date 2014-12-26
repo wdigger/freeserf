@@ -34,6 +34,7 @@ extern "C" {
 #endif
 
 class interface_t;
+class minimap_t;
 
 class game_init_box_t : public gui_object_t {
 protected:
@@ -45,16 +46,21 @@ protected:
   mission_t custom_mission;
   mission_t *mission;
 
+  map_t *map;
+  minimap_t *minimap;
+
 public:
   game_init_box_t(interface_t *interface);
+  ~game_init_box_t();
 
 protected:
   virtual void internal_draw();
-  virtual int handle_click_left(int x, int y);
+  void draw_player_box(int player, int x, int y, frame_t *frame);
 
+  virtual int handle_click_left(int x, int y);
   void handle_action(int action);
 
-  void draw_player_box(int player, int x, int y, frame_t *frame);
+  void generate_map_priview();
 };
 
 #endif /* !_GAME_INIT_H */

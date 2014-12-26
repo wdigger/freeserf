@@ -22,6 +22,7 @@
 #include "game-init.h"
 #include "interface.h"
 #include "viewport.h"
+#include "minimap.h"
 
 #ifndef _MSC_VER
 extern "C" {
@@ -111,11 +112,18 @@ game_init_box_t::internal_draw()
   }
 
   /* Game info */
+  int x = 0;
+  int y = 0;
   for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
-    draw_player_box(i, 10*i, 40, frame);
+    draw_player_box(i, 10 * x, 40 + y * 80, frame);
+    x++;
+    if (i == 1) {
+      y++;
+      x = 0;
+    }
   }
 
-  draw_box_icon(38, 128, 60, frame); /* exit */
+  draw_box_icon(38, 208, 60, frame); /* exit */
 }
 
 void
@@ -167,8 +175,7 @@ game_init_box_t::handle_action(int action)
   case ACTION_START_GAME:
     game_init(0);
     if (game_mission < 0) {
-      random_state_t rnd = random_generate_random_state();
-      int r = game_load_random_map(map_size, &rnd);
+      int r = game_load_random_map(map_size, &mission->rnd);
       if (r < 0) return;
 
       for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
@@ -198,6 +205,7 @@ game_init_box_t::handle_action(int action)
       map_size = 3;
       mission = &custom_mission;
     }
+    generate_map_priview();
     set_redraw();
     break;
   case ACTION_SHOW_OPTIONS:
@@ -210,6 +218,7 @@ game_init_box_t::handle_action(int action)
     } else {
       game_mission = std::min(game_mission+1, get_mission_count()-1);
     }
+    generate_map_priview();
     break;
   case ACTION_DECREMENT:
     if (game_mission < 0) {
@@ -217,6 +226,7 @@ game_init_box_t::handle_action(int action)
     } else {
       game_mission = std::max(0, game_mission-1);
     }
+    generate_map_priview();
     break;
   case ACTION_CLOSE:
     interface->close_game_init();
@@ -229,16 +239,32 @@ game_init_box_t::handle_action(int action)
 int
 game_init_box_t::handle_click_left(int x, int y)
 {
-  const int clickmap[] = {
-    ACTION_START_GAME, 20, 16, 32, 32,
-    ACTION_TOGGLE_GAME_TYPE, 60, 16, 32, 32,
-    ACTION_SHOW_OPTIONS, 268, 16, 32, 32,
-    ACTION_SHOW_LOAD_GAME, 308, 16, 32, 32,
-    ACTION_INCREMENT, 244, 16, 16, 16,
-    ACTION_DECREMENT, 244, 32, 16, 16,
-    ACTION_CLOSE, 324, 144, 16, 16,
+  const int clickmap_mission[] = {
+    ACTION_START_GAME,        20,  16, 32, 32,
+    ACTION_TOGGLE_GAME_TYPE,  60,  16, 32, 32,
+    ACTION_SHOW_OPTIONS,     268,  16, 32, 32,
+    ACTION_SHOW_LOAD_GAME,   308,  16, 32, 32,
+    ACTION_INCREMENT,        244,  16, 16, 16,
+    ACTION_DECREMENT,        244,  32, 16, 16,
+    ACTION_CLOSE,            324, 216, 16, 16,
     -1
   };
+
+  const int clickmap_custom[] = {
+    ACTION_START_GAME,        20,  16, 32, 32,
+    ACTION_TOGGLE_GAME_TYPE,  60,  16, 32, 32,
+    ACTION_SHOW_OPTIONS,     268,  16, 32, 32,
+    ACTION_SHOW_LOAD_GAME,   308,  16, 32, 32,
+    ACTION_INCREMENT,        220,  24, 24, 24,
+    ACTION_DECREMENT,        220,  16,  8,  8,
+    ACTION_CLOSE,            324, 216, 16, 16,
+    -1
+  };
+
+  const int *clickmap = clickmap_mission;
+  if (game_mission < 0) {
+    clickmap = clickmap_custom;
+  }
 
   const int *i = clickmap;
   while (i[0] >= 0) {
@@ -296,7 +322,24 @@ game_init_box_t::handle_click_left(int x, int y)
     }
   }
 
-  return 0;
+  return 1;
+}
+
+void
+game_init_box_t::generate_map_priview()
+{
+  if (map != NULL) {
+    free(map);
+    map = NULL;
+  }
+
+  map = (map_t*)malloc(sizeof(map_t));
+  map_init(map, map_size);
+  map_generate(map, 0, &mission->rnd);
+
+  minimap->set_map(map);
+
+  set_redraw();
 }
 
 game_init_box_t::game_init_box_t(interface_t *interface)
@@ -305,7 +348,7 @@ game_init_box_t::game_init_box_t(interface_t *interface)
   map_size = 3;
   game_mission = -1;
 
-  set_size(360, 174);
+  set_size(360, 254);
 
   /* Clear player settings */
   for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
@@ -326,5 +369,28 @@ game_init_box_t::game_init_box_t(interface_t *interface)
   custom_mission.player[1].supplies = 30;
   custom_mission.player[1].reproduction = 40;
 
+  custom_mission.rnd = random_generate_random_state();
+
   mission = &custom_mission;
+
+  minimap = new minimap_t(NULL);
+  minimap->set_displayed(true);
+  minimap->set_size(150, 160);
+  add_float(minimap, 190, 55);
+
+  map = NULL;
+  generate_map_priview();
+}
+
+game_init_box_t::~game_init_box_t()
+{
+  if (map != NULL) {
+    free(map);
+    map = NULL;
+  }
+
+  if (minimap != NULL) {
+    delete minimap;
+    minimap = NULL;
+  }
 }

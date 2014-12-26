@@ -1353,6 +1353,10 @@ map_init(map_t *map, uint size)
 	/* Initialize global lookup tables */
 	init_spiral_pattern();
 
+	map->minimap = NULL;
+	map->spiral_pos_pattern = NULL;
+	map->tiles = NULL;
+
 	map->max_lake_area = 14;
 	map->water_level = 20;
 

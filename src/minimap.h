@@ -28,6 +28,7 @@
 extern "C" {
 #endif
   #include "map.h"
+  #include "game.h"
 #ifndef _MSC_VER
 }
 #endif
@@ -38,18 +39,20 @@ class minimap_t
   : public gui_object_t
 {
 protected:
-  interface_t *interface;
-
   int offset_x, offset_y;
   int scale;
 
   int advanced;
   int flags;
 
-  virtual void internal_draw();
+  map_t *map;
 
 public:
-  minimap_t(interface_t *interface);
+  minimap_t(map_t *map);
+
+  void set_map(map_t *map);
+
+  virtual void internal_draw();
 
   void move_to_map_pos(map_pos_t pos);
   void move_by_pixels(int x, int y);
@@ -71,18 +74,34 @@ protected:
   void draw_minimap_point(int col, int row, uint8_t color,
                           int density, frame_t *frame);
   void draw_minimap_map(frame_t *frame);
+  void draw_minimap_grid(frame_t *frame);
+  void draw_minimap_rect(frame_t *frame);
+
+  virtual int handle_drag(int dx, int dy);
+  int handle_scroll(int up);
+
+	void map_pix_from_map_coord(map_pos_t pos, int *mx, int *my);
+};
+
+class game_minimap_t
+  : public minimap_t
+{
+protected:
+  interface_t *interface;
+
+  game_t *game;
+
+public:
+  game_minimap_t(interface_t *interface, game_t *game);
+
+protected:
   void draw_minimap_ownership(int density, frame_t *frame);
   void draw_minimap_roads(frame_t *frame);
   void draw_minimap_buildings(frame_t *frame);
   void draw_minimap_traffic(frame_t *frame);
-  void draw_minimap_grid(frame_t *frame);
-  void draw_minimap_rect(frame_t *frame);
 
+  virtual void internal_draw();
   virtual int handle_click_left(int x, int y);
-  virtual int handle_drag(int dx, int dy);
-  int handle_scroll(int up);
-
-  void map_pix_from_map_coord(map_pos_t pos, int *mx, int *my);
 };
 
 #endif /* !_MINIMAP_H */

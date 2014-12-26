@@ -96,9 +96,12 @@ typedef enum {
 
 /* Extractors for map data. */
 #define MAP_PATHS(pos)  ((uint)(game.map.tiles[(pos)].paths & 0x3f))
+#define MAP_PATHS2(pos)  ((uint)(map->tiles[(pos)].paths & 0x3f))
 
 #define MAP_HAS_OWNER(pos)  ((uint)((game.map.tiles[(pos)].height >> 7) & 1))
+#define MAP_HAS_OWNER2(pos)  ((uint)((map->tiles[(pos)].height >> 7) & 1))
 #define MAP_OWNER(pos)  ((uint)((game.map.tiles[(pos)].height >> 5) & 3))
+#define MAP_OWNER2(pos)  ((uint)((map->tiles[(pos)].height >> 5) & 3))
 #define MAP_HEIGHT(pos)  ((uint)(game.map.tiles[(pos)].height & 0x1f))
 #define MAP_HEIGHT2(pos)  ((uint)(map->tiles[(pos)].height & 0x1f))
 
@@ -110,8 +113,10 @@ typedef enum {
 #define MAP_OBJ(pos)  ((map_obj_t)(game.map.tiles[(pos)].obj & 0x7f))
 #define MAP_OBJ2(pos)  ((map_obj_t)(map->tiles[(pos)].obj & 0x7f))
 #define MAP_IDLE_SERF(pos)  ((uint)((game.map.tiles[(pos)].obj >> 7) & 1))
+#define MAP_IDLE_SERF2(pos)  ((uint)((map->tiles[(pos)].obj >> 7) & 1))
 
 #define MAP_OBJ_INDEX(pos)  ((uint)game.map.tiles[(pos)].obj_index)
+#define MAP_OBJ_INDEX2(pos)  ((uint)map->tiles[(pos)].obj_index)
 #define MAP_RES_TYPE(pos)  ((ground_deposit_t)((game.map.tiles[(pos)].resource >> 5) & 7))
 #define MAP_RES_TYPE2(pos)  ((ground_deposit_t)((map->tiles[(pos)].resource >> 5) & 7))
 #define MAP_RES_AMOUNT(pos)  ((uint)(game.map.tiles[(pos)].resource & 0x1f))
