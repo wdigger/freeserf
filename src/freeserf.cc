@@ -600,9 +600,7 @@ main(int argc, char *argv[])
   audio_set_volume(75);
   midi_play_track(MIDI_TRACK_0);
 
-  game.map_generator = map_generator;
-
-  game_init();
+  game_init(map_generator);
 
   /* Initialize interface */
   interface = new interface_t();
@@ -642,7 +640,7 @@ main(int argc, char *argv[])
   LOGI("main", "Cleaning up...");
 
   /* Clean up */
-  map_deinit();
+  map_deinit(&game.map);
   audio_deinit();
   gfx_deinit();
   data_deinit();

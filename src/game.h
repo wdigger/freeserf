@@ -32,9 +32,6 @@
 
 #define GAME_MAX_PLAYER_COUNT  4
 
-
-typedef void game_update_map_height_func(map_pos_t pos, void *data);
-
 typedef struct {
 	map_t map; /* ADDITION */
 	/* 0 */
@@ -55,14 +52,16 @@ typedef struct {
 	/* 40 */
 	/*
 	uint16_t map_col_pairs;
-	uint16_t map_row_pairs; */
+	uint16_t map_row_pairs;
 	int16_t map_water_level;
-	int16_t map_max_lake_area;
+	int16_t map_max_lake_area; */
 	/*uint16_t map_max_serfs_left;*/
 	uint max_serfs_from_land;
-	uint32_t map_gold_deposit;
+	/* MOVED to map_t
+	uint32_t map_gold_deposit; */
 	/* 50 */
-	uint16_t map_size;
+	/* MOVED to map_t
+	uint16_t map_size; */
 	/* 58 */
 	uint max_serfs_per_player;
 	int map_gold_morale_factor;
@@ -75,9 +74,10 @@ typedef struct {
 	/* 78 */
 	/*interface_t *interface;*/
 	/* 80 */
-	int *spiral_pattern;
+//	int *spiral_pattern;
 	/*void *player_map_rows[2];*/ /* OBSOLETE */
-	uint8_t *minimap;
+	/* MOVED to map_t
+	uint8_t *minimap; */
 	/* 90 */
 	/*int **map_serf_rows_left;*/ /* OBSOLETE */
 	/*int **map_serf_rows_right;*/ /* OBSOLETE */
@@ -93,7 +93,8 @@ typedef struct {
 	flag_t **flag_queue_black;
 	flag_t **flag_queue_white; */
 	/* C4 */
-	map_pos_t *spiral_pos_pattern;
+	/* MOVED to map_t
+	map_pos_t *spiral_pos_pattern; */
 	/* F0 */
 	inventory_t *inventories;
 	uint8_t *inventory_bitmap;
@@ -108,7 +109,7 @@ typedef struct {
 	/* 1D6 */
 	/*player_init_t pl_init[4];*/
 	/* 1EE */
-	random_state_t init_map_rnd;
+//	random_state_t init_map_rnd;
 	/* 1FA */
 	uint game_speed_save;
 	uint game_speed;
@@ -122,7 +123,8 @@ typedef struct {
 	uint history_counter;
 	random_state_t rnd;
 	/*uint8_t field_218[4];*/
-	uint16_t map_regions;
+	/* MOVED to map_t
+	uint16_t map_regions; */
 	/* OBSOLETE by local vars */
 	/*uint8_t init_map_old_type;
 	uint8_t init_map_seed_type;
@@ -166,15 +168,18 @@ typedef struct {
 	int16_t flags_in_queue;
 	/* 27A */
 	building_type_t building_type;
+	/* MOVED to map_t
 	uint16_t update_map_last_tick;
-	int16_t update_map_counter;
+	int16_t update_map_counter; */
 	/* 280 */
-	map_pos_t update_map_initial_pos;
+	/* MOVED to map_t
+	map_pos_t update_map_initial_pos; */
 	int tick_diff;
 	/* 286 */
 	uint16_t max_next_index;
 	/* 28C*/
-	int16_t update_map_16_loop;
+	/* MOVED to map_t
+	int16_t update_map_16_loop; */
 	/* 2F8 */
 	/*map_1_t *map_tiles; MOVED to map_t */
 	/*uint8_t *map_minimap;*/
@@ -191,17 +196,14 @@ typedef struct {
 	int game_type;
 	int tutorial_level;
 	int mission_level;
-	int map_generator; /* ADDITION */
-	int map_preserve_bugs; /* ADDITION */
+	/* MOVED to map_t
+	int map_preserve_bugs; */ /* ADDITION */
 	/* 37C */
 	uint8_t split;
 	/* 380 */
 	int player_score_leader;
 	/* ... */
-
-	/* Callback for map height changes */
-	game_update_map_height_func *update_map_height_cb;
-	void *update_map_height_data;
+	int map_generator;
 
 	int knight_morale_counter;
 	int inventory_schedule_counter;
@@ -212,7 +214,7 @@ extern game_t game;
 
 
 /* External interface */
-void game_init();
+void game_init(int map_generator);
 int game_add_player(uint face, uint color, uint supplies,
 		    uint reproduction, uint intelligence);
 int game_load_mission_map(int m);

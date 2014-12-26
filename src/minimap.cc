@@ -71,7 +71,7 @@ minimap_t::draw_minimap_point(int col, int row, uint8_t color,
 void
 minimap_t::draw_minimap_map(frame_t *frame)
 {
-  uint8_t *color_data = game.minimap;
+  uint8_t *color_data = game.map.minimap;
   for (uint row = 0; row < game.map.rows; row++) {
     for (uint col = 0; col < game.map.cols; col++) {
       uint8_t color = *(color_data++);

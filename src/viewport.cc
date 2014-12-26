@@ -2404,7 +2404,7 @@ viewport_t::handle_dbl_click(int x, int y, gui_event_button_t button)
             return 0;
           }
 
-          const map_pos_t *p = &game.spiral_pos_pattern[7];
+          const map_pos_t *p = &game.map.spiral_pos_pattern[7];
           int found = 0;
           for (int i = 257; i >= 0; i--) {
             map_pos_t pos = MAP_POS_ADD(building->pos, p[257-i]);

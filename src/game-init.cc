@@ -165,7 +165,7 @@ game_init_box_t::handle_action(int action)
 
   switch (action) {
   case ACTION_START_GAME:
-    game_init();
+    game_init(0);
     if (game_mission < 0) {
       random_state_t rnd = random_generate_random_state();
       int r = game_load_random_map(map_size, &rnd);

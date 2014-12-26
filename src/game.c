@@ -37,87 +37,6 @@
 
 game_t game = {0};
 
-/* Facilitates quick lookup of offsets following a spiral pattern in the map data.
- The columns following the second are filled out by setup_spiral_pattern(). */
-static int spiral_pattern[] = {
-	0, 0,
-	1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	4, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	4, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	4, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	5, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	5, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	5, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	5, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	6, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	6, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	6, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	6, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	6, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	7, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	7, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	7, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	7, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	7, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	7, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	8, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	8, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	8, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	8, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	8, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	8, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	8, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	9, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	9, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	9, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	9, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	9, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	9, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	9, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	16, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	24, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	24, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-};
-
-/* Initialize the global spiral_pattern. */
-static void
-init_spiral_pattern()
-{
-	static const int spiral_matrix[] = {
-		1,  0,  0,  1,
-		1,  1, -1,  0,
-		0,  1, -1, -1,
-		-1,  0,  0, -1,
-		-1, -1,  1,  0,
-		0, -1,  1,  1
-	};
-
-	game.spiral_pattern = spiral_pattern;
-
-	for (int i = 0; i < 49; i++) {
-		int x = spiral_pattern[2 + 12*i];
-		int y = spiral_pattern[2 + 12*i + 1];
-
-		for (int j = 0; j < 6; j++) {
-			spiral_pattern[2+12*i+2*j] = x*spiral_matrix[4*j+0] + y*spiral_matrix[4*j+2];
-			spiral_pattern[2+12*i+2*j+1] = x*spiral_matrix[4*j+1] + y*spiral_matrix[4*j+3];
-		}
-	}
-}
-
 /* Allocate and initialize a new flag_t object.
    Return -1 if no more flags can be allocated, otherwise 0. */
 int
@@ -520,7 +439,7 @@ update_knight_morale()
 		player->gold_deposited = depot;
 
 		/* Calculate according to gold collected. */
-		uint map_gold = game.map_gold_deposit;
+		uint map_gold = game.map.gold_deposit;
 		if (map_gold != 0) {
 			while (map_gold > 0xffff) {
 				map_gold >>= 1;
@@ -1527,7 +1446,7 @@ update_unfinished_adv_building(building_t *building)
 	int need_leveling = 0;
 	int height = game_get_leveling_height(building->pos);
 	for (int i = 0; i < 7; i++) {
-		map_pos_t pos = MAP_POS_ADD(building->pos, game.spiral_pos_pattern[i]);
+		map_pos_t pos = MAP_POS_ADD(building->pos, game.map.spiral_pos_pattern[i]);
 		if (MAP_HEIGHT(pos) != height) {
 			need_leveling = 1;
 			break;
@@ -1657,7 +1576,7 @@ update_building_castle(building_t *building)
 	map_pos_t flag_pos = MAP_MOVE_DOWN_RIGHT(building->pos);
 	if (MAP_SERF_INDEX(flag_pos) != 0) {
 		serf_t *serf = game_get_serf(MAP_SERF_INDEX(flag_pos));
-		if (serf->pos != flag_pos) map_set_serf_index(flag_pos, 0);
+		if (serf->pos != flag_pos) map_set_serf_index(&game.map, flag_pos, 0);
 	}
 }
 
@@ -1938,7 +1857,7 @@ handle_building_update(building_t *building)
 				map_pos_t flag_pos = MAP_MOVE_DOWN_RIGHT(building->pos);
 				if (MAP_SERF_INDEX(flag_pos) != 0) {
 					serf_t *serf = game_get_serf(MAP_SERF_INDEX(flag_pos));
-					if (serf->pos != flag_pos) map_set_serf_index(flag_pos, 0);
+					if (serf->pos != flag_pos) map_set_serf_index(&game.map, flag_pos, 0);
 				}
 			}
 			break;
@@ -2211,7 +2130,7 @@ update_buildings()
 				if (building->serf_index >= delta) {
 					building->serf_index -= delta;
 				} else {
-					map_set_object(building->pos, MAP_OBJ_NONE, 0);
+					map_set_object(&game.map, building->pos, MAP_OBJ_NONE, 0);
 					game_free_building(i);
 				}
 			} else {
@@ -2412,7 +2331,7 @@ game_update()
 	game.tick_diff = game.tick - game.last_tick;
 
 	clear_serf_request_failure();
-	map_update();
+	map_update(&game.map, game.tick);
 
 	/* Update players */
 	for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
@@ -3427,7 +3346,7 @@ game_build_flag(map_pos_t pos, player_t *player)
 	flag->path_con = player->player_num << 6;
 
 	flag->pos = pos;
-	map_set_object(pos, MAP_OBJ_FLAG, flg_index);
+	map_set_object(&game.map, pos, MAP_OBJ_FLAG, flg_index);
 
 	if (MAP_PATHS(pos) != 0) {
 		build_flag_split_path(pos);
@@ -3442,7 +3361,7 @@ game_can_build_military(map_pos_t pos)
 {
 	/* Check that no military buildings are nearby */
 	for (int i = 0; i < 1+6+12; i++) {
-		map_pos_t p = MAP_POS_ADD(pos, game.spiral_pos_pattern[i]);
+		map_pos_t p = MAP_POS_ADD(pos, game.map.spiral_pos_pattern[i]);
 		if (MAP_OBJ(p) >= MAP_OBJ_SMALL_BUILDING &&
 		    MAP_OBJ(p) <= MAP_OBJ_CASTLE) {
 			building_t *bld = game_get_building(MAP_OBJ_INDEX(p));
@@ -3467,7 +3386,7 @@ game_get_leveling_height(map_pos_t pos)
 	int h_min = 31;
 	int h_max = 0;
 	for (int i = 0; i < 12; i++) {
-		map_pos_t p = MAP_POS_ADD(pos, game.spiral_pos_pattern[7+i]);
+		map_pos_t p = MAP_POS_ADD(pos, game.map.spiral_pos_pattern[7+i]);
 		int h = MAP_HEIGHT(p);
 		if (h_min > h) h_min = h;
 		if (h_max < h) h_max = h;
@@ -3475,7 +3394,7 @@ game_get_leveling_height(map_pos_t pos)
 
 	/* Adjust for height of adjacent unleveled buildings */
 	for (int i = 0; i < 18; i++) {
-		map_pos_t p = MAP_POS_ADD(pos, game.spiral_pos_pattern[19+i]);
+		map_pos_t p = MAP_POS_ADD(pos, game.map.spiral_pos_pattern[19+i]);
 		if (MAP_OBJ(p) == MAP_OBJ_LARGE_BUILDING) {
 			building_t *bld = game_get_building(MAP_OBJ_INDEX(p));
 			if (!BUILDING_IS_DONE(bld) &&
@@ -3493,7 +3412,7 @@ game_get_leveling_height(map_pos_t pos)
 	/* Calculate "mean" height. Height of center is added twice. */
 	int h_mean = MAP_HEIGHT(pos);
 	for (int i = 0; i < 7; i++) {
-		map_pos_t p = MAP_POS_ADD(pos, game.spiral_pos_pattern[i]);
+		map_pos_t p = MAP_POS_ADD(pos, game.map.spiral_pos_pattern[i]);
 		h_mean += MAP_HEIGHT(p);
 	}
 	h_mean >>= 3;
@@ -3547,14 +3466,14 @@ game_can_build_large(map_pos_t pos)
 {
 	/* Check that surroundings are passable by serfs. */
 	for (int i = 0; i < 6; i++) {
-		map_pos_t p = MAP_POS_ADD(pos, game.spiral_pos_pattern[1+i]);
+		map_pos_t p = MAP_POS_ADD(pos, game.map.spiral_pos_pattern[1+i]);
 		map_space_t s = map_space_from_obj[MAP_OBJ(p)];
 		if (s >= MAP_SPACE_SEMIPASSABLE) return 0;
 	}
 
 	/* Check that buildings in the second shell aren't large or castle. */
 	for (int i = 0; i < 12; i++) {
-		map_pos_t p = MAP_POS_ADD(pos, game.spiral_pos_pattern[7+i]);
+		map_pos_t p = MAP_POS_ADD(pos, game.map.spiral_pos_pattern[7+i]);
 		if (MAP_OBJ(p) >= MAP_OBJ_LARGE_BUILDING &&
 		    MAP_OBJ(p) <= MAP_OBJ_CASTLE) {
 			return 0;
@@ -3586,7 +3505,7 @@ game_can_build_castle(map_pos_t pos, const player_t *player)
 
 	/* Check owner of land around position */
 	for (int i = 0; i < 7; i++) {
-		map_pos_t p = MAP_POS_ADD(pos, game.spiral_pos_pattern[i]);
+		map_pos_t p = MAP_POS_ADD(pos, game.map.spiral_pos_pattern[i]);
 		if (MAP_HAS_OWNER(p)) return 0;
 	}
 
@@ -3624,7 +3543,7 @@ game_can_player_build(map_pos_t pos, const player_t *player)
 
 	/* Check owner of land around position */
 	for (int i = 0; i < 7; i++) {
-		map_pos_t p = MAP_POS_ADD(pos, game.spiral_pos_pattern[i]);
+		map_pos_t p = MAP_POS_ADD(pos, game.map.spiral_pos_pattern[i]);
 		if (!MAP_HAS_OWNER(p) ||
 		    MAP_OWNER(p) != player->player_num) {
 			return 0;
@@ -3809,11 +3728,11 @@ game_build_building(map_pos_t pos, building_type_t type, player_t *player)
 
 	tiles[pos].obj &= ~BIT(7);
 
-	map_set_object(pos, obj_types[type], bld_index);
+	map_set_object(&game.map, pos, obj_types[type], bld_index);
 	tiles[pos].paths |= BIT(1);
 
 	if (MAP_OBJ(MAP_MOVE_DOWN_RIGHT(pos)) != MAP_OBJ_FLAG) {
-		map_set_object(MAP_MOVE_DOWN_RIGHT(pos), MAP_OBJ_FLAG, flg_index);
+		map_set_object(&game.map, MAP_MOVE_DOWN_RIGHT(pos), MAP_OBJ_FLAG, flg_index);
 		tiles[MAP_MOVE_DOWN_RIGHT(pos)].paths |= BIT(4);
 	}
 
@@ -3840,7 +3759,7 @@ create_initial_castle_serfs(player_t *player)
 	serf_log_state_change(serf, SERF_STATE_BUILDING_CASTLE);
 	serf->state = SERF_STATE_BUILDING_CASTLE;
 	serf->s.building_castle.inv_index = player->castle_inventory;
-	map_set_serf_index(serf->pos, SERF_INDEX(serf));
+	map_set_serf_index(&game.map, serf->pos, SERF_INDEX(serf));
 
 	building_t *building = game_get_building(player->building);
 	building->serf_index = SERF_INDEX(serf);
@@ -4031,8 +3950,8 @@ game_build_castle(map_pos_t pos, player_t *player)
 		/* TODO ... */
 	}
 
-	game.map_gold_deposit += inventory->resources[RESOURCE_GOLDBAR];
-	game.map_gold_deposit += inventory->resources[RESOURCE_GOLDORE];
+	game.map.gold_deposit += inventory->resources[RESOURCE_GOLDBAR];
+	game.map.gold_deposit += inventory->resources[RESOURCE_GOLDORE];
 
 	castle->pos = pos;
 	flag->pos = MAP_MOVE_DOWN_RIGHT(pos);
@@ -4052,17 +3971,17 @@ game_build_castle(map_pos_t pos, player_t *player)
 	flag->endpoint |= BIT(6);
 
 	map_tile_t *tiles = game.map.tiles;
-	map_set_object(pos, MAP_OBJ_CASTLE, bld_index);
+	map_set_object(&game.map, pos, MAP_OBJ_CASTLE, bld_index);
 	tiles[pos].paths |= BIT(1);
 
-	map_set_object(MAP_MOVE_DOWN_RIGHT(pos), MAP_OBJ_FLAG, flg_index);
+	map_set_object(&game.map, MAP_MOVE_DOWN_RIGHT(pos), MAP_OBJ_FLAG, flg_index);
 	tiles[MAP_MOVE_DOWN_RIGHT(pos)].paths |= BIT(4);
 
 	/* Level land in hexagon below castle */
 	int h = game_get_leveling_height(pos);
-	map_set_height(pos, h);
+	map_set_height(&game.map, pos, h);
 	for (int d = DIR_RIGHT; d <= DIR_UP; d++) {
-		map_set_height(MAP_MOVE(pos, d), h);
+		map_set_height(&game.map, MAP_MOVE(pos, d), h);
 	}
 
 	game_update_land_ownership(pos);
@@ -4296,7 +4215,7 @@ demolish_flag(map_pos_t pos)
 		}
 	}
 
-	map_set_object(pos, MAP_OBJ_NONE, 0);
+	map_set_object(&game.map, pos, MAP_OBJ_NONE, 0);
 
 	/* Remove resources from flag. */
 	for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
@@ -4357,7 +4276,7 @@ demolish_building(map_pos_t pos)
 	     BUILDING_TYPE(building) == BUILDING_FORTRESS ||
 	     BUILDING_TYPE(building) == BUILDING_GOLDSMELTER)) {
 		int gold_stock = building->stock[1].available;
-		game.map_gold_deposit -= gold_stock;
+		game.map.gold_deposit -= gold_stock;
 	}
 
 	/* Update land owner ship if the building is military. */
@@ -4386,8 +4305,8 @@ demolish_building(map_pos_t pos)
 				game_lose_resource(res);
 			}
 
-			game.map_gold_deposit -= inventory->resources[RESOURCE_GOLDBAR];
-			game.map_gold_deposit -= inventory->resources[RESOURCE_GOLDORE];
+			game.map.gold_deposit -= inventory->resources[RESOURCE_GOLDBAR];
+			game.map.gold_deposit -= inventory->resources[RESOURCE_GOLDORE];
 
 			game_free_inventory(INVENTORY_INDEX(inventory));
 		}
@@ -4555,7 +4474,7 @@ game_calculate_military_flag_state(building_t *building)
 		int offset;
 		while ((offset = border_check_offsets[k++]) >= 0) {
 			map_pos_t check_pos = MAP_POS_ADD(building->pos,
-							  game.spiral_pos_pattern[offset]);
+							  game.map.spiral_pos_pattern[offset]);
 			if (MAP_HAS_OWNER(check_pos) &&
 			    MAP_OWNER(check_pos) != BUILDING_PLAYER(building)) {
 				goto break_loops;
@@ -4836,7 +4755,7 @@ game_occupy_enemy_building(building_t *building, int player_num)
 		/* Demolish nearby buildings. */
 		for (int i = 0; i < 12; i++) {
 			map_pos_t pos = MAP_POS_ADD(building->pos,
-						    game.spiral_pos_pattern[7+i]);
+						    game.map.spiral_pos_pattern[7+i]);
 			if (MAP_OBJ(pos) >= MAP_OBJ_SMALL_BUILDING &&
 			    MAP_OBJ(pos) <= MAP_OBJ_CASTLE) {
 				demolish_building(pos);
@@ -5162,21 +5081,12 @@ game_add_player(uint face, uint color, uint supplies,
 }
 
 void
-game_init()
+game_init(int map_generator)
 {
-	/* Initialize global lookup tables */
-	init_spiral_pattern();
-
+	game.map_generator = map_generator;
 	game.svga |= BIT(3); /* Game has started. */
 	game.game_speed = DEFAULT_GAME_SPEED;
 
-	game.map_water_level = 20;
-	game.map_max_lake_area = 14;
-
-	game.update_map_last_tick = 0;
-	game.update_map_counter = 0;
-	game.update_map_16_loop = 0;
-	game.update_map_initial_pos = 0;
 	game.next_index = 0;
 
 	/* Clear player objects */
@@ -5200,47 +5110,15 @@ game_init()
 	game.inventory_schedule_counter = 0;
 }
 
-/* Initialize spiral_pos_pattern from spiral_pattern. */
 static void
-init_spiral_pos_pattern()
+game_init_map(int size, const random_state_t *rnd)
 {
-	int *pattern = game.spiral_pattern;
+	map_init(&game.map, size);
 
-	if (game.spiral_pos_pattern == NULL) {
-		game.spiral_pos_pattern = (map_pos_t*)malloc(295*sizeof(map_pos_t));
-		if (game.spiral_pos_pattern == NULL) abort();
-	}
-
-	for (int i = 0; i < 295; i++) {
-		int x = pattern[2*i] & game.map.col_mask;
-		int y = pattern[2*i+1] & game.map.row_mask;
-
-		game.spiral_pos_pattern[i] = MAP_POS(x, y);
-	}
-}
-
-static void
-game_init_map()
-{
-	game.map.col_size = 5 + game.map_size/2;
-	game.map.row_size = 5 + (game.map_size - 1)/2;
-	game.map.cols = 1 << game.map.col_size;
-	game.map.rows = 1 << game.map.row_size;
-
-	/* game.split |= BIT(3); */
-
-	if (game.map.cols < 64 || game.map.rows < 64) {
-		/* game.split &= ~BIT(3); */
-	}
-
-	map_init_dimensions(&game.map);
-
-	game.map_regions = (game.map.cols >> 5) * (game.map.rows >> 5);
-
-	game.serf_limit = 500 * game.map_regions;
-	game.flag_limit = 32 * game.map_regions;
-	game.building_limit = 25 * game.map_regions;
-	game.inventory_limit = 4 * game.map_regions;
+	game.serf_limit = 500 * game.map.regions;
+	game.flag_limit = 32 * game.map.regions;
+	game.building_limit = 25 * game.map.regions;
+	game.inventory_limit = 4 * game.map.regions;
 
 	/* Reserve half the serfs equally among players,
 	   and the rest according to the amount of land controlled. */
@@ -5249,9 +5127,14 @@ game_init_map()
 
 	game.map_gold_morale_factor = 0;
 
-	init_spiral_pos_pattern();
-	map_init();
-	map_init_minimap();
+	/* initialize rnd state */
+	memcpy(&game.rnd, rnd, sizeof(random_state_t));
+
+	game.rnd.state[0] ^= 0x5a5a;
+	game.rnd.state[1] ^= 0xa5a5;
+	game.rnd.state[2] ^= 0xc3c3;
+
+	map_generate(&game.map, game.map_generator, &game.rnd);
 
 	game.winning_player = -1;
 	/* game.show_game_end = 0; */
@@ -5328,18 +5211,10 @@ game_load_mission_map(int level)
 		64, 72, 68, 76
 	};
 
-	memcpy(&game.init_map_rnd, &(get_mission(level)->rnd),
-	       sizeof(random_state_t));
-
 	game.mission_level = level;
-	game.map_size = 3;
-	game.map_preserve_bugs = 1;
+	game.map.preserve_bugs = 1;
 
-	game.init_map_rnd.state[0] ^= 0x5a5a;
-	game.init_map_rnd.state[1] ^= 0xa5a5;
-	game.init_map_rnd.state[2] ^= 0xc3c3;
-
-	game_init_map();
+	game_init_map(3, &(get_mission(level)->rnd));
 	game_allocate_objects();
 
 	/* Initialize player and build initial castle */
@@ -5370,12 +5245,10 @@ game_load_random_map(int size, const random_state_t *rnd)
 {
 	if (size < 3 || size > 10) return -1;
 
-	game.map_size = size;
-	game.map_preserve_bugs = 0;
+	game.map.size = size;
+	game.map.preserve_bugs = 0;
 
-	memcpy(&game.init_map_rnd, rnd, sizeof(random_state_t));
-
-	game_init_map();
+	game_init_map(size, rnd);
 	game_allocate_objects();
 
 	return 0;
@@ -5387,9 +5260,8 @@ game_load_save_game(const char *path)
 	int r = load_state(path);
 	if (r < 0) return -1;
 
-	init_spiral_pos_pattern();
 	game_init_land_ownership();
-	map_init_minimap();
+	map_init_minimap(&game.map);
 
 	return 0;
 }
@@ -5434,7 +5306,7 @@ game_lose_resource(resource_type_t res)
 {
 	if (res == RESOURCE_GOLDORE ||
 	    res == RESOURCE_GOLDBAR) {
-		game.map_gold_deposit -= 1;
+		game.map.gold_deposit -= 1;
 	}
 }
 

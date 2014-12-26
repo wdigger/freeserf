@@ -740,9 +740,9 @@ interface_t::interface_t()
   last_const_tick = 0;
 
   /* Listen for updates to the map height */
-  game.update_map_height_cb =
+  game.map.update_map_height_cb =
     (game_update_map_height_func *)update_map_height;
-  game.update_map_height_data = this;
+  game.map.update_map_height_data = this;
 }
 
 /* Called periodically when the game progresses. */

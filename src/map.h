@@ -23,6 +23,7 @@
 #define _MAP_H
 
 #include "misc.h"
+#include "random.h"
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
@@ -51,30 +52,46 @@ typedef enum {
 
 /* Extract col and row from map_pos_t */
 #define MAP_POS_COL(pos)  ((pos) & game.map.col_mask)
+#define MAP_POS_COL2(pos)  ((pos) & map->col_mask)
 #define MAP_POS_ROW(pos)  (((pos)>>game.map.row_shift) & game.map.row_mask)
+#define MAP_POS_ROW2(pos)  (((pos)>>map->row_shift) & map->row_mask)
 
 /* Translate col, row coordinate to map_pos_t value. */
 #define MAP_POS(x,y)  (((y)<<game.map.row_shift) | (x))
+#define MAP_POS2(x,y)  (((y)<<map->row_shift) | (x))
 
 /* Addition of two map positions. */
 #define MAP_POS_ADD(pos,off)  MAP_POS(((MAP_POS_COL(pos) + MAP_POS_COL(off)) & game.map.col_mask), \
 				      ((MAP_POS_ROW(pos) + MAP_POS_ROW(off)) & game.map.row_mask))
+#define MAP_POS_ADD2(pos,off)  MAP_POS2(((MAP_POS_COL2(pos) + MAP_POS_COL2(off)) & map->col_mask), \
+				      ((MAP_POS_ROW2(pos) + MAP_POS_ROW2(off)) & map->row_mask))
 
 /* Movement of map position according to directions. */
 #define MAP_MOVE(pos,dir)  MAP_POS_ADD((pos), game.map.dirs[(dir)])
+#define MAP_MOVE2(pos,dir)  MAP_POS_ADD2((pos), map->dirs[(dir)])
 
 #define MAP_MOVE_RIGHT(pos)  MAP_MOVE((pos), DIR_RIGHT)
+#define MAP_MOVE_RIGHT2(pos)  MAP_MOVE2((pos), DIR_RIGHT)
 #define MAP_MOVE_DOWN_RIGHT(pos)  MAP_MOVE((pos), DIR_DOWN_RIGHT)
+#define MAP_MOVE_DOWN_RIGHT2(pos)  MAP_MOVE2((pos), DIR_DOWN_RIGHT)
 #define MAP_MOVE_DOWN(pos)  MAP_MOVE((pos), DIR_DOWN)
+#define MAP_MOVE_DOWN2(pos)  MAP_MOVE2((pos), DIR_DOWN)
 #define MAP_MOVE_LEFT(pos)  MAP_MOVE((pos), DIR_LEFT)
+#define MAP_MOVE_LEFT2(pos)  MAP_MOVE2((pos), DIR_LEFT)
 #define MAP_MOVE_UP_LEFT(pos)  MAP_MOVE((pos), DIR_UP_LEFT)
+#define MAP_MOVE_UP_LEFT2(pos)  MAP_MOVE2((pos), DIR_UP_LEFT)
 #define MAP_MOVE_UP(pos)  MAP_MOVE((pos), DIR_UP)
+#define MAP_MOVE_UP2(pos)  MAP_MOVE2((pos), DIR_UP)
 
 #define MAP_MOVE_UP_RIGHT(pos)  MAP_MOVE((pos), DIR_UP_RIGHT)
+#define MAP_MOVE_UP_RIGHT2(pos)  MAP_MOVE2((pos), DIR_UP_RIGHT)
 #define MAP_MOVE_DOWN_LEFT(pos)  MAP_MOVE((pos), DIR_DOWN_LEFT)
+#define MAP_MOVE_DOWN_LEFT2(pos)  MAP_MOVE2((pos), DIR_DOWN_LEFT)
 
 #define MAP_MOVE_RIGHT_N(pos,n)  MAP_POS_ADD((pos), game.map.dirs[DIR_RIGHT]*(n))
+#define MAP_MOVE_RIGHT_N2(pos,n)  MAP_POS_ADD2((pos), map->dirs[DIR_RIGHT]*(n))
 #define MAP_MOVE_DOWN_N(pos,n)  MAP_POS_ADD((pos), game.map.dirs[DIR_DOWN]*(n))
+#define MAP_MOVE_DOWN_N2(pos,n)  MAP_POS_ADD2((pos), map->dirs[DIR_DOWN]*(n))
 
 
 /* Extractors for map data. */
@@ -83,16 +100,22 @@ typedef enum {
 #define MAP_HAS_OWNER(pos)  ((uint)((game.map.tiles[(pos)].height >> 7) & 1))
 #define MAP_OWNER(pos)  ((uint)((game.map.tiles[(pos)].height >> 5) & 3))
 #define MAP_HEIGHT(pos)  ((uint)(game.map.tiles[(pos)].height & 0x1f))
+#define MAP_HEIGHT2(pos)  ((uint)(map->tiles[(pos)].height & 0x1f))
 
 #define MAP_TYPE_UP(pos)  ((uint)((game.map.tiles[(pos)].type >> 4) & 0xf))
+#define MAP_TYPE_UP2(pos)  ((uint)((map->tiles[(pos)].type >> 4) & 0xf))
 #define MAP_TYPE_DOWN(pos)  ((uint)(game.map.tiles[(pos)].type & 0xf))
+#define MAP_TYPE_DOWN2(pos)  ((uint)(map->tiles[(pos)].type & 0xf))
 
 #define MAP_OBJ(pos)  ((map_obj_t)(game.map.tiles[(pos)].obj & 0x7f))
+#define MAP_OBJ2(pos)  ((map_obj_t)(map->tiles[(pos)].obj & 0x7f))
 #define MAP_IDLE_SERF(pos)  ((uint)((game.map.tiles[(pos)].obj >> 7) & 1))
 
 #define MAP_OBJ_INDEX(pos)  ((uint)game.map.tiles[(pos)].obj_index)
 #define MAP_RES_TYPE(pos)  ((ground_deposit_t)((game.map.tiles[(pos)].resource >> 5) & 7))
+#define MAP_RES_TYPE2(pos)  ((ground_deposit_t)((map->tiles[(pos)].resource >> 5) & 7))
 #define MAP_RES_AMOUNT(pos)  ((uint)(game.map.tiles[(pos)].resource & 0x1f))
+#define MAP_RES_AMOUNT2(pos)  ((uint)(map->tiles[(pos)].resource & 0x1f))
 #define MAP_RES_FISH(pos)  ((uint)game.map.tiles[(pos)].resource)
 #define MAP_SERF_INDEX(pos)  ((uint)game.map.tiles[(pos)].serf)
 
@@ -107,6 +130,9 @@ typedef enum {
 #define MAP_WATER_TILE(pos)				\
 	(MAP_TYPE_DOWN(pos) < 4 &&			\
 	 MAP_TYPE_UP(pos) < 4)
+#define MAP_WATER_TILE2(pos)				\
+	(MAP_TYPE_DOWN2(pos) < 4 &&			\
+	MAP_TYPE_UP2(pos) < 4)
 
 /* Whether the position is completely surrounded by water. */
 #define MAP_IN_WATER(pos)				\
@@ -114,6 +140,11 @@ typedef enum {
 	 MAP_WATER_TILE(MAP_MOVE_UP_LEFT(pos)) &&	\
 	 MAP_TYPE_DOWN(MAP_MOVE_LEFT(pos)) < 4 &&	\
 	 MAP_TYPE_UP(MAP_MOVE_UP(pos)) < 4)
+#define MAP_IN_WATER2(pos)				\
+	(MAP_WATER_TILE2(pos) &&				\
+	MAP_WATER_TILE2(MAP_MOVE_UP_LEFT2(pos)) &&	\
+	MAP_TYPE_DOWN2(MAP_MOVE_LEFT2(pos)) < 4 &&	\
+	MAP_TYPE_UP2(MAP_MOVE_UP2(pos)) < 4)
 
 
 typedef enum {
@@ -256,14 +287,16 @@ typedef struct {
 	uint16_t serf;
 } map_tile_t;
 
-
 /* map_pos_t is a compact composition of col and row values that
    uniquely identifies a vertex in the map space. It is also used
    directly as index to map data arrays. */
 typedef uint map_pos_t;
 
+typedef void game_update_map_height_func(map_pos_t pos, void *data);
+
 typedef struct {
 	/* Fundamentals */
+	uint16_t size;
 	map_tile_t *tiles;
 	uint col_size, row_size;
 
@@ -273,6 +306,30 @@ typedef struct {
 	uint cols, rows;
 	uint col_mask, row_mask;
 	uint row_shift;
+
+	uint8_t *minimap;
+
+	int16_t water_level;
+	int16_t max_lake_area;
+
+	int preserve_bugs;
+
+	uint16_t regions;
+
+	uint32_t gold_deposit;
+
+	random_state_t *rnd;
+
+	int16_t update_map_16_loop;
+	uint16_t update_map_last_tick;
+	int16_t update_map_counter;
+	map_pos_t update_map_initial_pos;
+
+	/* Callback for map height changes */
+	game_update_map_height_func *update_map_height_cb;
+	void *update_map_height_data;
+
+	map_pos_t *spiral_pos_pattern;
 } map_t;
 
 
@@ -280,18 +337,22 @@ typedef struct {
 extern const map_space_t map_space_from_obj[128];
 
 
-void map_set_height(map_pos_t pos, int height);
-void map_set_object(map_pos_t pos, map_obj_t obj, int index);
-void map_remove_ground_deposit(map_pos_t pos, int amount);
-void map_remove_fish(map_pos_t pos, int amount);
-void map_set_serf_index(map_pos_t pos, int index);
+void map_set_height(map_t *map, map_pos_t pos, int height);
+void map_set_object(map_t *map, map_pos_t pos, map_obj_t obj, int index);
+void map_remove_ground_deposit(map_t *map, map_pos_t pos, int amount);
+void map_remove_fish(map_t *map, map_pos_t pos, int amount);
+void map_set_serf_index(map_t *map, map_pos_t pos, int index);
 
 void map_init_dimensions(map_t *map);
-void map_init_minimap();
+void map_init_minimap(map_t *map);
 
-void map_init();
-void map_deinit();
-void map_update();
+void map_init(map_t *map, uint size);
+void map_generate(map_t *map, int generator, random_state_t *rnd);
+void map_deinit(map_t *map);
+void map_update(map_t *map, uint tick);
 
+uint16_t map_random_int(map_t *map);
+
+int *get_spiral_pattern();
 
 #endif /* _MAP_H */
