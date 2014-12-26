@@ -169,6 +169,13 @@ gui_object_t::set_size(int width, int height)
 }
 
 void
+gui_object_t::get_size(int &width, int &height)
+{
+  width = this->width;
+  height = this->height;
+}
+
+void
 gui_object_t::set_displayed(bool displayed)
 {
   this->displayed = displayed;
@@ -200,11 +207,10 @@ gui_object_t::point_inside(int point_x, int point_y)
 
 void
 gui_object_t::add_float(gui_object_t *obj,
-                        int x, int y, int width, int height)
+                        int x, int y)
 {
   obj->set_parent(this);
   floats.push_back(obj);
   obj->move_to(x, y);
-  obj->set_size(width, height);
   set_redraw();
 }

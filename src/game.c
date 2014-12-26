@@ -5328,7 +5328,7 @@ game_load_mission_map(int level)
 		64, 72, 68, 76
 	};
 
-	memcpy(&game.init_map_rnd, &mission[level].rnd,
+	memcpy(&game.init_map_rnd, &(get_mission(level)->rnd),
 	       sizeof(random_state_t));
 
 	game.mission_level = level;
@@ -5344,7 +5344,7 @@ game_load_mission_map(int level)
 
 	/* Initialize player and build initial castle */
 	for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
-		const mission_t *m = &mission[level];
+		const mission_t *m = get_mission(level);
 		uint face = (i == 0) ? 12 : m->player[i].face;
 		if (face == 0) continue;
 

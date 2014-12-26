@@ -664,12 +664,12 @@ interface_t::layout()
   popup->move_to(popup_x, popup_y);
   popup->set_size(popup_width, popup_height);
 
-  int init_box_width = 360;
-  int init_box_height = 174;
+  int init_box_width;
+  int init_box_height;
+  init_box->get_size(init_box_width, init_box_height);
   int init_box_x = (width - init_box_width) / 2;
   int init_box_y = (height - init_box_height) / 2;
   init_box->move_to(init_box_x, init_box_y);
-  init_box->set_size(init_box_width, init_box_height);
 
   int notification_box_width = 200;
   int notification_box_height = 88;
@@ -700,18 +700,18 @@ interface_t::interface_t()
   popup = new popup_box_t(this);
 
   /* Add objects to interface container. */
-  add_float(viewport, 0, 0, 0, 0);
-  add_float(popup, 0, 0, 0, 0);
-  add_float(panel, 0, 0, 0, 0);
+  add_float(viewport, 0, 0);
+  add_float(popup, 0, 0);
+  add_float(panel, 0, 0);
 
   /* Game init box */
   init_box = new game_init_box_t(this);
   init_box->set_displayed(true);
-  add_float(init_box, 0, 0, 0, 0);
+  add_float(init_box, 0, 0);
 
   /* Notification box */
   notification_box = new notification_box_t(this);
-  add_float(notification_box, 0, 0, 0, 0);
+  add_float(notification_box, 0, 0);
 
   map_cursor_pos = MAP_POS(0, 0);
   map_cursor_type = (map_cursor_type_t)0;

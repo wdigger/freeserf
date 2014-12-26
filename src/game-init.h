@@ -28,6 +28,7 @@
 extern "C" {
 #endif
   #include "game.h"
+  #include "mission.h"
 #ifndef _MSC_VER
 }
 #endif
@@ -35,24 +36,25 @@ extern "C" {
 class interface_t;
 
 class game_init_box_t : public gui_object_t {
-public:
+protected:
   interface_t *interface;
 
   int map_size;
   int game_mission;
 
-  uint face[GAME_MAX_PLAYER_COUNT];
-  uint intelligence[GAME_MAX_PLAYER_COUNT];
-  uint supplies[GAME_MAX_PLAYER_COUNT];
-  uint reproduction[GAME_MAX_PLAYER_COUNT];
+  mission_t custom_mission;
+  mission_t *mission;
 
+public:
   game_init_box_t(interface_t *interface);
 
-  virtual void internal_draw();
-
 protected:
+  virtual void internal_draw();
   virtual int handle_click_left(int x, int y);
+
   void handle_action(int action);
+
+  void draw_player_box(int player, int x, int y, frame_t *frame);
 };
 
 #endif /* !_GAME_INIT_H */

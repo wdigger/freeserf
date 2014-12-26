@@ -35,8 +35,8 @@ typedef struct {
 	} player[4];
 } mission_t;
 
-extern mission_t mission[12];
-extern const int mission_count;
 void init_missions();
+mission_t *get_mission(int mission);
+int get_mission_count();
 
 #endif /* !_MISSION_H */

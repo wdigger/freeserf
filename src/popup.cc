@@ -4405,7 +4405,8 @@ popup_box_t::popup_box_t(interface_t *interface)
   /* Initialize minimap */
   minimap = new minimap_t(interface);
   minimap->set_displayed(0);
-  add_float(minimap, 8, 9, 128, 128);
+  minimap->set_size(128, 128);
+  add_float(minimap, 8, 9);
 }
 
 void

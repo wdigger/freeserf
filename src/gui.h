@@ -88,6 +88,7 @@ public:
   void move_to(int x, int y);
   void get_position(int &x, int &y);
   void set_size(int width, int height);
+  void get_size(int &width, int &height);
   void set_displayed(bool displayed);
   void set_enabled(bool enabled);
   void set_redraw();
@@ -96,7 +97,7 @@ public:
   void set_parent(gui_object_t *parent) { this->parent = parent; }
   bool point_inside(int point_x, int point_y);
 
-  void add_float(gui_object_t *obj, int x, int y, int width, int height);
+  void add_float(gui_object_t *obj, int x, int y);
 };
 
 int gui_get_slider_click_value(int x);
