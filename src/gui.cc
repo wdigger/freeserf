@@ -21,14 +21,6 @@
 
 #include "gui.h"
 
-#ifndef _MSC_VER
-extern "C" {
-#endif
-  #include "misc.h"
-#ifndef _MSC_VER
-}
-#endif
-
 #include <cstdlib>
 
 /* Get the resulting value from a click on a slider bar. */
@@ -136,6 +128,8 @@ gui_object_t::handle_event(const gui_event_t *event)
       return handle_drag(event->dx, event->dy);
     case GUI_EVENT_TYPE_DBL_CLICK:
       return handle_dbl_click(x, y, event->button);
+    case GUI_EVENT_KEY_PRESSED:
+      return handle_key_pressed(event->dx, event->dy);
     default:
       break;
   }

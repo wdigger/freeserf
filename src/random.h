@@ -36,6 +36,8 @@ typedef struct {
 
 uint16_t random_int(random_state_t *random);
 random_state_t random_generate_random_state();
-random_state_t random_generate_random_state2();
+char *random_to_string(random_state_t *random);
+random_state_t string_to_random(const char *str);
+
 
 #endif /* ! _RANDOM_H */

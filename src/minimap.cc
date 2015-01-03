@@ -27,7 +27,6 @@
 extern "C" {
 #endif
   #include "gfx.h"
-//  #include "game.h"
   #include "data.h"
 #ifndef _MSC_VER
 }

@@ -261,6 +261,15 @@ game_loop()
           }
           break;
         case SDL_KEYDOWN:
+          if (event.key.keysym.sym <= SDLK_z) {
+            ev.type = GUI_EVENT_KEY_PRESSED;
+            ev.dx = event.key.keysym.sym;
+            ev.dy = event.key.keysym.mod;
+            if (interface->handle_event(&ev)) {
+              break;
+            }
+          }
+
           if (event.key.keysym.sym == SDLK_q &&
               (event.key.keysym.mod & KMOD_CTRL)) {
             game_loop_quit();
@@ -287,33 +296,6 @@ game_loop()
             case SDLK_RIGHT: {
               viewport_t *viewport = interface->get_viewport();
               viewport->move_by_pixels(32, 0);
-            }
-              break;
-
-              /* Panel click shortcuts */
-            case SDLK_1: {
-              panel_bar_t *panel = interface->get_panel_bar();
-              panel->activate_button(0);
-            }
-              break;
-            case SDLK_2: {
-              panel_bar_t *panel = interface->get_panel_bar();
-              panel->activate_button(1);
-            }
-              break;
-            case SDLK_3: {
-              panel_bar_t *panel = interface->get_panel_bar();
-              panel->activate_button(2);
-            }
-              break;
-            case SDLK_4: {
-              panel_bar_t *panel = interface->get_panel_bar();
-              panel->activate_button(3);
-            }
-              break;
-            case SDLK_5: {
-              panel_bar_t *panel = interface->get_panel_bar();
-              panel->activate_button(4);
             }
               break;
 

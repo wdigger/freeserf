@@ -1382,7 +1382,7 @@ map_init(map_t *map, uint size)
 void
 map_generate(map_t *map, int generator, random_state_t *rnd)
 {
-	map->rnd = rnd;
+	map->rnd = *rnd;
 
 	map_random_int(map);
 	map_random_int(map);
@@ -1420,6 +1420,11 @@ map_deinit(map_t *map)
 	if (map->minimap != NULL) {
 		free(map->minimap);
 		map->minimap = NULL;
+	}
+
+	if (map->spiral_pos_pattern != NULL) {
+		free(map->spiral_pos_pattern);
+		map->spiral_pos_pattern = NULL;
 	}
 }
 
@@ -1611,5 +1616,31 @@ map_update(map_t *map, uint tick)
 uint16_t
 map_random_int(map_t *map)
 {
-	return random_int(map->rnd);
+	return random_int(&map->rnd);
+}
+
+/* Return non-zero if the road segment from pos in direction dir
+ can be successfully constructed at the current time. */
+int
+map_road_segment_valid(map_pos_t pos, dir_t dir, map_t *map)
+{
+  map_pos_t other_pos = MAP_MOVE2(pos, dir);
+
+  map_obj_t obj = MAP_OBJ2(other_pos);
+  if ((MAP_PATHS2(other_pos) != 0 && obj != MAP_OBJ_FLAG) ||
+      map_space_from_obj[obj] >= MAP_SPACE_SEMIPASSABLE) {
+    return 0;
+  }
+
+  if (!MAP_HAS_OWNER2(other_pos) ||
+      MAP_OWNER2(other_pos) != MAP_OWNER2(pos)) {
+    return 0;
+  }
+
+  if (MAP_IN_WATER2(pos) != MAP_IN_WATER2(other_pos) &&
+      !(MAP_HAS_FLAG2(pos) || MAP_HAS_FLAG2(other_pos))) {
+    return 0;
+  }
+  
+  return 1;
 }

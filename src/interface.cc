@@ -33,6 +33,7 @@ extern "C" {
   #include "gfx.h"
   #include "data.h"
   #include "debug.h"
+  #include "game.h"
 #ifndef _MSC_VER
 }
 #endif
@@ -257,7 +258,7 @@ interface_t::interface_determine_map_cursor_type_road()
     if (length > 0 && building_road_dirs[length-1] == DIR_REVERSE(d)) {
       sprite = 45; /* undo */
       valid_dir |= BIT(d);
-    } else if (game_road_segment_valid(pos, (dir_t)d)) {
+    } else if (map_road_segment_valid(pos, (dir_t)d, &game.map)) {
       /* Check that road does not cross itself. */
       map_pos_t road_pos = building_road_source;
       int crossing_self = 0;
@@ -735,7 +736,7 @@ interface_t::interface_t()
   map_cursor_sprites[6] = 33;
 
   /* Randomness for interface */
-  random = random_generate_random_state2();
+  random = random_generate_random_state();
 
   last_const_tick = 0;
 
@@ -828,4 +829,36 @@ interface_t::update()
 
   viewport->update();
   set_redraw();
+}
+
+int
+interface_t::handle_key_pressed(char key, int modifier)
+{
+  switch (key) {
+    /* Panel click shortcuts */
+    case '1': {
+      panel->activate_button(0);
+      break;
+    }
+    case '2': {
+      panel->activate_button(1);
+      break;
+    }
+    case '3': {
+      panel->activate_button(2);
+      break;
+    }
+    case '4': {
+      panel->activate_button(3);
+    }
+      break;
+    case '5': {
+      panel->activate_button(4);
+      break;
+    }
+    default:
+      return 0;
+  }
+
+  return 1;
 }

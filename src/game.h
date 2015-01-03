@@ -230,8 +230,6 @@ int game_send_geologist(flag_t *dest);
 
 int game_get_leveling_height(map_pos_t pos);
 
-int game_road_segment_valid(map_pos_t pos, dir_t dir);
-
 int game_can_build_military(map_pos_t pos);
 int game_can_build_small(map_pos_t pos);
 int game_can_build_mine(map_pos_t pos);

@@ -2462,32 +2462,6 @@ game_prepare_ground_analysis(map_pos_t pos, int estimates[5])
 	}
 }
 
-/* Return non-zero if the road segment from pos in direction dir
-   can be successfully constructed at the current time. */
-int
-game_road_segment_valid(map_pos_t pos, dir_t dir)
-{
-	map_pos_t other_pos = MAP_MOVE(pos, dir);
-
-	map_obj_t obj = MAP_OBJ(other_pos);
-	if ((MAP_PATHS(other_pos) != 0 && obj != MAP_OBJ_FLAG) ||
-	    map_space_from_obj[obj] >= MAP_SPACE_SEMIPASSABLE) {
-		return 0;
-	}
-
-	if (!MAP_HAS_OWNER(other_pos) ||
-	    MAP_OWNER(other_pos) != MAP_OWNER(pos)) {
-		return 0;
-	}
-
-	if (MAP_IN_WATER(pos) != MAP_IN_WATER(other_pos) &&
-	    !(MAP_HAS_FLAG(pos) || MAP_HAS_FLAG(other_pos))) {
-		return 0;
-	}
-
-	return 1;
-}
-
 /* Get road length category value for real length.
    Determines number of serfs servicing the path segment.(?) */
 static int
@@ -2562,7 +2536,7 @@ game_can_build_road(map_pos_t source, const dir_t dirs[], uint length,
 	for (uint i = 0; i < length; i++) {
 		dir_t dir = dirs[i];
 
-		if (!game_road_segment_valid(pos, dir)) {
+		if (!map_road_segment_valid(pos, dir, &game.map)) {
 			return -1;
 		}
 
@@ -2624,7 +2598,7 @@ game_build_road(map_pos_t source, const dir_t dirs[], uint length,
 		dir_t dir = dirs[i];
 		dir_t rev_dir = DIR_REVERSE(dir);
 
-		if (!game_road_segment_valid(pos, dir)) {
+		if (!map_road_segment_valid(pos, dir, &game.map)) {
 			/* Not valid after all. Backtrack and abort.
 			   This is needed to check that the road
 			   does not cross itself. */
@@ -5113,6 +5087,7 @@ game_init(int map_generator)
 static void
 game_init_map(int size, const random_state_t *rnd)
 {
+  map_deinit(&game.map);
 	map_init(&game.map, size);
 
 	game.serf_limit = 500 * game.map.regions;

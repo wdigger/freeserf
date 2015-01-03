@@ -23,6 +23,7 @@
 #include "interface.h"
 #include "viewport.h"
 #include "minimap.h"
+#include "text-input.h"
 
 #ifndef _MSC_VER
 extern "C" {
@@ -42,7 +43,9 @@ typedef enum {
   ACTION_SHOW_LOAD_GAME,
   ACTION_INCREMENT,
   ACTION_DECREMENT,
-  ACTION_CLOSE
+  ACTION_CLOSE,
+  ACTION_GEN_RANDOM,
+  ACTION_APPLY_RANDOM,
 } action_t;
 
 
@@ -92,20 +95,20 @@ game_init_box_t::internal_draw()
     char map_size[4] = {0};
     snprintf(map_size, 4, "%d", this->map_size);
 
-    draw_box_string(10, 0, frame, "Start new game");
-    draw_box_string(10, 14, frame, "Map size:");
-    draw_box_string(20, 14, frame, map_size);
+    draw_box_string(10, 2, frame, "New game");
+    draw_box_string(10, 18, frame, "Mapsize:");
+    draw_box_string(18, 18, frame, map_size);
 
-    draw_box_icon(25, 0, 265, frame);
+    draw_box_icon(20, 0, 265, frame);
   } else {
     draw_box_icon(5, 0, 260, frame);
 
     char level[4] = {0};
     snprintf(level, 4, "%d", game_mission+1);
 
-    draw_box_string(10, 0, frame, "Start mission");
-    draw_box_string(10, 14, frame, "Mission:");
-    draw_box_string(20, 14, frame, level);
+    draw_box_string(10, 2, frame, "Start mission");
+    draw_box_string(10, 18, frame, "Mission:");
+    draw_box_string(20, 18, frame, level);
 
     draw_box_icon(28, 0, 237, frame);
     draw_box_icon(28, 16, 240, frame);
@@ -200,10 +203,15 @@ game_init_box_t::handle_action(int action)
     if (game_mission < 0) {
       game_mission = 0;
       mission = get_mission(game_mission);
+      field->set_displayed(false);
     } else {
       game_mission = -1;
       map_size = 3;
       mission = &custom_mission;
+      field->set_displayed(true);
+      char *str = random_to_string(&custom_mission.rnd);
+      field->set_text(str);
+      free(str);
     }
     generate_map_priview();
     set_redraw();
@@ -228,6 +236,22 @@ game_init_box_t::handle_action(int action)
     }
     generate_map_priview();
     break;
+  case ACTION_GEN_RANDOM: {
+    random_state_t rnd = random_generate_random_state();
+    char *str = random_to_string(&rnd);
+    field->set_text(str);
+    free(str);
+    set_redraw();
+    break;
+  }
+  case ACTION_APPLY_RANDOM: {
+    const char *str = field->get_text();
+    if (strlen(str) == 16) {
+      custom_mission.rnd = string_to_random(str);
+      generate_map_priview();
+    }
+    break;
+  }
   case ACTION_CLOSE:
     interface->close_game_init();
     break;
@@ -255,8 +279,10 @@ game_init_box_t::handle_click_left(int x, int y)
     ACTION_TOGGLE_GAME_TYPE,  60,  16, 32, 32,
     ACTION_SHOW_OPTIONS,     268,  16, 32, 32,
     ACTION_SHOW_LOAD_GAME,   308,  16, 32, 32,
-    ACTION_INCREMENT,        220,  24, 24, 24,
-    ACTION_DECREMENT,        220,  16,  8,  8,
+    ACTION_INCREMENT,        180,  24, 24, 24,
+    ACTION_DECREMENT,        180,  16,  8,  8,
+    ACTION_GEN_RANDOM,       204,  16, 16,  8,
+    ACTION_APPLY_RANDOM ,    204,  16, 24, 32,
     ACTION_CLOSE,            324, 216, 16, 16,
     -1
   };
@@ -277,65 +303,97 @@ game_init_box_t::handle_click_left(int x, int y)
   }
 
   /* Check player area */
+  int cx = 0;
+  int cy = 0;
   for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
-    if (x >= 80*i+20 && x <= 80*(i+1)+20 &&
-        y >= 48 && y <= 132) {
-      x -= 80*i + 20;
-
-      if (x >= 8 && x < 8+32 &&
-          y >= 48 && y < 132) {
-        /* Face */
-        int in_use = 0;
-        do {
-          mission->player[i].face = (mission->player[i].face + 1) % 14;
-
-          /* Check that face is not already in use
-             by another player */
-          in_use = 0;
-          for (int j = 0; j < GAME_MAX_PLAYER_COUNT; j++) {
-            if (i != j &&
-                mission->player[i].face != 0 &&
-                mission->player[j].face == mission->player[i].face) {
-              in_use = 1;
-              break;
-            }
-          }
-        } while (in_use);
-      } else if (x >= 48 && x < 72 &&
-           y >= 64 && y < 80) {
-        /* Controller */
-        /* TODO */
-      } else if (x >= 52 && x < 52+4 &&
-           y >= 84 && y < 124) {
-        /* Supplies */
-        mission->player[i].supplies = clamp(0, 124 - y, 40);
-      } else if (x >= 58 && x < 58+4 &&
-           y >= 84 && y < 124) {
-        /* Intelligence */
-        mission->player[i].intelligence = clamp(0, 124 - y, 40);
-      } else if (x >= 64 && x < 64+4 &&
-           y >= 84 && y < 124) {
-        /* Reproduction */
-        mission->player[i].reproduction = clamp(0, 124 - y, 40);
+    int px = 20 + cx*80;
+    int py = 56 + cy*80;
+    if ((x > px) && (x < px + 80) && (y > py) && (y < py + 80)) {
+      if (handle_player_click(i, x - px, y - py)) {
+        break;
       }
-      break;
+    }
+    cx++;
+    if (i == 1) {
+      cy++;
+      cx = 0;
     }
   }
 
   return 1;
 }
 
+int
+game_init_box_t::handle_player_click(int player, int x, int y)
+{
+  if (x < 8 || x > 8 + 64 || y < 8 || y > 76) {
+    return 0;
+  }
+
+  if (x >= 8 && x < 8+32 &&
+      y >= 8 && y < 72) {
+    /* Face */
+    int in_use = 0;
+    do {
+      mission->player[player].face = (mission->player[player].face + 1) % 14;
+
+      /* Check that face is not already in use
+       by another player */
+      in_use = 0;
+      for (int j = 0; j < GAME_MAX_PLAYER_COUNT; j++) {
+        if (player != j &&
+            mission->player[player].face != 0 &&
+            mission->player[j].face == mission->player[player].face) {
+          in_use = 1;
+          break;
+        }
+      }
+    } while (in_use);
+  }
+  else {
+    x -= 8 + 32 + 8 + 3;
+    if (x < 0) {
+      return 0;
+    }
+    if (y >= 27 && y < 69) {
+      if (x > 0 && x < 6) {
+        /* Supplies */
+        mission->player[player].supplies = clamp(0, 68 - y, 40);
+      }
+      else if (x > 6 && x < 12) {
+        /* Intelligence */
+        mission->player[player].intelligence = clamp(0, 68 - y, 40);
+      }
+      else if (x > 12 && x < 18) {
+        /* Reproduction */
+        mission->player[player].reproduction = clamp(0, 68 - y, 40);
+      }
+    }
+  }
+
+  set_redraw();
+
+  return 0;
+}
+
 void
 game_init_box_t::generate_map_priview()
 {
   if (map != NULL) {
+    map_deinit(map);
     free(map);
     map = NULL;
   }
 
   map = (map_t*)malloc(sizeof(map_t));
   map_init(map, map_size);
-  map_generate(map, 0, &mission->rnd);
+
+  random_state_t rnd = mission->rnd;
+  rnd.state[0] ^= 0x5a5a;
+  rnd.state[1] ^= 0xa5a5;
+  rnd.state[2] ^= 0xc3c3;
+
+  map_generate(map, 0, &rnd);
 
   minimap->set_map(map);
 
@@ -380,11 +438,21 @@ game_init_box_t::game_init_box_t(interface_t *interface)
 
   map = NULL;
   generate_map_priview();
+
+  field = new text_input_t();
+  char *str = random_to_string(&custom_mission.rnd);
+  field->set_text(str);
+  free(str);
+  field->set_size(32, 32);
+  field->set_displayed(true);
+  field->set_max_length(16);
+  add_float(field, 20 + 26*8, 16);
 }
 
 game_init_box_t::~game_init_box_t()
 {
   if (map != NULL) {
+    map_deinit(map);
     free(map);
     map = NULL;
   }

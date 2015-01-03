@@ -348,7 +348,7 @@ panel_bar_t::handle_click_left(int x, int y)
     handle_panel_button_click(button);
   }
 
-  return 0;
+  return 1;
 }
 
 panel_bar_t::panel_bar_t(interface_t *interface)

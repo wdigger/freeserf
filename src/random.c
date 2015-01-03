@@ -20,6 +20,7 @@
  */
 
 #include "random.h"
+#include "freeserf_endian.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,6 +28,7 @@
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
+#include <string.h>
 
 uint16_t
 random_int(random_state_t *random)
@@ -45,13 +47,6 @@ random_int(random_state_t *random)
 random_state_t
 random_generate_random_state()
 {
-	random_state_t random = {{ 0x5a5a, (uint16_t)(time(NULL) >> 16), (uint16_t)time(NULL) }};
-	return random;
-}
-
-random_state_t
-random_generate_random_state2()
-{
   random_state_t random;
 
   srand((unsigned int)time(NULL));
@@ -59,6 +54,49 @@ random_generate_random_state2()
   random.state[1] = rand();
   random.state[2] = rand();
   random_int(&random);
+
+  return random;
+}
+
+char *
+random_to_string(random_state_t *random)
+{
+  uint64_t tmp0 = random->state[0];
+  uint64_t tmp1 = random->state[1];
+  uint64_t tmp2 = random->state[2];
+
+  uint64_t tmp = tmp0;
+  tmp |= tmp1 << 16;
+  tmp |= tmp2 << 32;
+
+  char str[17] = {0};
+
+  for (int i = 0; i < 16; i++) {
+    uint8_t c = tmp & 0x07;
+    str[i] = '0' + c + 1;
+    tmp >>= 3;
+  }
+
+  return strdup(str);
+}
+
+random_state_t
+string_to_random(const char *str)
+{
+  random_state_t random;
+  uint64_t tmp = 0;
+
+  for (int i = 15; i >= 0; i--) {
+    tmp <<= 3;
+    uint8_t c = str[i] - '0' - 1;
+    tmp |= c;
+  }
+
+  random.state[0] = tmp & 0xFFFF;
+  tmp >>= 16;
+  random.state[1] = tmp & 0xFFFF;
+  tmp >>= 16;
+  random.state[2] = tmp & 0xFFFF;
 
   return random;
 }

@@ -39,7 +39,8 @@ typedef enum {
   GUI_EVENT_TYPE_BUTTON_DOWN,
   GUI_EVENT_TYPE_DRAG_START,
   GUI_EVENT_TYPE_DRAG_MOVE,
-  GUI_EVENT_TYPE_DRAG_END
+  GUI_EVENT_TYPE_DRAG_END,
+  GUI_EVENT_KEY_PRESSED,
 } gui_event_type_t;
 
 typedef enum {
@@ -76,6 +77,7 @@ protected:
   virtual int handle_click_left(int x, int y) { return 0; }
   virtual int handle_dbl_click(int x, int y, gui_event_button_t button) { return 0; }
   virtual int handle_drag(int dx, int dy) { return 0; }
+  virtual int handle_key_pressed(char key, int modifier) { return 0; }
 
   void delete_frame();
 

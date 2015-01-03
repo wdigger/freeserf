@@ -21,14 +21,6 @@
 
 #include "pathfinder.h"
 
-#ifndef _MSC_VER
-extern "C" {
-#endif
-  #include "game.h"
-#ifndef _MSC_VER
-}
-#endif
-
 #include <cstdlib>
 #include <list>
 #include <vector>
@@ -57,16 +49,16 @@ search_node_less(const search_node_t* left, const search_node_t* right)
 static const uint walk_cost[] = { 255, 319, 383, 447, 511 };
 
 static uint
-heuristic_cost(map_pos_t start, map_pos_t end)
+heuristic_cost(map_pos_t start, map_pos_t end, map_t *map)
 {
   /* Calculate distance to target. */
-  int dist_col = (MAP_POS_COL(start) - MAP_POS_COL(end)) & game.map.col_mask;
-  if (dist_col >= static_cast<int>(game.map.cols/2.0)) dist_col -= game.map.cols;
+  int dist_col = (MAP_POS_COL2(start) - MAP_POS_COL2(end)) & map->col_mask;
+  if (dist_col >= static_cast<int>(map->cols/2.0)) dist_col -= map->cols;
 
-  int dist_row = (MAP_POS_ROW(start) - MAP_POS_ROW(end)) & game.map.row_mask;
-  if (dist_row >= static_cast<int>(game.map.rows/2.0)) dist_row -= game.map.rows;
+  int dist_row = (MAP_POS_ROW2(start) - MAP_POS_ROW2(end)) & map->row_mask;
+  if (dist_row >= static_cast<int>(map->rows/2.0)) dist_row -= map->rows;
 
-  int h_diff = abs(MAP_HEIGHT(start) - MAP_HEIGHT(end));
+  int h_diff = abs(MAP_HEIGHT2(start) - MAP_HEIGHT2(end));
   int dist = 0;
 
   if ((dist_col > 0 && dist_row > 0) ||
@@ -80,10 +72,10 @@ heuristic_cost(map_pos_t start, map_pos_t end)
 }
 
 static uint
-actual_cost(map_pos_t pos, dir_t dir)
+actual_cost(map_pos_t pos, dir_t dir, map_t *map)
 {
-  map_pos_t other_pos = MAP_MOVE(pos, dir);
-  int h_diff = abs(MAP_HEIGHT(pos) - MAP_HEIGHT(other_pos));
+  map_pos_t other_pos = MAP_MOVE2(pos, dir);
+  int h_diff = abs(MAP_HEIGHT2(pos) - MAP_HEIGHT2(other_pos));
   return walk_cost[h_diff];
 }
 
@@ -92,7 +84,7 @@ actual_cost(map_pos_t pos, dir_t dir)
    should be minimized. Returns a malloc'ed array of directions and
    the size of this array in length. */
 dir_t *
-pathfinder_map(map_pos_t start, map_pos_t end, uint *length)
+pathfinder_map(map_pos_t start, map_pos_t end, uint *length, map_t *map)
 {
   // Unfortunately the STL priority_queue cannot be used since we
   // would need access to the underlying sequence to determine if
@@ -108,7 +100,7 @@ pathfinder_map(map_pos_t start, map_pos_t end, uint *length)
   search_node_t *node = new search_node_t;
   node->pos = start;
   node->g_score = 0;
-  node->f_score = heuristic_cost(start, end);
+  node->f_score = heuristic_cost(start, end, map);
   node->parent = NULL;
 
   open.push_back(node);
@@ -143,12 +135,12 @@ pathfinder_map(map_pos_t start, map_pos_t end, uint *length)
     closed.push_front(node);
 
     for (int d = DIR_RIGHT; d <= DIR_UP; d++) {
-      map_pos_t new_pos = MAP_MOVE(node->pos, d);
-      uint cost = actual_cost(node->pos, static_cast<dir_t>(d));
+      map_pos_t new_pos = MAP_MOVE2(node->pos, d);
+      uint cost = actual_cost(node->pos, static_cast<dir_t>(d), map);
 
       /* Check if neighbour is valid. */
-      if (!game_road_segment_valid(node->pos, static_cast<dir_t>(d)) ||
-          (MAP_OBJ(new_pos) == MAP_OBJ_FLAG && new_pos != end)) {
+      if (!map_road_segment_valid(node->pos, static_cast<dir_t>(d), map) ||
+          (MAP_OBJ2(new_pos) == MAP_OBJ_FLAG && new_pos != end)) {
         continue;
       }
 
@@ -173,7 +165,7 @@ pathfinder_map(map_pos_t start, map_pos_t end, uint *length)
           in_open = true;
           if (n->g_score >= node->g_score + cost) {
             n->g_score = node->g_score + cost;
-            n->f_score = n->g_score + heuristic_cost(new_pos, end);
+            n->f_score = n->g_score + heuristic_cost(new_pos, end, map);
             n->parent = node;
             n->dir = static_cast<dir_t>(d);
 
@@ -191,7 +183,7 @@ pathfinder_map(map_pos_t start, map_pos_t end, uint *length)
 
         new_node->pos = new_pos;
         new_node->g_score = node->g_score + cost;
-        new_node->f_score = new_node->g_score + heuristic_cost(new_pos, end);
+        new_node->f_score = new_node->g_score + heuristic_cost(new_pos, end, map);
         new_node->parent = node;
         new_node->dir = static_cast<dir_t>(d);
 

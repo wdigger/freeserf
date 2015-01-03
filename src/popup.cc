@@ -37,9 +37,9 @@ extern "C" {
 }
 #endif
 
-#include <math.h>
-#include <assert.h>
-#include <string.h>
+#include <cmath>
+#include <cassert>
+#include <cstring>
 #include <algorithm>
 
 /* Action types that can be fired from
@@ -4391,7 +4391,7 @@ popup_box_t::handle_click_left(int x, int y)
     break;
   }
 
-  return 0;
+  return 1;
 }
 
 popup_box_t::popup_box_t(interface_t *interface)

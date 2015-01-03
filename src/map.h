@@ -126,6 +126,7 @@ typedef enum {
 
 
 #define MAP_HAS_FLAG(pos)  (MAP_OBJ(pos) == MAP_OBJ_FLAG)
+#define MAP_HAS_FLAG2(pos)  (MAP_OBJ2(pos) == MAP_OBJ_FLAG)
 #define MAP_HAS_BUILDING(pos)  (MAP_OBJ(pos) >= MAP_OBJ_SMALL_BUILDING && \
 				MAP_OBJ(pos) <= MAP_OBJ_CASTLE)
 
@@ -323,7 +324,7 @@ typedef struct {
 
 	uint32_t gold_deposit;
 
-	random_state_t *rnd;
+	random_state_t rnd;
 
 	int16_t update_map_16_loop;
 	uint16_t update_map_last_tick;
@@ -355,6 +356,8 @@ void map_init(map_t *map, uint size);
 void map_generate(map_t *map, int generator, random_state_t *rnd);
 void map_deinit(map_t *map);
 void map_update(map_t *map, uint tick);
+
+int map_road_segment_valid(map_pos_t pos, dir_t dir, map_t *map);
 
 uint16_t map_random_int(map_t *map);
 

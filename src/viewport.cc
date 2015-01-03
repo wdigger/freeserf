@@ -38,7 +38,7 @@ extern "C" {
 }
 #endif
 
-#include <assert.h>
+#include <cassert>
 #include <algorithm>
 
 #define MAP_TILE_WIDTH   32
@@ -2314,7 +2314,7 @@ viewport_t::handle_dbl_click(int x, int y, gui_event_button_t button)
     if (clk_pos != interface->get_map_cursor_pos()) {
       map_pos_t pos = interface->get_building_road_source();
       uint length;
-      dir_t *dirs = pathfinder_map(pos, clk_pos, &length);
+      dir_t *dirs = pathfinder_map(pos, clk_pos, &length, &game.map);
       if (dirs != NULL) {
         interface->set_building_road_length(0);
         int r = interface->extend_road(dirs, length);

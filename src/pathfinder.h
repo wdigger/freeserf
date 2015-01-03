@@ -22,8 +22,14 @@
 #ifndef _PATHFINDER_H
 #define _PATHFINDER_H
 
-#include "map.h"
+#ifndef _MSC_VER
+extern "C" {
+#endif
+  #include "map.h"
+#ifndef _MSC_VER
+}
+#endif
 
-dir_t *pathfinder_map(map_pos_t start, map_pos_t end, uint *length);
+dir_t *pathfinder_map(map_pos_t start, map_pos_t end, uint *length, map_t *map);
 
 #endif /* !_PATHFINDER_H */

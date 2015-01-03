@@ -27,7 +27,7 @@
 #ifndef _MSC_VER
 extern "C" {
 #endif
-  #include "game.h"
+  #include "map.h"
   #include "mission.h"
 #ifndef _MSC_VER
 }
@@ -35,6 +35,7 @@ extern "C" {
 
 class interface_t;
 class minimap_t;
+class text_input_t;
 
 class game_init_box_t : public gui_object_t {
 protected:
@@ -49,6 +50,8 @@ protected:
   map_t *map;
   minimap_t *minimap;
 
+  text_input_t *field;
+
 public:
   game_init_box_t(interface_t *interface);
   ~game_init_box_t();
@@ -59,6 +62,7 @@ protected:
 
   virtual int handle_click_left(int x, int y);
   void handle_action(int action);
+  int handle_player_click(int player, int x, int y);
 
   void generate_map_priview();
 };

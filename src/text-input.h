@@ -24,23 +24,29 @@
 
 #include "gui.h"
 
+#include <string>
+
 class text_input_t
   : public gui_object_t
 {
 protected:
-  char *text;
+  std::string text;
   bool input_enabled;
+  unsigned int max_length;
 
 public:
   text_input_t();
 
-  void set_text(char *text);
-  char *get_text();
+  void set_text(const char *text);
+  const char *get_text();
+  unsigned int get_max_length() { return max_length; }
+  void set_max_length(unsigned int max_length);
 
 protected:
   virtual void internal_draw();
 
   virtual int handle_click_left(int x, int y);
+  virtual int handle_key_pressed(char key, int modifier);
 };
 
 #endif /* ! _TEXT_INPUT_H */
