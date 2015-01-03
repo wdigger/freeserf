@@ -27,16 +27,6 @@
 #include "data.h"
 #include "version.h"
 
-#ifndef _MSC_VER
-extern "C" {
-#endif
-  #include "mission.h"
-  #include "data.h"
-  #include "random.h"
-#ifndef _MSC_VER
-}
-#endif
-
 #include <algorithm>
 #include <sstream>
 
