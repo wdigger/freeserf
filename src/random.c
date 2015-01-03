@@ -59,7 +59,7 @@ random_generate_random_state()
 }
 
 char *
-random_to_string(random_state_t *random)
+random_to_string(const random_state_t *random)
 {
   uint64_t tmp0 = random->state[0];
   uint64_t tmp1 = random->state[1];

@@ -26,6 +26,12 @@
 #include "pqueue.h"
 #include "freeserf_endian.h"
 
+#ifdef HAVE_CONFIG_H
+# include <config.h>
+#endif
+
+#include <string.h>
+
 #include "SDL.h"
 #include "SDL_mixer.h"
 
@@ -614,6 +620,7 @@ midi_play_track(midi_t midi)
 
 		SDL_RWops *rw = SDL_RWFromMem(data, (int)size);
 		track->music = Mix_LoadMUS_RW(rw, 0);
+		free(data);
 		if (NULL == track->music) {
 			free(track);
 			return;

@@ -70,6 +70,8 @@ protected:
   bool redraw;
   gui_object_t *parent;
   frame_t *frame;
+  static gui_object_t *focused_object;
+  bool focused;
 
   virtual void internal_draw() = 0;
   virtual void layout();
@@ -78,6 +80,7 @@ protected:
   virtual int handle_dbl_click(int x, int y, gui_event_button_t button) { return 0; }
   virtual int handle_drag(int dx, int dy) { return 0; }
   virtual int handle_key_pressed(char key, int modifier) { return 0; }
+  virtual int handle_focus_loose() { return 0; }
 
   void delete_frame();
 

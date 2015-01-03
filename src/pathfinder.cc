@@ -58,7 +58,7 @@ heuristic_cost(map_pos_t start, map_pos_t end, map_t *map)
   int dist_row = (MAP_POS_ROW2(start) - MAP_POS_ROW2(end)) & map->row_mask;
   if (dist_row >= static_cast<int>(map->rows/2.0)) dist_row -= map->rows;
 
-  int h_diff = abs(MAP_HEIGHT2(start) - MAP_HEIGHT2(end));
+  int h_diff = abs((int)(MAP_HEIGHT2(start) - MAP_HEIGHT2(end)));
   int dist = 0;
 
   if ((dist_col > 0 && dist_row > 0) ||
@@ -75,7 +75,7 @@ static uint
 actual_cost(map_pos_t pos, dir_t dir, map_t *map)
 {
   map_pos_t other_pos = MAP_MOVE2(pos, dir);
-  int h_diff = abs(MAP_HEIGHT2(pos) - MAP_HEIGHT2(other_pos));
+  int h_diff = abs((int)(MAP_HEIGHT2(pos) - MAP_HEIGHT2(other_pos)));
   return walk_cost[h_diff];
 }
 

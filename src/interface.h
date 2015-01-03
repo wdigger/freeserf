@@ -106,6 +106,7 @@ protected:
 
 public:
   interface_t();
+  virtual ~interface_t();
 
   viewport_t *get_viewport();
   panel_bar_t *get_panel_bar();

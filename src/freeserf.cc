@@ -622,10 +622,12 @@ main(int argc, char *argv[])
   LOGI("main", "Cleaning up...");
 
   /* Clean up */
+  delete interface;
   map_deinit(&game.map);
   audio_deinit();
   gfx_deinit();
   data_deinit();
+  game_deinit();
 
   return EXIT_SUCCESS;
 }

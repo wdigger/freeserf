@@ -35,7 +35,7 @@ extern "C" {
 
 class interface_t;
 class minimap_t;
-class text_input_t;
+class random_input_t;
 
 class game_init_box_t : public gui_object_t {
 protected:
@@ -50,7 +50,7 @@ protected:
   map_t *map;
   minimap_t *minimap;
 
-  text_input_t *field;
+  random_input_t *field;
 
 public:
   game_init_box_t(interface_t *interface);

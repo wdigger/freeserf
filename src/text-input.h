@@ -26,13 +26,21 @@
 
 #include <string>
 
+class text_input_t;
+
+typedef bool (*text_input_filter_t)(const char key, text_input_t *text_input);
+
 class text_input_t
   : public gui_object_t
 {
 protected:
   std::string text;
-  bool input_enabled;
   unsigned int max_length;
+  text_input_filter_t filter;
+  unsigned char color_focus;
+  unsigned char color_text;
+  unsigned char color_background;
+  bool draw_focus;
 
 public:
   text_input_t();
@@ -41,12 +49,14 @@ public:
   const char *get_text();
   unsigned int get_max_length() { return max_length; }
   void set_max_length(unsigned int max_length);
+  void set_filter(text_input_filter_t filter) { this->filter = filter; }
 
 protected:
   virtual void internal_draw();
 
   virtual int handle_click_left(int x, int y);
   virtual int handle_key_pressed(char key, int modifier);
+  virtual int handle_focus_loose();
 };
 
 #endif /* ! _TEXT_INPUT_H */

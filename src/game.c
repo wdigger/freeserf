@@ -5116,42 +5116,74 @@ game_init_map(int size, const random_state_t *rnd)
 	game.max_next_index = 33;
 }
 
+#define SAFE_FREE_OBJECT(object) \
+	if ((object) != NULL) {        \
+		free((object));              \
+		(object) = NULL;             \
+	}                              \
+
+
+static void
+game_destroy_onjects()
+{
+	/* Serfs */
+	SAFE_FREE_OBJECT(game.serfs)
+	SAFE_FREE_OBJECT(game.serf_bitmap)
+
+	/* Flags */
+	SAFE_FREE_OBJECT(game.flags)
+	SAFE_FREE_OBJECT(game.flag_bitmap)
+
+	/* Buildings */
+	SAFE_FREE_OBJECT(game.buildings)
+	SAFE_FREE_OBJECT(game.building_bitmap)
+
+	/* Inventories */
+	SAFE_FREE_OBJECT(game.inventories)
+	SAFE_FREE_OBJECT(game.inventory_bitmap)
+
+	/* Players */
+	for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
+		SAFE_FREE_OBJECT(game.player[i])
+	}
+}
+
+void
+game_deinit()
+{
+	game_destroy_onjects();
+}
+
 void
 game_allocate_objects()
 {
+	game_destroy_onjects();
+
 	/* Serfs */
-	if (game.serfs != NULL) free(game.serfs);
 	game.serfs = (serf_t*)malloc(game.serf_limit * sizeof(serf_t));
 	if (game.serfs == NULL) abort();
 
-	if (game.serf_bitmap != NULL) free(game.serf_bitmap);
 	game.serf_bitmap = (uint8_t*)calloc(((game.serf_limit-1) / 8) + 1, 1);
 	if (game.serf_bitmap == NULL) abort();
 
 	/* Flags */
-	if (game.flags != NULL) free(game.flags);
 	game.flags = (flag_t*)malloc(game.flag_limit * sizeof(flag_t));
 	if (game.flags == NULL) abort();
 
-	if (game.flag_bitmap != NULL) free(game.flag_bitmap);
 	game.flag_bitmap = (uint8_t*)calloc(((game.flag_limit-1) / 8) + 1, 1);
 	if (game.flag_bitmap == NULL) abort();
 
 	/* Buildings */
-	if (game.buildings != NULL) free(game.buildings);
 	game.buildings = (building_t*)malloc(game.building_limit * sizeof(building_t));
 	if (game.buildings == NULL) abort();
 
-	if (game.building_bitmap != NULL) free(game.building_bitmap);
 	game.building_bitmap = (uint8_t*)calloc(((game.building_limit-1) / 8) + 1, 1);
 	if (game.building_bitmap == NULL) abort();
 
 	/* Inventories */
-	if (game.inventories != NULL) free(game.inventories);
 	game.inventories = (inventory_t*)malloc(game.inventory_limit * sizeof(inventory_t));
 	if (game.inventories == NULL) abort();
 
-	if (game.inventory_bitmap != NULL) free(game.inventory_bitmap);
 	game.inventory_bitmap = (uint8_t*)calloc(((game.inventory_limit-1) / 8) + 1, 1);
 	if (game.inventory_bitmap == NULL) abort();
 

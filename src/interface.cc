@@ -746,6 +746,15 @@ interface_t::interface_t()
   game.map.update_map_height_data = this;
 }
 
+interface_t::~interface_t()
+{
+  delete viewport;
+  delete panel;
+  delete popup;
+  delete init_box;
+  delete notification_box;
+}
+
 /* Called periodically when the game progresses. */
 void
 interface_t::update()

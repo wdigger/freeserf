@@ -104,6 +104,7 @@ protected:
 
 public:
   popup_box_t(interface_t *interface);
+  virtual ~popup_box_t();
 
   game_minimap_t *get_minimap() { return minimap; }
   box_t get_box() { return box; }

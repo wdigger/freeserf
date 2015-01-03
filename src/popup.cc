@@ -4409,6 +4409,11 @@ popup_box_t::popup_box_t(interface_t *interface)
   add_float(minimap, 8, 9);
 }
 
+popup_box_t::~popup_box_t()
+{
+	delete minimap;
+}
+
 void
 popup_box_t::set_box(box_t box)
 {

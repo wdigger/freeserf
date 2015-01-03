@@ -25,16 +25,60 @@
 #include "minimap.h"
 #include "text-input.h"
 
-#ifndef _MSC_VER
-extern "C" {
-#endif
-  #include "mission.h"
-  #include "random.h"
-#ifndef _MSC_VER
-}
-#endif
-
 #include <algorithm>
+
+class random_input_t
+  : public text_input_t
+{
+protected:
+  std::string saved_text;
+
+public:
+  random_input_t() {
+    set_filter(text_input_filter);
+    set_size(34, 34);
+    set_max_length(16);
+  }
+
+  void set_random(const random_state_t &rnd) {
+    char *str = random_to_string(&rnd);
+    set_text(str);
+    free(str);
+  }
+  random_state_t get_random() {
+    return string_to_random(text.c_str());
+  }
+
+protected:
+  static bool
+  text_input_filter(const char key, text_input_t *text_input)
+  {
+    if (key < '1' || key > '8') {
+      return false;
+    }
+
+    if (strlen(text_input->get_text()) > 16) {
+      return false;
+    }
+    
+    return true;
+  }
+
+  virtual int handle_click_left(int x, int y) {
+    text_input_t::handle_click_left(x, y);
+    saved_text = text;
+    text.clear();
+    return 1;
+  }
+  virtual int handle_focus_loose() {
+    text_input_t::handle_focus_loose();
+    if ((text.length() < 16) && (saved_text.length() == 16)) {
+      text = saved_text;
+      saved_text.clear();
+    }
+    return 1;
+  }
+};
 
 typedef enum {
   ACTION_START_GAME,
@@ -209,9 +253,7 @@ game_init_box_t::handle_action(int action)
       map_size = 3;
       mission = &custom_mission;
       field->set_displayed(true);
-      char *str = random_to_string(&custom_mission.rnd);
-      field->set_text(str);
-      free(str);
+      field->set_random(custom_mission.rnd);
     }
     generate_map_priview();
     set_redraw();
@@ -225,6 +267,7 @@ game_init_box_t::handle_action(int action)
       map_size = std::min(map_size+1, 10);
     } else {
       game_mission = std::min(game_mission+1, get_mission_count()-1);
+      mission = get_mission(game_mission);
     }
     generate_map_priview();
     break;
@@ -233,21 +276,20 @@ game_init_box_t::handle_action(int action)
       map_size = std::max(3, map_size-1);
     } else {
       game_mission = std::max(0, game_mission-1);
+      mission = get_mission(game_mission);
     }
     generate_map_priview();
     break;
   case ACTION_GEN_RANDOM: {
     random_state_t rnd = random_generate_random_state();
-    char *str = random_to_string(&rnd);
-    field->set_text(str);
-    free(str);
+    field->set_random(rnd);
     set_redraw();
     break;
   }
   case ACTION_APPLY_RANDOM: {
     const char *str = field->get_text();
     if (strlen(str) == 16) {
-      custom_mission.rnd = string_to_random(str);
+      custom_mission.rnd = field->get_random();
       generate_map_priview();
     }
     break;
@@ -439,14 +481,10 @@ game_init_box_t::game_init_box_t(interface_t *interface)
   map = NULL;
   generate_map_priview();
 
-  field = new text_input_t();
-  char *str = random_to_string(&custom_mission.rnd);
-  field->set_text(str);
-  free(str);
-  field->set_size(32, 32);
+  field = new random_input_t();
+  field->set_random(custom_mission.rnd);
   field->set_displayed(true);
-  field->set_max_length(16);
-  add_float(field, 20 + 26*8, 16);
+  add_float(field, 19 + 26*8, 15);
 }
 
 game_init_box_t::~game_init_box_t()
@@ -460,5 +498,10 @@ game_init_box_t::~game_init_box_t()
   if (minimap != NULL) {
     delete minimap;
     minimap = NULL;
+  }
+
+  if (field != NULL) {
+    delete field;
+    field = NULL;
   }
 }

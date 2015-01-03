@@ -215,6 +215,7 @@ extern game_t game;
 
 /* External interface */
 void game_init(int map_generator);
+void game_deinit();
 int game_add_player(uint face, uint color, uint supplies,
 		    uint reproduction, uint intelligence);
 int game_load_mission_map(int m);

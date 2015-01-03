@@ -424,6 +424,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\src\text-input.cc"
+				>
+			</File>
+			<File
 				RelativePath="..\src\version.c"
 				>
 				<FileConfiguration
@@ -575,6 +579,10 @@
 			</File>
 			<File
 				RelativePath="..\src\serf.h"
+				>
+			</File>
+			<File
+				RelativePath="..\src\text-input.h"
 				>
 			</File>
 			<File

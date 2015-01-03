@@ -36,6 +36,8 @@ gui_object_t::layout()
 {
 }
 
+gui_object_t *gui_object_t::focused_object = NULL;
+
 gui_object_t::gui_object_t()
 {
   x = 0;
@@ -47,6 +49,7 @@ gui_object_t::gui_object_t()
   redraw = true;
   parent = NULL;
   frame = NULL;
+  focused = false;
 }
 
 gui_object_t::~gui_object_t()
@@ -118,23 +121,34 @@ gui_object_t::handle_event(const gui_event_t *event)
     }
   }
 
+  int result = 0;
   switch (event->type) {
     case GUI_EVENT_TYPE_CLICK:
       if (event->button == GUI_EVENT_BUTTON_LEFT) {
-        return handle_click_left(event_x, event_y);
+        result = handle_click_left(event_x, event_y);
       }
       break;
     case GUI_EVENT_TYPE_DRAG_MOVE:
-      return handle_drag(event->dx, event->dy);
+      result = handle_drag(event->dx, event->dy);
+      break;
     case GUI_EVENT_TYPE_DBL_CLICK:
-      return handle_dbl_click(x, y, event->button);
+      result = handle_dbl_click(x, y, event->button);
+      break;
     case GUI_EVENT_KEY_PRESSED:
-      return handle_key_pressed(event->dx, event->dy);
+      result = handle_key_pressed(event->dx, event->dy);
+      break;
     default:
       break;
   }
 
-  return 0;
+  if ((result != 0) && (focused_object != NULL)) {
+    if (focused_object != this) {
+      focused_object->handle_focus_loose();
+      focused_object = NULL;
+    }
+  }
+
+  return result;
 }
 
 void

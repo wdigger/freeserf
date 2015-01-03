@@ -102,6 +102,7 @@ void
 video_deinit()
 {
 	video_set_cursor(NULL);
+	gfx_frame_destroy(screen);
 	SDL_Quit();
 }
 
