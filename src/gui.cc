@@ -20,6 +20,7 @@
  */
 
 #include "gui.h"
+#include "misc.h"
 
 #include <cstdlib>
 
@@ -61,7 +62,7 @@ void
 gui_object_t::delete_frame()
 {
   if(frame != NULL) {
-    gfx_frame_destroy(frame);
+    delete frame;
     frame = NULL;
   }
 }
@@ -86,7 +87,7 @@ gui_object_t::draw(frame_t *frame)
 
     redraw = 0;
   }
-  gfx_draw_frame(x, y, frame, 0, 0, this->frame, width, height);
+  frame->draw_frame(x, y, 0, 0, this->frame, width, height);
 }
 
 int

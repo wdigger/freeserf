@@ -23,15 +23,14 @@
 #include "interface.h"
 #include "minimap.h"
 #include "viewport.h"
+#include "data.h"
+#include "audio.h"
 
 #ifndef _MSC_VER
 extern "C" {
 #endif
   #include "freeserf.h"
-  #include "data.h"
   #include "game.h"
-  #include "gfx.h"
-  #include "audio.h"
   #include "debug.h"
 #ifndef _MSC_VER
 }
@@ -296,25 +295,24 @@ typedef enum {
 static void
 draw_popup_box_frame(frame_t *frame)
 {
-  gfx_draw_sprite(0, 0, DATA_FRAME_POPUP_BASE+0, frame);
-  gfx_draw_sprite(0, 153, DATA_FRAME_POPUP_BASE+1, frame);
-  gfx_draw_sprite(0, 9, DATA_FRAME_POPUP_BASE+2, frame);
-  gfx_draw_sprite(136, 9, DATA_FRAME_POPUP_BASE+3, frame);
+  frame->draw_sprite(0, 0, DATA_FRAME_POPUP_BASE+0);
+  frame->draw_sprite(0, 153, DATA_FRAME_POPUP_BASE+1);
+  frame->draw_sprite(0, 9, DATA_FRAME_POPUP_BASE+2);
+  frame->draw_sprite(136, 9, DATA_FRAME_POPUP_BASE+3);
 }
 
 /* Draw icon in a popup frame. */
 static void
 draw_popup_icon(int x, int y, int sprite, frame_t *frame)
 {
-  gfx_draw_sprite(8*x+8, y+9, DATA_ICON_BASE + sprite, frame);
+  frame->draw_sprite(8*x+8, y+9, DATA_ICON_BASE + sprite);
 }
 
 /* Draw building in a popup frame. */
 static void
 draw_popup_building(int x, int y, int sprite, frame_t *frame)
 {
-  gfx_draw_transp_sprite(8*x+8, y+9, DATA_MAP_OBJECT_BASE + sprite,
-             0, 0, 0, frame);
+  frame->draw_transp_sprite(8*x+8, y+9, DATA_MAP_OBJECT_BASE + sprite, false);
 }
 
 /* Fill the background of a popup frame. */
@@ -339,7 +337,7 @@ draw_box_row(int sprite, int y, frame_t *frame)
 static void
 draw_green_string(int x, int y, frame_t *frame, const char *str)
 {
-  gfx_draw_string(8*x+8, y+9, 31, 0, frame, str);
+  frame->draw_string(8*x+8, y+9, 31, 0, str);
 }
 
 /* Draw a green number in a popup frame.
@@ -380,7 +378,7 @@ draw_green_number(int x, int y, frame_t *frame, int n)
 static void
 draw_green_large_number(int x, int y, frame_t *frame, int n)
 {
-  gfx_draw_number(8*x+8, 9+y, 31, 0, frame, n);
+  frame->draw_number(8*x+8, 9+y, 31, 0, n);
 }
 
 /* Draw small green number. */
@@ -409,7 +407,7 @@ draw_player_face(int x, int y, int player, frame_t *frame)
     face = game.player[player]->face;
   }
 
-  gfx_fill_rect(8*x, y+5, 48, 72, color, frame);
+  frame->fill_rect(8*x, y+5, 48, 72, color);
   draw_popup_icon(x, y, get_player_face_sprite(face), frame);
 }
 
@@ -420,8 +418,7 @@ draw_custom_bld_box(const int sprites[], frame_t *frame)
   while (sprites[0] > 0) {
     int x = sprites[1];
     int y = sprites[2];
-    gfx_draw_transp_sprite(8*x+8, y+9, DATA_MAP_OBJECT_BASE + sprites[0],
-               0, 0, 0, frame);
+    frame->draw_transp_sprite(8*x+8, y+9, DATA_MAP_OBJECT_BASE + sprites[0], false);
     sprites += 3;
   }
 }
@@ -928,22 +925,22 @@ draw_player_stat_chart(const int *data, int index, int color, frame_t *frame)
       if (value > prev_value) {
         int diff = value - prev_value;
         int h = diff/2;
-        gfx_fill_rect(x + width - i, y + height - h - prev_value,
-                1, h, color, frame);
+        frame->fill_rect(x + width - i, y + height - h - prev_value,
+                1, h, color);
         diff -= h;
-        gfx_fill_rect(x + width - i - 1, y + height - value,
-                1, diff, color, frame);
+        frame->fill_rect(x + width - i - 1, y + height - value,
+                1, diff, color);
       } else if (value == prev_value) {
-        gfx_fill_rect(x + width - i - 1, y + height - value,
-                2, 1, color, frame);
+        frame->fill_rect(x + width - i - 1, y + height - value,
+                2, 1, color);
       } else {
         int diff = prev_value - value;
         int h = diff/2;
-        gfx_fill_rect(x + width - i, y + height - prev_value,
-                1, h, color, frame);
+        frame->fill_rect(x + width - i, y + height - prev_value,
+                1, h, color);
         diff -= h;
-        gfx_fill_rect(x + width - i - 1, y + height - value - diff,
-                1, diff, color, frame);
+        frame->fill_rect(x + width - i - 1, y + height - value - diff,
+                1, diff, color);
       }
     }
 
@@ -1144,7 +1141,7 @@ popup_box_t::draw_stat_7_box(frame_t *frame)
   for (int i = 0; i < 112; i++) {
     int value = std::min((historical_data[i]*multiplier) >> 16, 64);
     if (value > 0) {
-      gfx_fill_rect(119 - i, 73 - value, 1, value, 72, frame);
+      frame->fill_rect(119 - i, 73 - value, 1, value, 72);
     }
   }
 }
@@ -1692,7 +1689,7 @@ draw_slide_bar(int x, int y, int value, frame_t *frame)
 
   int width = value/1310;
   if (width > 0) {
-    gfx_fill_rect(8*x+15, y+11, width, 4, 30, frame);
+    frame->fill_rect(8*x+15, y+11, width, 4, 30);
   }
 }
 

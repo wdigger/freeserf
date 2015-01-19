@@ -24,6 +24,41 @@
 
 #include "gfx.h"
 
+class color_t;
+
+class image_t
+{
+protected:
+  int delta_x;
+  int delta_y;
+  int offset_x;
+  int offset_y;
+  unsigned int width;
+  unsigned int height;
+
+public:
+  image_t(sprite_t *sprite);
+  virtual ~image_t() {}
+
+  unsigned int get_width() { return width; }
+  unsigned int get_height() { return height; }
+  int get_offset_x() { return offset_x; }
+  int get_offset_y() { return offset_y; }
+};
+
+class video_frame_t
+{
+public:
+  virtual ~video_frame_t() {}
+
+  virtual unsigned int get_width() = 0;
+  virtual unsigned int get_height() = 0;
+
+  virtual void draw(int dx, int dy, video_frame_t *dest, int sx, int sy, int w, int h) = 0;
+  virtual void draw(image_t *image, int x, int y, int y_offset) = 0;
+  virtual void fill_rect(int x, int y, int width, int height, const color_t *color) = 0;
+};
+
 int video_init();
 void video_deinit();
 int video_set_resolution(int width, int height, int fullscreen);
@@ -32,21 +67,15 @@ int video_set_fullscreen(int enable);
 int video_is_fullscreen();
 int video_is_fullscreen_possible();
 
-frame_t *video_get_screen_frame();
-void video_frame_init(frame_t *frame, int width, int height);
-void video_frame_deinit(frame_t *frame);
-int video_frame_get_width(const frame_t *frame);
-int video_frame_get_height(const frame_t *frame);
+video_frame_t *video_get_screen_frame();
+video_frame_t *video_frame_create(unsigned int width, unsigned int height);
+
 void video_warp_mouse(int x, int y);
 
-void video_draw_frame(int dx, int dy, frame_t *dest, int sx, int sy, frame_t *src, int w, int h);
-void video_fill_rect(int x, int y, int width, int height, const color_t *color, frame_t *dest);
 void video_swap_buffers();
 
 void video_set_cursor(const sprite_t *sprite);
 
-void *video_native_image_from_sprite(const sprite_t *sprite);
-void video_native_image_free(void *native_image);
-void video_draw_image_to_frame(image_t *image, frame_t *frame, int x, int y, int y_offset);
+image_t *video_image_from_sprite(sprite_t *sprite);
 
 #endif /* ! _VIDEO_H */

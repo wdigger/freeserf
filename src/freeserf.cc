@@ -23,16 +23,16 @@
 #include "viewport.h"
 #include "notification.h"
 #include "popup.h"
+#include "data.h"
+#include "gfx.h"
+#include "audio.h"
+#include "video.h"
 
 #ifndef _MSC_VER
 extern "C" {
 #endif
   #include "freeserf.h"
-  #include "gfx.h"
-  #include "data.h"
-  #include "video.h"
   #include "log.h"
-  #include "audio.h"
   #include "savegame.h"
   #include "mission.h"
   #include "version.h"
@@ -443,7 +443,7 @@ game_loop()
     /* Update and draw interface */
     interface->update();
 
-    frame_t *screen = video_get_screen_frame();
+    frame_t *screen = gfx_get_screen_frame();
     interface->draw(screen);
 
     /* Swap video buffers */
@@ -574,8 +574,7 @@ main(int argc, char *argv[])
   }
 
   LOGI("main", "Initialize graphics...");
-  r = gfx_init(screen_width, screen_height, fullscreen);
-  if (r < 0) exit(EXIT_FAILURE);
+  if (!gfx_init(screen_width, screen_height, fullscreen)) exit(EXIT_FAILURE);
 
   /* TODO move to right place */
   audio_init();

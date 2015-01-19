@@ -24,12 +24,12 @@
 #include "minimap.h"
 #include "popup.h"
 #include "viewport.h"
+#include "data.h"
+#include "audio.h"
 
 #ifndef _MSC_VER
 extern "C" {
 #endif
-  #include "data.h"
-  #include "audio.h"
   #include "game.h"
 #ifndef _MSC_VER
 }
@@ -75,7 +75,7 @@ panel_bar_t::draw_panel_frame(frame_t *frame)
 
   /* Draw layout */
   for (int i = 0; layout[i] != -1; i += 3) {
-    gfx_draw_sprite(layout[i+1], layout[i+2], layout[i], frame);
+    frame->draw_sprite(layout[i+1], layout[i+2], layout[i]);
   }
 }
 
@@ -84,14 +84,14 @@ void
 panel_bar_t::draw_message_notify(frame_t *frame)
 {
   interface->set_msg_flags(interface->get_msg_flags() | BIT(2));
-  gfx_draw_sprite(40, 4, DATA_FRAME_BOTTOM_NOTIFY, frame);
+  frame->draw_sprite(40, 4, DATA_FRAME_BOTTOM_NOTIFY);
 }
 
 /* Draw return arrow icon in action panel. */
 static void
 draw_return_arrow(panel_bar_t *panel, frame_t *frame)
 {
-  gfx_draw_sprite(40, 28, DATA_FRAME_BOTTOM_ARROW, frame);
+  frame->draw_sprite(40, 28, DATA_FRAME_BOTTOM_ARROW);
 }
 
 /* Draw buttons in action panel. */
@@ -128,7 +128,7 @@ panel_bar_t::draw_panel_buttons(frame_t *frame)
     int y = 4;
     int sprite = DATA_FRAME_BUTTON_BASE + button;
 
-    gfx_draw_sprite(x, y, sprite, frame);
+    frame->draw_sprite(x, y, sprite);
   }
 }
 

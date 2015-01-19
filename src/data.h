@@ -239,15 +239,19 @@
 #define DATA_CURSOR  3999
 
 // System and data source color representation
-typedef struct {
+class color_t
+{
+public:
 	unsigned char r;
 	unsigned char g;
 	unsigned char b;
 	unsigned char a;
-} color_t;
+};
 
 // System and data source sprite representation
-typedef struct {
+class sprite_t
+{
+public:
 	int delta_x;
 	int delta_y;
 	int offset_x;
@@ -255,7 +259,7 @@ typedef struct {
 	uint width;
 	uint height;
 	void *data;			// Allways RGBA 32bit
-} sprite_t;
+};
 
 int data_init(const char *path);
 int data_check(const char *path, char **load_path);

@@ -22,13 +22,7 @@
 #ifndef _GUI_H
 #define _GUI_H
 
-#ifndef _MSC_VER
-extern "C" {
-#endif
-  #include "gfx.h"
-#ifndef _MSC_VER
-}
-#endif
+#include "gfx.h"
 
 #include <list>
 

@@ -21,10 +21,17 @@
 
 #include "audio.h"
 #include "data.h"
-#include "log.h"
-#include "list.h"
-#include "pqueue.h"
 #include "freeserf_endian.h"
+
+#ifndef _MSC_VER
+extern "C" {
+#endif
+  #include "pqueue.h"
+  #include "list.h"
+  #include "log.h"
+#ifndef _MSC_VER
+}
+#endif
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>

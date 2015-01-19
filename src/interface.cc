@@ -25,13 +25,13 @@
 #include "game-init.h"
 #include "notification.h"
 #include "popup.h"
+#include "data.h"
+#include "gfx.h"
+#include "audio.h"
 
 #ifndef _MSC_VER
 extern "C" {
 #endif
-  #include "audio.h"
-  #include "gfx.h"
-  #include "data.h"
   #include "debug.h"
   #include "game.h"
 #ifndef _MSC_VER

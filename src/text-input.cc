@@ -37,9 +37,9 @@ text_input_t::get_text()
 void
 text_input_t::internal_draw()
 {
-  gfx_fill_rect(0, 0, width, height, color_background, frame);
+  frame->fill_rect(0, 0, width, height, color_background);
   if (draw_focus && focused) {
-    gfx_draw_rect(0, 0, width, height, color_focus, frame);
+    frame->draw_rect(0, 0, width, height, color_focus);
   }
   int ch_width = width/8;
   std::string str = text;
@@ -52,7 +52,7 @@ text_input_t::internal_draw()
   while (str.length()) {
     std::string substr = str.substr(0, ch_width);
     str.erase(0, ch_width);
-    gfx_draw_string(cx, cy, color_text, 0, frame, substr.c_str());
+    frame->draw_string(cx, cy, color_text, 0, substr.c_str());
     cy += 8;
   }
 }

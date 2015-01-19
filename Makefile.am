@@ -4,7 +4,7 @@ bin_PROGRAMS = freeserf
 
 freeserf_SOURCES = \
 	src/freeserf.cc src/freeserf.h \
-	src/data.h src/data.c src/resource.h \
+	src/data.h src/data.cc src/resource.h \
 	src/mission.c src/mission.h \
 	src/game.c src/game.h \
 	src/serf.c src/serf.h \
@@ -12,7 +12,7 @@ freeserf_SOURCES = \
 	src/building.c src/building.h \
 	src/random.c src/random.h \
 	src/pathfinder.cc src/pathfinder.h \
-	src/gfx.c src/gfx.h src/gfx-cache.cc \
+	src/gfx.cc src/gfx.h src/gfx-cache.cc \
 	src/viewport.cc src/viewport.h \
 	src/minimap.cc src/minimap.h \
 	src/interface.cc src/interface.h \
@@ -23,7 +23,8 @@ freeserf_SOURCES = \
 	src/panel.cc src/panel.h \
 	src/map.c src/map.h \
 	src/player.c src/player.h \
-	src/video-sdl.c src/video.h \
+	src/video-sdl.cc src/video-sdl.h \
+	src/video.cc src/video.h \
 	src/audio.h \
 	src/savegame.c src/savegame.h \
 	src/list.c src/list.h \
@@ -33,7 +34,7 @@ freeserf_SOURCES = \
 	src/debug.h \
 	src/freeserf_endian.h \
 	src/version.c src/version.h src/version-vcs.h \
-	src/data-source-dos.c \
+	src/data-source-dos.cc \
 	src/text-input.cc src/text-input.h
 
 AM_CFLAGS = $(SDL2_CFLAGS) -I$(top_builddir)/src
@@ -44,9 +45,9 @@ if ENABLE_SDL2_MIXER
 AM_CFLAGS += $(SDL2_mixer_CFLAGS)
 AM_CXXFLAGS += $(SDL2_mixer_CFLAGS)
 freeserf_LDADD += $(SDL2_mixer_LIBS)
-freeserf_SOURCES += src/audio-sdlmixer.c
+freeserf_SOURCES += src/audio-sdlmixer.cc
 else
-freeserf_SOURCES += src/audio-dummy.c
+freeserf_SOURCES += src/audio-dummy.cc
 endif
 
 VCS_VERSION_FILE = src/version-vcs.h

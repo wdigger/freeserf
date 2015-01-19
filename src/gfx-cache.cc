@@ -19,13 +19,8 @@
  * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _MSC_VER
-extern "C" {
-#endif
-  #include "gfx.h"
-#ifndef _MSC_VER
-}
-#endif
+#include "gfx.h"
+#include "video.h"
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>
@@ -62,7 +57,7 @@ gfx_get_image_from_cache(int sprite, int mask, int offset)
 void gfx_clear_cache()
 {
   while(!image_cache.empty()) {
-    gfx_image_free(image_cache.begin()->second);
+    delete image_cache.begin()->second;
     image_cache.erase(image_cache.begin());
   }
 }

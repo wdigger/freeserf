@@ -21,12 +21,12 @@
 
 #include "notification.h"
 #include "interface.h"
+#include "data.h"
 
 #ifndef _MSC_VER
 extern "C" {
 #endif
   #include "game.h"
-  #include "data.h"
   #include "debug.h"
 #ifndef _MSC_VER
 }
@@ -35,7 +35,7 @@ extern "C" {
 static void
 draw_icon(int x, int y, int sprite, frame_t *frame)
 {
-  gfx_draw_sprite(8*x, y, DATA_ICON_BASE + sprite, frame);
+  frame->draw_sprite(8*x, y, DATA_ICON_BASE + sprite);
 }
 
 static void
@@ -43,7 +43,7 @@ draw_background(int width, int height, int sprite, frame_t *frame)
 {
   for (int y = 0; y < height; y += 16) {
     for (int x = 0; x < width; x += 16) {
-      gfx_draw_sprite(x, y, DATA_ICON_BASE + sprite, frame);
+      frame->draw_sprite(x, y, DATA_ICON_BASE + sprite);
     }
   }
 }
@@ -51,14 +51,13 @@ draw_background(int width, int height, int sprite, frame_t *frame)
 static void
 draw_string(int x, int y, frame_t *frame, const char *str)
 {
-  gfx_draw_string(8*x, y, 31, 0, frame, str);
+  frame->draw_string(8*x, y, 31, 0, str);
 }
 
 static void
 draw_map_object(int x, int y, int sprite, frame_t *frame)
 {
-  gfx_draw_transp_sprite(8*x, y, DATA_MAP_OBJECT_BASE + sprite,
-             0, 0, 0, frame);
+  frame->draw_transp_sprite(8*x, y, DATA_MAP_OBJECT_BASE + sprite, false);
 }
 
 static int
@@ -71,7 +70,7 @@ get_player_face_sprite(int face)
 static void
 draw_player_face(int x, int y, int player, frame_t *frame)
 {
-  gfx_fill_rect(8*x, y, 48, 72, game.player[player]->color, frame);
+  frame->fill_rect(8*x, y, 48, 72, game.player[player]->color);
   draw_icon(x+1, y+4, get_player_face_sprite(game.player[player]->face), frame);
 }
 

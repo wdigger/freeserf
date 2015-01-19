@@ -21,7 +21,14 @@
 
 #include "data.h"
 #include "freeserf_endian.h"
-#include "log.h"
+
+#ifndef _MSC_VER
+extern "C" {
+#endif
+  #include "log.h"
+#ifndef _MSC_VER
+}
+#endif
 
 #ifdef HAVE_CONFIG_H
 # include <config.h>

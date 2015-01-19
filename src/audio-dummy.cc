@@ -20,15 +20,21 @@
  */
 
 #include "audio.h"
-#include "log.h"
 
+#ifndef _MSC_VER
+extern "C" {
+#endif
+  #include "log.h"
+#ifndef _MSC_VER
+}
+#endif
 
 /* Common audio. */
 int
 audio_init()
 {
-	LOGI("audio-dummy", "Initializing audio driver `dummy'.");
-	return 0;
+  LOGI("audio-dummy", "Initializing audio driver `dummy'.");
+  return 0;
 }
 
 void
@@ -39,25 +45,25 @@ audio_deinit()
 int
 audio_volume()
 {
-	return 0;
+  return 0;
 }
 
 void
 audio_set_volume(int volume)
 {
-	LOGV("audio-dummy", "Request to set volume to %i", volume);
+  LOGV("audio-dummy", "Request to set volume to %i", volume);
 }
 
 void
 audio_volume_up()
 {
-	LOGV("audio-dummy", "Request to increase volume");
+  LOGV("audio-dummy", "Request to increase volume");
 }
 
 void
 audio_volume_down()
 {
-	LOGV("audio-dummy", "Request to decrease volume");
+  LOGV("audio-dummy", "Request to decrease volume");
 }
 
 
@@ -65,7 +71,7 @@ audio_volume_down()
 void
 sfx_play_clip(sfx_t sfx)
 {
-	LOGV("audio-dummy", "Request to play SFX clip %i", sfx);
+  LOGV("audio-dummy", "Request to play SFX clip %i", sfx);
 }
 
 void
@@ -76,7 +82,7 @@ sfx_enable(int enable)
 int
 sfx_is_enabled()
 {
-	return 0;
+  return 0;
 }
 
 
@@ -84,7 +90,7 @@ sfx_is_enabled()
 void
 midi_play_track(midi_t midi)
 {
-	LOGV("audio-dummy", "Request to play MIDI track %i", midi);
+  LOGV("audio-dummy", "Request to play MIDI track %i", midi);
 }
 
 void
@@ -95,5 +101,5 @@ midi_enable(int enable)
 int
 midi_is_enabled()
 {
-	return 0;
+  return 0;
 }

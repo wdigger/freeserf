@@ -23,16 +23,15 @@
 #include "interface.h"
 #include "pathfinder.h"
 #include "popup.h"
+#include "data.h"
+#include "audio.h"
 
 #ifndef _MSC_VER
 extern "C" {
 #endif
-  #include "data.h"
-  #include "gfx.h"
   #include "game.h"
   #include "log.h"
   #include "debug.h"
-  #include "audio.h"
   #include "freeserf_endian.h"
 #ifndef _MSC_VER
 }
@@ -99,10 +98,9 @@ draw_triangle_up(int x, int y, int m, int left, int right, map_pos_t pos, frame_
 
   int sprite = tri_spr[index];
 
-  gfx_draw_masked_sprite(x, y,
+  frame->draw_masked_sprite(x, y,
              DATA_MAP_MASK_UP_BASE + mask,
-             DATA_MAP_GROUND_BASE + sprite,
-             frame);
+             DATA_MAP_GROUND_BASE + sprite);
 }
 
 static void
@@ -132,9 +130,9 @@ draw_triangle_down(int x, int y, int m, int left, int right, map_pos_t pos, fram
 
   int sprite = tri_spr[index];
 
-  gfx_draw_masked_sprite(x, y + MAP_TILE_HEIGHT,
+  frame->draw_masked_sprite(x, y + MAP_TILE_HEIGHT,
              DATA_MAP_MASK_DOWN_BASE + mask,
-             DATA_MAP_GROUND_BASE + sprite, frame);
+             DATA_MAP_GROUND_BASE + sprite);
 }
 
 /* Draw a column (vertical) of tiles, starting at an up pointing tile. */
@@ -262,7 +260,7 @@ viewport_t::map_deinit()
 {
   while(landscape_tiles.size()) {
     tiles_map_t::iterator it = landscape_tiles.begin();
-    gfx_frame_destroy(it->second);
+    delete it->second;
     landscape_tiles.erase(it);
   }
 }
@@ -313,7 +311,7 @@ viewport_t::get_tile_frame(uint tid, int tc, int tr)
   }
   else {
     tile_frame = gfx_frame_create(tile_width, tile_height);
-    gfx_fill_rect(0, 0, tile_width, tile_height, 0, tile_frame);
+    tile_frame->fill_rect(0, 0, tile_width, tile_height, 0);
 
     int col = (tc*MAP_TILE_COLS + (tr*MAP_TILE_ROWS)/2) % game.map.cols;
     int row = tr*MAP_TILE_ROWS;
@@ -392,7 +390,7 @@ viewport_t::draw_landscape(frame_t *frame)
         h = height - y;
       }
 
-      gfx_draw_frame(x, y, frame,
+      frame->draw_frame(x, y,
                      tx, ty, tile_frame,
                      w, h);
       x += tile_width - tx;
@@ -457,10 +455,9 @@ draw_path_segment(int x, int y, map_pos_t pos, dir_t dir, frame_t *frame)
   else if (type > 13) sprite += 6;
   else if (type > 7) sprite += 3;
 
-  gfx_draw_masked_sprite(x, y,
+  frame->draw_masked_sprite(x, y,
              DATA_PATH_MASK_BASE + mask,
-             DATA_PATH_GROUND_BASE + sprite,
-             frame);
+             DATA_PATH_GROUND_BASE + sprite);
 }
 
 static void
@@ -516,8 +513,7 @@ draw_border_segment(int x, int y, map_pos_t pos, dir_t dir, frame_t *frame)
   else if (type > 13) sprite += 6;
   else if (type > 7) sprite += 3;
 
-  gfx_draw_transp_sprite(x, y, DATA_MAP_BORDER_BASE + sprite,
-             0, 0, 0, frame);
+  frame->draw_transp_sprite(x, y, DATA_MAP_BORDER_BASE + sprite, false);
 }
 
 void
@@ -598,49 +594,34 @@ viewport_t::draw_paths_and_borders(frame_t *frame)
 static void
 draw_game_sprite(int x, int y, int index, frame_t *frame)
 {
-  gfx_draw_transp_sprite(x, y, DATA_GAME_OBJECT_BASE + index,
-             1, 0, 0, frame);
+  frame->draw_transp_sprite(x, y, DATA_GAME_OBJECT_BASE + index, true);
 }
 
 static void
 draw_serf(int x, int y, int color, int head, int body, frame_t *frame)
 {
-  gfx_draw_transp_sprite(x, y, DATA_SERF_ARMS_BASE + body,
-             1, 0, 0, frame);
-  gfx_draw_transp_sprite(x, y, DATA_SERF_TORSO_BASE + body,
-             1, 0, color, frame);
+  frame->draw_transp_sprite(x, y, DATA_SERF_ARMS_BASE + body, true);
+  frame->draw_transp_sprite(x, y, DATA_SERF_TORSO_BASE + body, true, (unsigned char)color);
 
   if (head >= 0) {
-    int ax, ay;
-    gfx_get_sprite_offset(DATA_SERF_ARMS_BASE + body, &ax, &ay);
-    x += ax;
-    y += ay;
-    gfx_draw_transp_sprite(x, y, DATA_SERF_HEAD_BASE + head,
-               1, 0, 0, frame);
+    frame->draw_transp_sprite_relatively(x, y, DATA_SERF_HEAD_BASE + head, DATA_SERF_ARMS_BASE + body);
   }
 }
 
 static void
 draw_shadow_and_building_sprite(int x, int y, int index, frame_t *frame)
 {
-  gfx_draw_overlay_sprite(x, y, DATA_MAP_SHADOW_BASE + index,
-        0, frame);
-  gfx_draw_transp_sprite(x, y, DATA_MAP_OBJECT_BASE + index,
-             1, 0, 0, frame);
+  frame->draw_overlay_sprite(x, y, DATA_MAP_SHADOW_BASE + index);
+  frame->draw_transp_sprite(x, y, DATA_MAP_OBJECT_BASE + index, true);
 }
 
 static void
 draw_shadow_and_building_unfinished(int x, int y, int index, int progress, frame_t *frame)
 {
-  uint bw, bh;
-  gfx_get_sprite_size(DATA_MAP_OBJECT_BASE + index, &bw, &bh);
-  int h = ((bh * progress) >> 16) + 1;
-  int y_off = bh - h;
+  float p = (float)progress/(float)0xFFFF;
 
-  gfx_draw_overlay_sprite(x, y, DATA_MAP_SHADOW_BASE + index,
-        y_off, frame);
-  gfx_draw_transp_sprite(x, y, DATA_MAP_OBJECT_BASE + index,
-             1, y_off, 0, frame);
+  frame->draw_overlay_sprite(x, y, DATA_MAP_SHADOW_BASE + index, p);
+  frame->draw_transp_sprite(x, y, DATA_MAP_OBJECT_BASE + index, true, p);
 }
 
 static const int map_building_frame_sprite[] = {
@@ -1156,14 +1137,14 @@ draw_water_waves(map_pos_t pos, int x, int y, frame_t *frame)
   int sprite = DATA_MAP_WAVES_BASE + (((pos ^ 5) + (game.tick >> 3)) & 0xf);
 
   if (MAP_TYPE_DOWN(pos) < 4 && MAP_TYPE_UP(pos) < 4) {
-    gfx_draw_waves_sprite(x - 16, y, 0, sprite, frame);
+    frame->draw_waves_sprite(x - 16, y, 0, sprite);
   }
   else if (MAP_TYPE_DOWN(pos) < 4) {
-    gfx_draw_waves_sprite(x, y, 0, sprite, frame);
+    frame->draw_waves_sprite(x, y, 0, sprite);
   }
   else {
     int mask = DATA_MAP_MASK_UP_BASE + 40;
-    gfx_draw_waves_sprite(x - 16, y, mask, sprite, frame);
+    frame->draw_waves_sprite(x - 16, y, mask, sprite);
   }
 }
 
@@ -1318,7 +1299,7 @@ draw_row_serf(int x, int y, int shadow, int color, int body, frame_t *frame)
 
   /* Shadow */
   if (shadow) {
-    gfx_draw_overlay_sprite(x, y, DATA_SERF_SHADOW, 0, frame);
+    frame->draw_overlay_sprite(x, y, DATA_SERF_SHADOW);
   }
 
   int hi = ((body >> 8) & 0xff) * 2;
@@ -2179,10 +2160,10 @@ viewport_t::draw_base_grid_overlay(int color, frame_t *frame)
 
   int row = 0;
   for (int y = y_base; y < height; y += MAP_TILE_HEIGHT, row++) {
-    gfx_fill_rect(0, y, width, 1, color, frame);
+    frame->fill_rect(0, y, width, 1, color);
     for (int x = x_base + ((row % 2 == 0) ? 0 : -MAP_TILE_WIDTH/2);
          x < width; x += MAP_TILE_WIDTH) {
-      gfx_fill_rect(x, y + y - 2, 1, 5, color, frame);
+      frame->fill_rect(x, y + y - 2, 1, 5, color);
     }
   }
 }
@@ -2212,11 +2193,11 @@ viewport_t::draw_height_grid_overlay(int color, frame_t *frame)
 
       /* Draw cross. */
       if (pos != MAP_POS(0, 0)) {
-        gfx_fill_rect(x, y - 1, 1, 3, color, frame);
-        gfx_fill_rect(x - 1, y, 3, 1, color, frame);
+        frame->fill_rect(x, y - 1, 1, 3, color);
+        frame->fill_rect(x - 1, y, 3, 1, color);
       } else {
-        gfx_fill_rect(x, y - 2, 1, 5, color, frame);
-        gfx_fill_rect(x - 2, y, 5, 1, color, frame);
+        frame->fill_rect(x, y - 2, 1, 5, color);
+        frame->fill_rect(x - 2, y, 5, 1, color);
       }
 
       if (row % 2 == 0) pos = MAP_MOVE_DOWN(pos);

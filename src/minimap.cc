@@ -22,15 +22,8 @@
 #include "minimap.h"
 #include "interface.h"
 #include "viewport.h"
-
-#ifndef _MSC_VER
-extern "C" {
-#endif
-  #include "gfx.h"
-  #include "data.h"
-#ifndef _MSC_VER
-}
-#endif
+#include "gfx.h"
+#include "data.h"
 
 #define MINIMAP_MAX_SCALE  8
 
@@ -56,8 +49,8 @@ minimap_t::draw_minimap_point(int col, int row, uint8_t color,
       mm_x = mm_x % map_width;
       while (mm_x < width) {
         if (mm_x >= -density) {
-          gfx_fill_rect(mm_x, mm_y, density,
-                  density, color, frame);
+          frame->fill_rect(mm_x, mm_y, density,
+                           density, color);
         }
         mm_x += map_width;
       }
@@ -173,14 +166,14 @@ minimap_t::draw_minimap_rect(frame_t *frame)
 {
   int y = height/2;
   int x = width/2;
-  gfx_draw_transp_sprite(x, y, 354, 1, 0, 0, frame);
+  frame->draw_transp_sprite(x, y, 354, true);
 }
 
 void
 minimap_t::internal_draw()
 {
   if (map == NULL) {
-    gfx_fill_rect(0, 0, width, height, 1, frame);
+    frame->fill_rect(0, 0, width, height, 1);
     return;
   }
 
@@ -368,7 +361,7 @@ void
 game_minimap_t::internal_draw()
 {
   if (BIT_TEST(flags, 1)) {
-    gfx_fill_rect(0, 0, 128, 128, 1, frame);
+    frame->fill_rect(0, 0, 128, 128, 1);
     draw_minimap_ownership(2, frame);
   }
   else {

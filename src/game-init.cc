@@ -24,6 +24,7 @@
 #include "viewport.h"
 #include "minimap.h"
 #include "text-input.h"
+#include "data.h"
 
 #include <algorithm>
 
@@ -96,13 +97,13 @@ typedef enum {
 static void
 draw_box_icon(int x, int y, int sprite, frame_t *frame)
 {
-  gfx_draw_sprite(8*x+20, y+16, DATA_ICON_BASE + sprite, frame);
+  frame->draw_sprite(8*x+20, y+16, DATA_ICON_BASE + sprite);
 }
 
 static void
 draw_box_string(int x, int y, frame_t *frame, const char *str)
 {
-  gfx_draw_string(8*x+20, y+16, 31, 1, frame, str);
+  frame->draw_string(8*x+20, y+16, 31, 1, str);
 }
 
 /* Get the sprite number for a face. */
@@ -117,7 +118,7 @@ void
 game_init_box_t::internal_draw()
 {
   /* Background */
-  gfx_fill_rect(0, 0, width, height, 1, frame);
+  frame->fill_rect(0, 0, width, height, 1);
 
   const int layout[] = {
     266, 0, 0,
@@ -201,13 +202,13 @@ game_init_box_t::draw_player_box(int player, int x, int y, frame_t *frame)
 
   if (mission->player[player].face != 0) {
     int supplies = mission->player[player].supplies;
-    gfx_fill_rect(x + 64, y + 76 - supplies, 4, supplies, 67, frame);
+    frame->fill_rect(x + 64, y + 76 - supplies, 4, supplies, 67);
 
     int intelligence = mission->player[player].intelligence;
-    gfx_fill_rect(x + 70, y + 76 - intelligence, 4, intelligence, 30, frame);
+    frame->fill_rect(x + 70, y + 76 - intelligence, 4, intelligence, 30);
 
     int reproduction = mission->player[player].reproduction;
-    gfx_fill_rect(x + 76, y + 76 - reproduction, 4, reproduction, 75, frame);
+    frame->fill_rect(x + 76, y + 76 - reproduction, 4, reproduction, 75);
   }
 }
 
