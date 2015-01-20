@@ -24,7 +24,9 @@
 
 #include "video.h"
 
-#include <SDL.h>
+#include "SDL.h"
+
+class sdl_video_t;
 
 class sdl_frame_t
   : public video_frame_t
@@ -33,9 +35,10 @@ protected:
   unsigned int width;
   unsigned int height;
   SDL_Texture *texture;
+  sdl_video_t *video;
 
 public:
-  sdl_frame_t(unsigned int width, unsigned int height);
+  sdl_frame_t(unsigned int width, unsigned int height, sdl_video_t *video);
   virtual ~sdl_frame_t();
 
   virtual unsigned int get_width() { return width; }
@@ -55,12 +58,59 @@ class sdl_image_t
 {
 protected:
   SDL_Texture *texture;
+  sdl_video_t *video;
 
 public:
-  sdl_image_t(sprite_t *sprite);
+  sdl_image_t(sprite_t *sprite, sdl_video_t *video);
   virtual ~sdl_image_t();
 
   SDL_Texture *get_texture() { return texture; }
+
+  static SDL_Surface *create_surface_from_sprite(const sprite_t *sprite, Uint32 pixel_format);
+};
+
+class sdl_video_t
+  : public video_t
+{
+protected:
+  static int bpp;
+  static Uint32 Rmask;
+  static Uint32 Gmask;
+  static Uint32 Bmask;
+  static Uint32 Amask;
+  static Uint32 pixel_format;
+
+  SDL_Window *window;
+  SDL_Renderer *renderer;
+
+  sdl_frame_t *screen;
+  bool fullscreen;
+  SDL_Cursor *cursor;
+
+public:
+  sdl_video_t();
+  virtual ~sdl_video_t();
+
+  virtual bool set_resolution(unsigned int width, unsigned int height, bool fullscreen);
+  virtual void get_resolution(unsigned int &width, unsigned int &height);
+
+  virtual bool set_fullscreen(bool enable);
+  virtual bool is_fullscreen();
+  virtual bool is_fullscreen_possible();
+
+  virtual video_frame_t *get_screen_frame();
+  virtual video_frame_t *frame_create(unsigned int width, unsigned int height);
+
+  virtual void warp_mouse(int x, int y);
+
+  virtual void swap_buffers();
+
+  virtual void set_cursor(const sprite_t *sprite);
+
+  virtual image_t *image_from_sprite(sprite_t *sprite);
+
+  SDL_Renderer *get_renderer() { return renderer; }
+  Uint32 get_pixel_format() { return pixel_format; }
 };
 
 #endif /* ! _VIDEO_SDL_H */

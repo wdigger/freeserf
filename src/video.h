@@ -22,9 +22,8 @@
 #ifndef _VIDEO_H
 #define _VIDEO_H
 
-#include "gfx.h"
-
 class color_t;
+class sprite_t;
 
 class image_t
 {
@@ -59,23 +58,30 @@ public:
   virtual void fill_rect(int x, int y, int width, int height, const color_t *color) = 0;
 };
 
-int video_init();
-void video_deinit();
-int video_set_resolution(int width, int height, int fullscreen);
-void video_get_resolution(int *width, int *height);
-int video_set_fullscreen(int enable);
-int video_is_fullscreen();
-int video_is_fullscreen_possible();
+class video_t
+{
+public:
+  virtual ~video_t() {};
 
-video_frame_t *video_get_screen_frame();
-video_frame_t *video_frame_create(unsigned int width, unsigned int height);
+  virtual bool set_resolution(unsigned int width, unsigned int height, bool fullscreen) = 0;
+  virtual void get_resolution(unsigned int &width, unsigned int &height) = 0;
 
-void video_warp_mouse(int x, int y);
+  virtual bool set_fullscreen(bool enable) = 0;
+  virtual bool is_fullscreen() = 0;
+  virtual bool is_fullscreen_possible() = 0;
 
-void video_swap_buffers();
+  virtual video_frame_t *get_screen_frame() = 0;
+  virtual video_frame_t *frame_create(unsigned int width, unsigned int height) = 0;
 
-void video_set_cursor(const sprite_t *sprite);
+  virtual void warp_mouse(int x, int y) = 0;
 
-image_t *video_image_from_sprite(sprite_t *sprite);
+  virtual void swap_buffers() = 0;
+
+  virtual void set_cursor(const sprite_t *sprite) = 0;
+
+  virtual image_t *image_from_sprite(sprite_t *sprite) = 0;
+};
+
+video_t *video_create();
 
 #endif /* ! _VIDEO_H */

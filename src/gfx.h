@@ -76,6 +76,7 @@ frame_t *gfx_frame_create(unsigned int width, unsigned int height);
 
 /* Screen functions */
 frame_t *gfx_get_screen_frame();
+void gfx_set_resolution(unsigned int width, unsigned int height, bool fullscreen);
 void gfx_get_resolution(int *width, int *height);
 int gfx_set_fullscreen(int enable);
 int gfx_is_fullscreen();
@@ -85,5 +86,9 @@ int gfx_is_fullscreen_possible();
 void gfx_add_image_to_cache(int sprite, int mask, int offset, image_t *image);
 image_t *gfx_get_image_from_cache(int sprite, int mask, int offset);
 void gfx_clear_cache();
+
+void gfx_swap_buffers();
+
+void gfx_warp_mouse(int x, int y);
 
 #endif /* ! _GFX_H */

@@ -26,7 +26,6 @@
 #include "data.h"
 #include "gfx.h"
 #include "audio.h"
-#include "video.h"
 
 #ifndef _MSC_VER
 extern "C" {
@@ -256,7 +255,7 @@ game_loop()
               ev.button = (gui_event_button_t)drag_button;
               interface->handle_event(&ev);
 
-              video_warp_mouse(drag_x, drag_y);
+              gfx_warp_mouse(drag_x, drag_y);
 
               break;
             }
@@ -407,7 +406,7 @@ game_loop()
             int width = 0;
             int height = 0;
             gfx_get_resolution(&width, &height);
-            video_set_resolution(width, height, gfx_is_fullscreen());
+            gfx_set_resolution(width, height, gfx_is_fullscreen());
             interface->set_size(width, height);
           }
           break;
@@ -451,7 +450,7 @@ game_loop()
     interface->draw(screen);
 
     /* Swap video buffers */
-    video_swap_buffers();
+    gfx_swap_buffers();
 
     /* Reduce framerate to target if we finished too fast */
     int now = SDL_GetTicks();
