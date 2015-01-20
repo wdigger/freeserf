@@ -242,23 +242,23 @@
 class color_t
 {
 public:
-	unsigned char r;
-	unsigned char g;
-	unsigned char b;
-	unsigned char a;
+  unsigned char r;
+  unsigned char g;
+  unsigned char b;
+  unsigned char a;
 };
 
 // System and data source sprite representation
 class sprite_t
 {
 public:
-	int delta_x;
-	int delta_y;
-	int offset_x;
-	int offset_y;
-	uint width;
-	uint height;
-	void *data;			// Allways RGBA 32bit
+  int delta_x;
+  int delta_y;
+  int offset_x;
+  int offset_y;
+  uint width;
+  uint height;
+  void *data;      // Allways RGBA 32bit
 };
 
 int data_init(const char *path);
