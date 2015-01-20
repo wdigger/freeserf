@@ -110,11 +110,6 @@ video_init()
 void
 video_deinit()
 {
-  if (screen != NULL) {
-    delete screen;
-    screen = NULL;
-  }
-
   video_set_cursor(NULL);
   SDL_Quit();
 }
@@ -131,10 +126,11 @@ video_set_resolution(int width, int height, int fullscreen)
 
   /* Allocate new screen surface and texture */
   if (screen != NULL) {
-    delete screen;
-    screen = NULL;
+    screen->set_size(width, height);
   }
-  screen = new sdl_frame_t(width, height);
+  else {
+    screen = new sdl_frame_t(width, height);
+  }
 
   /* Set logical size of screen */
   r = SDL_RenderSetLogicalSize(renderer, width, height);
@@ -176,27 +172,43 @@ video_is_fullscreen()
 video_frame_t *
 video_get_screen_frame()
 {
+  if (screen == NULL) {
+    screen = new sdl_frame_t(100, 100);
+  }
+
   return screen;
 }
 
 sdl_frame_t::sdl_frame_t(unsigned int width, unsigned int height)
 {
-  this->width = width;
-  this->height = height;
+  texture = NULL;
 
-  texture = SDL_CreateTexture(renderer, pixel_format,
-                                  SDL_TEXTUREACCESS_TARGET,
-                                  width, height);
-
-  if (texture == NULL) {
-    LOGE("sdl-video", "Unable to create SDL texture: %s.", SDL_GetError());
-  }
+  set_size(width, height);
 }
 
 sdl_frame_t::~sdl_frame_t()
 {
   if (texture != NULL) {
     SDL_DestroyTexture(texture);
+  }
+}
+
+void
+sdl_frame_t::set_size(unsigned int width, unsigned int height)
+{
+  if (texture != NULL) {
+    SDL_DestroyTexture(texture);
+  }
+
+  this->width = width;
+  this->height = height;
+
+  texture = SDL_CreateTexture(renderer, pixel_format,
+                              SDL_TEXTUREACCESS_TARGET,
+                              width, height);
+
+  if (texture == NULL) {
+    LOGE("sdl-video", "Unable to create SDL texture: %s.", SDL_GetError());
   }
 }
 

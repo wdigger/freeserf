@@ -46,6 +46,8 @@ public:
   virtual void fill_rect(int x, int y, int width, int height, const color_t *color);
 
   SDL_Texture *get_texture() { return texture; }
+
+  void set_size(unsigned int width, unsigned int height);
 };
 
 class sdl_image_t

@@ -176,6 +176,8 @@ game_loop()
   SDL_Event event;
   gui_event_t ev;
 
+  frame_t *screen = NULL;
+
   game_loop_run = 1;
   while (game_loop_run) {
     while (SDL_PollEvent(&event)) {
@@ -443,7 +445,9 @@ game_loop()
     /* Update and draw interface */
     interface->update();
 
-    frame_t *screen = gfx_get_screen_frame();
+    if (screen == NULL) {
+      screen = gfx_get_screen_frame();
+    }
     interface->draw(screen);
 
     /* Swap video buffers */
@@ -457,6 +461,10 @@ game_loop()
       SDL_Delay(frametime_target - frametime_spent);
     }
     last_frame = SDL_GetTicks();
+  }
+
+  if (screen != NULL) {
+    delete screen;
   }
 }
 
