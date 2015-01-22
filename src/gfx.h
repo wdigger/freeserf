@@ -22,6 +22,8 @@
 #ifndef _GFX_H
 #define _GFX_H
 
+#include <map>
+
 typedef struct {
 	int x;
 	int y;
@@ -68,6 +70,33 @@ protected:
   void draw_char_sprite(int x, int y, unsigned int c, int color, int shadow);
 };
 
+class image_cache_t
+{
+public:
+  virtual ~image_cache_t() {}
+
+  virtual void add_image_to_cache(unsigned int sprite, unsigned int mask, unsigned char offset, image_t *image) = 0;
+  virtual image_t *get_image_from_cache(unsigned int sprite, unsigned int mask, unsigned char offset) = 0;
+};
+
+class gfx_t
+  : public image_cache_t
+{
+protected:
+  typedef std::map<uint64_t, image_t *> image_map_t;
+  image_map_t image_cache;
+
+public:
+  gfx_t();
+  virtual ~gfx_t();
+
+  virtual void add_image_to_cache(unsigned int sprite, unsigned int mask, unsigned char offset, image_t *image);
+  virtual image_t *get_image_from_cache(unsigned int sprite, unsigned int mask, unsigned char offset);
+
+protected:
+  uint64_t gfx_image_id(unsigned int sprite, unsigned int mask, unsigned char offset);
+};
+
 bool gfx_init(int width, int height, int fullscreen);
 void gfx_deinit();
 
@@ -81,11 +110,6 @@ void gfx_get_resolution(int *width, int *height);
 int gfx_set_fullscreen(int enable);
 int gfx_is_fullscreen();
 int gfx_is_fullscreen_possible();
-
-/* Image caching functions */
-void gfx_add_image_to_cache(int sprite, int mask, int offset, image_t *image);
-image_t *gfx_get_image_from_cache(int sprite, int mask, int offset);
-void gfx_clear_cache();
 
 void gfx_swap_buffers();
 

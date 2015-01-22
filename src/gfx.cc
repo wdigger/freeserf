@@ -34,6 +34,7 @@ extern "C" {
 #include <cstdlib>
 
 static video_t *video = NULL;
+static gfx_t *gfx = NULL;
 
 bool
 gfx_init(int width, int height, int fullscreen)
@@ -41,6 +42,7 @@ gfx_init(int width, int height, int fullscreen)
   LOGI("graphics", "Init...");
 
   video = video_create();
+  gfx = new gfx_t();
 
   LOGI("graphics", "Setting resolution to %ix%i...", width, height);
 
@@ -58,10 +60,14 @@ gfx_init(int width, int height, int fullscreen)
 void
 gfx_deinit()
 {
-  gfx_clear_cache();
   if (video != NULL) {
     delete video;
     video = NULL;
+  }
+
+  if (gfx != NULL) {
+    delete gfx;
+    gfx = NULL;
   }
 }
 
@@ -70,7 +76,7 @@ gfx_deinit()
 void
 frame_t::draw_sprite(int x, int y, unsigned int sprite)
 {
-  image_t *image = gfx_get_image_from_cache(sprite, 0, 0);
+  image_t *image = gfx->get_image_from_cache(sprite, 0, 0);
   if (image == NULL) {
     sprite_t *spr = data_sprite_for_index(sprite);
     if (spr == NULL) {
@@ -78,7 +84,7 @@ frame_t::draw_sprite(int x, int y, unsigned int sprite)
     }
     image = video->image_from_sprite(spr);
     data_sprite_free(spr);
-    gfx_add_image_to_cache(sprite, 0, 0, image);
+    gfx->add_image_to_cache(sprite, 0, 0, image);
   }
 
   x += image->get_offset_x();
@@ -92,7 +98,7 @@ frame_t::draw_sprite(int x, int y, unsigned int sprite)
 void
 frame_t::draw_transp_sprite(int x, int y, unsigned int sprite, bool use_off)
 {
-  image_t *image = gfx_get_image_from_cache(sprite, 0, 0);
+  image_t *image = gfx->get_image_from_cache(sprite, 0, 0);
   if (image == NULL) {
     sprite_t *spr = data_transparent_sprite_for_index(sprite, 0);
     if (spr == NULL) {
@@ -100,7 +106,7 @@ frame_t::draw_transp_sprite(int x, int y, unsigned int sprite, bool use_off)
     }
     image = video->image_from_sprite(spr);
     data_sprite_free(spr);
-    gfx_add_image_to_cache(sprite, 0, 0, image);
+    gfx->add_image_to_cache(sprite, 0, 0, image);
   }
 
   if (use_off) {
@@ -114,7 +120,7 @@ frame_t::draw_transp_sprite(int x, int y, unsigned int sprite, bool use_off)
 void
 frame_t::draw_transp_sprite(int x, int y, unsigned int sprite, bool use_off, float progress)
 {
-  image_t *image = gfx_get_image_from_cache(sprite, 0, 0);
+  image_t *image = gfx->get_image_from_cache(sprite, 0, 0);
   if (image == NULL) {
     sprite_t *spr = data_transparent_sprite_for_index(sprite, 0);
     if (spr == NULL) {
@@ -122,7 +128,7 @@ frame_t::draw_transp_sprite(int x, int y, unsigned int sprite, bool use_off, flo
     }
     image = video->image_from_sprite(spr);
     data_sprite_free(spr);
-    gfx_add_image_to_cache(sprite, 0, 0, image);
+    gfx->add_image_to_cache(sprite, 0, 0, image);
   }
 
   if (use_off) {
@@ -137,7 +143,7 @@ frame_t::draw_transp_sprite(int x, int y, unsigned int sprite, bool use_off, flo
 void
 frame_t::draw_transp_sprite(int x, int y, unsigned int sprite, bool use_off, unsigned char color_offs)
 {
-  image_t *image = gfx_get_image_from_cache(sprite, 0, color_offs);
+  image_t *image = gfx->get_image_from_cache(sprite, 0, color_offs);
   if (image == NULL) {
     sprite_t *spr = data_transparent_sprite_for_index(sprite, color_offs);
     if (spr == NULL) {
@@ -145,7 +151,7 @@ frame_t::draw_transp_sprite(int x, int y, unsigned int sprite, bool use_off, uns
     }
     image = video->image_from_sprite(spr);
     data_sprite_free(spr);
-    gfx_add_image_to_cache(sprite, 0, color_offs, image);
+    gfx->add_image_to_cache(sprite, 0, color_offs, image);
   }
 
   if (use_off) {
@@ -159,7 +165,7 @@ frame_t::draw_transp_sprite(int x, int y, unsigned int sprite, bool use_off, uns
 void
 frame_t::draw_transp_sprite_relatively(int x, int y, unsigned int sprite, unsigned int offs_sprite)
 {
-  image_t *image = gfx_get_image_from_cache(sprite, 0, 0);
+  image_t *image = gfx->get_image_from_cache(sprite, 0, 0);
   if (image == NULL) {
     sprite_t *spr = data_transparent_sprite_for_index(sprite, 0);
     if (spr == NULL) {
@@ -167,7 +173,7 @@ frame_t::draw_transp_sprite_relatively(int x, int y, unsigned int sprite, unsign
     }
     image = video->image_from_sprite(spr);
     data_sprite_free(spr);
-    gfx_add_image_to_cache(sprite, 0, 0, image);
+    gfx->add_image_to_cache(sprite, 0, 0, image);
   }
 
   x += image->get_offset_x();
@@ -186,7 +192,7 @@ frame_t::draw_transp_sprite_relatively(int x, int y, unsigned int sprite, unsign
 void
 frame_t::draw_masked_sprite(int x, int y, unsigned int mask, unsigned int sprite)
 {
-  image_t *image = gfx_get_image_from_cache(sprite, mask, 0);
+  image_t *image = gfx->get_image_from_cache(sprite, mask, 0);
   if (image == NULL) {
     sprite_t *spr = data_sprite_for_index(sprite);
     if (NULL == spr) {
@@ -203,7 +209,7 @@ frame_t::draw_masked_sprite(int x, int y, unsigned int mask, unsigned int sprite
     data_sprite_free(msk);
     image = video->image_from_sprite(masked);
     data_sprite_free(masked);
-    gfx_add_image_to_cache(sprite, mask, 0, image);
+    gfx->add_image_to_cache(sprite, mask, 0, image);
   }
 
   x += image->get_offset_x();
@@ -219,7 +225,7 @@ frame_t::draw_masked_sprite(int x, int y, unsigned int mask, unsigned int sprite
 void
 frame_t::draw_overlay_sprite(int x, int y, unsigned int sprite)
 {
-  image_t *image = gfx_get_image_from_cache(sprite, 0, 0);
+  image_t *image = gfx->get_image_from_cache(sprite, 0, 0);
   if (image == NULL) {
     sprite_t *spr = data_overlay_sprite_for_index(sprite);
     if (spr == NULL) {
@@ -227,7 +233,7 @@ frame_t::draw_overlay_sprite(int x, int y, unsigned int sprite)
     }
     image = video->image_from_sprite(spr);
     data_sprite_free(spr);
-    gfx_add_image_to_cache(sprite, 0, 0, image);
+    gfx->add_image_to_cache(sprite, 0, 0, image);
   }
 
   x += image->get_offset_x();
@@ -239,7 +245,7 @@ frame_t::draw_overlay_sprite(int x, int y, unsigned int sprite)
 void
 frame_t::draw_overlay_sprite(int x, int y, unsigned int sprite, float progress)
 {
-  image_t *image = gfx_get_image_from_cache(sprite, 0, 0);
+  image_t *image = gfx->get_image_from_cache(sprite, 0, 0);
   if (image == NULL) {
     sprite_t *spr = data_overlay_sprite_for_index(sprite);
     if (spr == NULL) {
@@ -247,7 +253,7 @@ frame_t::draw_overlay_sprite(int x, int y, unsigned int sprite, float progress)
     }
     image = video->image_from_sprite(spr);
     data_sprite_free(spr);
-    gfx_add_image_to_cache(sprite, 0, 0, image);
+    gfx->add_image_to_cache(sprite, 0, 0, image);
   }
 
   x += image->get_offset_x();
@@ -267,7 +273,7 @@ frame_t::draw_waves_sprite(int x, int y, unsigned int mask, unsigned int sprite)
     return;
   }
 
-  image_t *image = gfx_get_image_from_cache(sprite, mask, 0);
+  image_t *image = gfx->get_image_from_cache(sprite, mask, 0);
   if (image == NULL) {
     sprite_t *spr = data_transparent_sprite_for_index(sprite, 0);
     if (spr == NULL) {
@@ -284,7 +290,7 @@ frame_t::draw_waves_sprite(int x, int y, unsigned int mask, unsigned int sprite)
     data_sprite_free(msk);
     image = video->image_from_sprite(masked);
     data_sprite_free(masked);
-    gfx_add_image_to_cache(sprite, mask, 0, image);
+    gfx->add_image_to_cache(sprite, mask, 0, image);
   }
 
   x += image->get_offset_x();
@@ -490,4 +496,39 @@ void
 gfx_warp_mouse(int x, int y)
 {
   video->warp_mouse(x, y);
+}
+
+gfx_t::gfx_t()
+{
+}
+
+gfx_t::~gfx_t()
+{
+  while(!image_cache.empty()) {
+    delete image_cache.begin()->second;
+    image_cache.erase(image_cache.begin());
+  }
+}
+
+void
+gfx_t::add_image_to_cache(unsigned int sprite, unsigned int mask, unsigned char offset, image_t *image)
+{
+  image_cache[gfx_image_id(sprite, mask, offset)] = image;
+}
+
+image_t *
+gfx_t::get_image_from_cache(unsigned int sprite, unsigned int mask, unsigned char offset)
+{
+  image_map_t::iterator result = image_cache.find(gfx_image_id(sprite, mask, offset));
+  if(result == image_cache.end()) {
+    return NULL;
+  }
+  return result->second;
+}
+
+uint64_t
+gfx_t::gfx_image_id(unsigned int sprite, unsigned int mask, unsigned char offset)
+{
+  uint64_t result = (uint64_t)sprite + (((uint64_t)mask) << 32) + (((uint64_t)offset) << 48);
+  return result;
 }
