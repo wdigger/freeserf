@@ -19,9 +19,7 @@
  * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "video.h"
 #include "video-sdl.h"
-#include "version.h"
 #include "data.h"
 
 #ifndef _MSC_VER
@@ -31,13 +29,6 @@ extern "C" {
 #ifndef _MSC_VER
 }
 #endif
-
-#ifdef HAVE_CONFIG_H
-# include <config.h>
-#endif
-
-#include <stdlib.h>
-#include <signal.h>
 
 video_t *
 video_create()
@@ -54,18 +45,16 @@ Uint32 sdl_video_t::pixel_format = SDL_PIXELFORMAT_RGBA8888;
 
 sdl_video_t::sdl_video_t()
 {
+  screen = NULL;
+
   /* Initialize defaults and Video subsystem */
   if (SDL_InitSubSystem(SDL_INIT_VIDEO) < 0) {
     LOGE("sdl-video", "Unable to initialize SDL: %s.", SDL_GetError());
     return;
   }
 
-  /* Display program name and version in caption */
-  char caption[64];
-  snprintf(caption, 64, "freeserf %s", FREESERF_VERSION);
-
   /* Create window and renderer */
-  window = SDL_CreateWindow(caption,
+  window = SDL_CreateWindow("freeserf",
           SDL_WINDOWPOS_UNDEFINED,
           SDL_WINDOWPOS_UNDEFINED,
           800, 600, SDL_WINDOW_RESIZABLE);
@@ -96,10 +85,6 @@ sdl_video_t::sdl_video_t()
 
   /* Set scaling mode */
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
-
-  /* Exit on signals */
-  signal(SIGINT, exit);
-  signal(SIGTERM, exit);
 }
 
 sdl_video_t::~sdl_video_t()

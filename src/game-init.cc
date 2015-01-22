@@ -25,6 +25,7 @@
 #include "minimap.h"
 #include "text-input.h"
 #include "data.h"
+#include "version.h"
 
 #include <algorithm>
 
@@ -170,6 +171,12 @@ game_init_box_t::internal_draw()
       x = 0;
     }
   }
+
+  /* Display program name and version in caption */
+  char caption[64];
+  snprintf(caption, 64, "Version: %s", FREESERF_VERSION);
+
+  draw_box_string(0, 208, frame, caption);
 
   draw_box_icon(38, 208, 60, frame); /* exit */
 }
