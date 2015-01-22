@@ -75,7 +75,8 @@ gui_object_t::draw(frame_t *frame)
   }
 
   if(this->frame == NULL) {
-    this->frame = gfx_frame_create(width, height);
+    gfx_t *gfx = gfx_t::get_gfx();
+    this->frame = gfx->create_frame(width, height);
   }
   if(redraw) {
     internal_draw();

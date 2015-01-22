@@ -33,42 +33,45 @@ extern "C" {
 
 #include <cstdlib>
 
-static video_t *video = NULL;
-static gfx_t *gfx = NULL;
+video_t *gfx_t::video = NULL;
+gfx_t *gfx_t::gfx = NULL;
 
-bool
-gfx_init(int width, int height, int fullscreen)
+gfx_t::gfx_t(unsigned int width, unsigned int height, bool fullscreen)
 {
   LOGI("graphics", "Init...");
 
   video = video_create();
-  gfx = new gfx_t();
 
   LOGI("graphics", "Setting resolution to %ix%i...", width, height);
 
   if (!video->set_resolution(width, height, fullscreen)) {
-    return false;
+    return;
   }
 
   sprite_t *sprite = data_get_cursor();
   video->set_cursor(sprite);
   data_sprite_free(sprite);
 
-  return true;
+  gfx = this;
 }
 
-void
-gfx_deinit()
+gfx_t::~gfx_t()
 {
+  while(!image_cache.empty()) {
+    delete image_cache.begin()->second;
+    image_cache.erase(image_cache.begin());
+  }
+
   if (video != NULL) {
     delete video;
     video = NULL;
   }
+}
 
-  if (gfx != NULL) {
-    delete gfx;
-    gfx = NULL;
-  }
+gfx_t *
+gfx_t::get_gfx()
+{
+  return gfx;
 }
 
 /* Draw the opaque sprite with data file index of
@@ -82,7 +85,7 @@ frame_t::draw_sprite(int x, int y, unsigned int sprite)
     if (spr == NULL) {
       return;
     }
-    image = video->image_from_sprite(spr);
+    image = gfx->get_video()->image_from_sprite(spr);
     data_sprite_free(spr);
     gfx->add_image_to_cache(sprite, 0, 0, image);
   }
@@ -104,7 +107,7 @@ frame_t::draw_transp_sprite(int x, int y, unsigned int sprite, bool use_off)
     if (spr == NULL) {
       return;
     }
-    image = video->image_from_sprite(spr);
+    image = gfx->get_video()->image_from_sprite(spr);
     data_sprite_free(spr);
     gfx->add_image_to_cache(sprite, 0, 0, image);
   }
@@ -126,7 +129,7 @@ frame_t::draw_transp_sprite(int x, int y, unsigned int sprite, bool use_off, flo
     if (spr == NULL) {
       return;
     }
-    image = video->image_from_sprite(spr);
+    image = gfx->get_video()->image_from_sprite(spr);
     data_sprite_free(spr);
     gfx->add_image_to_cache(sprite, 0, 0, image);
   }
@@ -149,7 +152,7 @@ frame_t::draw_transp_sprite(int x, int y, unsigned int sprite, bool use_off, uns
     if (spr == NULL) {
       return;
     }
-    image = video->image_from_sprite(spr);
+    image = gfx->get_video()->image_from_sprite(spr);
     data_sprite_free(spr);
     gfx->add_image_to_cache(sprite, 0, color_offs, image);
   }
@@ -171,7 +174,7 @@ frame_t::draw_transp_sprite_relatively(int x, int y, unsigned int sprite, unsign
     if (spr == NULL) {
       return;
     }
-    image = video->image_from_sprite(spr);
+    image = gfx->get_video()->image_from_sprite(spr);
     data_sprite_free(spr);
     gfx->add_image_to_cache(sprite, 0, 0, image);
   }
@@ -207,7 +210,7 @@ frame_t::draw_masked_sprite(int x, int y, unsigned int mask, unsigned int sprite
     sprite_t *masked = data_apply_mask(spr, msk);
     data_sprite_free(spr);
     data_sprite_free(msk);
-    image = video->image_from_sprite(masked);
+    image = gfx->get_video()->image_from_sprite(masked);
     data_sprite_free(masked);
     gfx->add_image_to_cache(sprite, mask, 0, image);
   }
@@ -231,7 +234,7 @@ frame_t::draw_overlay_sprite(int x, int y, unsigned int sprite)
     if (spr == NULL) {
       return;
     }
-    image = video->image_from_sprite(spr);
+    image = gfx->get_video()->image_from_sprite(spr);
     data_sprite_free(spr);
     gfx->add_image_to_cache(sprite, 0, 0, image);
   }
@@ -251,7 +254,7 @@ frame_t::draw_overlay_sprite(int x, int y, unsigned int sprite, float progress)
     if (spr == NULL) {
       return;
     }
-    image = video->image_from_sprite(spr);
+    image = gfx->get_video()->image_from_sprite(spr);
     data_sprite_free(spr);
     gfx->add_image_to_cache(sprite, 0, 0, image);
   }
@@ -288,7 +291,7 @@ frame_t::draw_waves_sprite(int x, int y, unsigned int mask, unsigned int sprite)
     sprite_t *masked = data_apply_mask(spr, msk);
     data_sprite_free(spr);
     data_sprite_free(msk);
-    image = video->image_from_sprite(masked);
+    image = gfx->get_video()->image_from_sprite(masked);
     data_sprite_free(masked);
     gfx->add_image_to_cache(sprite, mask, 0, image);
   }
@@ -413,19 +416,21 @@ frame_t::fill_rect(int x, int y, int width, int height, unsigned char color)
    backing surface is created, otherwise the same surface
    as dest is used. */
 frame_t *
-gfx_frame_create(unsigned int width, unsigned int height)
+gfx_t::create_frame(unsigned int width, unsigned int height)
 {
-  return new frame_t(width, height);
+  return new frame_t(width, height, this);
 }
 
-frame_t::frame_t(video_frame_t *native_frame)
+frame_t::frame_t(video_frame_t *native_frame, gfx_t *gfx)
 {
+  this->gfx = gfx;
   this->native_frame = native_frame;
 }
 
-frame_t::frame_t(unsigned int width, unsigned int height)
+frame_t::frame_t(unsigned int width, unsigned int height, gfx_t *gfx)
 {
-  native_frame = video->frame_create(width, height);
+  this->gfx = gfx;
+  native_frame = gfx->get_video()->frame_create(width, height);
 }
 
 frame_t::~frame_t()
@@ -445,69 +450,53 @@ frame_t::draw_frame(int dx, int dy, int sx, int sy, frame_t *src, int w, int h)
 }
 
 frame_t *
-gfx_get_screen_frame()
+gfx_t::get_screen_frame()
 {
-  return new frame_t(video->get_screen_frame());
+  return new frame_t(video->get_screen_frame(), this);
 }
 
 /* Enable or disable fullscreen mode */
-int
-gfx_set_fullscreen(int enable)
+bool
+gfx_t::set_fullscreen(int enable)
 {
   return video->set_fullscreen(enable);
 }
 
 /* Check whether fullscreen mode is enabled */
-int
-gfx_is_fullscreen()
+bool
+gfx_t::is_fullscreen()
 {
   return video->is_fullscreen();
 }
 
-int
-gfx_is_fullscreen_possible()
+bool
+gfx_t::is_fullscreen_possible()
 {
   return video->is_fullscreen_possible();
 }
 
 void
-gfx_set_resolution(unsigned int width, unsigned int height, bool fullscreen)
+gfx_t::set_resolution(unsigned int width, unsigned int height, bool fullscreen)
 {
   video->set_resolution(width, height, fullscreen);
 }
 
 void
-gfx_get_resolution(int *width, int *height)
+gfx_t::get_resolution(unsigned int &width, unsigned int &height)
 {
-  unsigned int w = 0;
-  unsigned int h = 0;
-  video->get_resolution(w, h);
-  *width = w;
-  *height = h;
+  video->get_resolution(width, height);
 }
 
 void
-gfx_swap_buffers()
+gfx_t::swap_buffers()
 {
   video->swap_buffers();
 }
 
 void
-gfx_warp_mouse(int x, int y)
+gfx_t::warp_mouse(int x, int y)
 {
   video->warp_mouse(x, y);
-}
-
-gfx_t::gfx_t()
-{
-}
-
-gfx_t::~gfx_t()
-{
-  while(!image_cache.empty()) {
-    delete image_cache.begin()->second;
-    image_cache.erase(image_cache.begin());
-  }
 }
 
 void

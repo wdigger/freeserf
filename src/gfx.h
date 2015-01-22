@@ -35,15 +35,17 @@ class sprite_t;
 class image_t;
 
 class video_frame_t;
+class gfx_t;
 
 class frame_t
 {
 protected:
   video_frame_t *native_frame;
+  gfx_t *gfx;
 
 public:
-  frame_t(video_frame_t *native_frame);
-  frame_t(unsigned int width, unsigned int height);
+  frame_t(video_frame_t *native_frame, gfx_t *gfx);
+  frame_t(unsigned int width, unsigned int height, gfx_t *gfx);
   virtual ~frame_t();
 
   /* Sprite functions */
@@ -79,16 +81,40 @@ public:
   virtual image_t *get_image_from_cache(unsigned int sprite, unsigned int mask, unsigned char offset) = 0;
 };
 
+class video_t;
+
 class gfx_t
   : public image_cache_t
 {
 protected:
+  static video_t *video;
+  static gfx_t *gfx;
+
   typedef std::map<uint64_t, image_t *> image_map_t;
   image_map_t image_cache;
 
 public:
-  gfx_t();
+  gfx_t(unsigned int width, unsigned int height, bool fullscreen);
   virtual ~gfx_t();
+
+  static gfx_t *get_gfx();
+
+  video_t *get_video() { return video; }
+
+  /* Frame functions */
+  frame_t *create_frame(unsigned int width, unsigned int height);
+
+  /* Screen functions */
+  frame_t *get_screen_frame();
+  void set_resolution(unsigned int width, unsigned int height, bool fullscreen);
+  void get_resolution(unsigned int &width, unsigned int &height);
+  bool set_fullscreen(int enable);
+  bool is_fullscreen();
+  bool is_fullscreen_possible();
+
+  void swap_buffers();
+
+  void warp_mouse(int x, int y);
 
   virtual void add_image_to_cache(unsigned int sprite, unsigned int mask, unsigned char offset, image_t *image);
   virtual image_t *get_image_from_cache(unsigned int sprite, unsigned int mask, unsigned char offset);
@@ -96,23 +122,5 @@ public:
 protected:
   uint64_t gfx_image_id(unsigned int sprite, unsigned int mask, unsigned char offset);
 };
-
-bool gfx_init(int width, int height, int fullscreen);
-void gfx_deinit();
-
-/* Frame functions */
-frame_t *gfx_frame_create(unsigned int width, unsigned int height);
-
-/* Screen functions */
-frame_t *gfx_get_screen_frame();
-void gfx_set_resolution(unsigned int width, unsigned int height, bool fullscreen);
-void gfx_get_resolution(int *width, int *height);
-int gfx_set_fullscreen(int enable);
-int gfx_is_fullscreen();
-int gfx_is_fullscreen_possible();
-
-void gfx_swap_buffers();
-
-void gfx_warp_mouse(int x, int y);
 
 #endif /* ! _GFX_H */

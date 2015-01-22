@@ -175,6 +175,7 @@ game_loop()
   SDL_Event event;
   gui_event_t ev;
 
+  gfx_t *gfx = gfx_t::get_gfx();
   frame_t *screen = NULL;
 
   game_loop_run = 1;
@@ -255,7 +256,7 @@ game_loop()
               ev.button = (gui_event_button_t)drag_button;
               interface->handle_event(&ev);
 
-              gfx_warp_mouse(drag_x, drag_y);
+              gfx->warp_mouse(drag_x, drag_y);
 
               break;
             }
@@ -340,7 +341,7 @@ game_loop()
               /* Video */
             case SDLK_f:
               if (event.key.keysym.mod & KMOD_CTRL) {
-                gfx_set_fullscreen(!gfx_is_fullscreen());
+                gfx->set_fullscreen(!gfx->is_fullscreen());
               }
               break;
 
@@ -403,10 +404,10 @@ game_loop()
           break;
         case SDL_WINDOWEVENT:
           if (SDL_WINDOWEVENT_SIZE_CHANGED == event.window.event){
-            int width = 0;
-            int height = 0;
-            gfx_get_resolution(&width, &height);
-            gfx_set_resolution(width, height, gfx_is_fullscreen());
+            unsigned int width = 0;
+            unsigned int height = 0;
+            gfx->get_resolution(width, height);
+            gfx->set_resolution(width, height, gfx->is_fullscreen());
             interface->set_size(width, height);
           }
           break;
@@ -445,12 +446,12 @@ game_loop()
     interface->update();
 
     if (screen == NULL) {
-      screen = gfx_get_screen_frame();
+      screen = gfx->get_screen_frame();
     }
     interface->draw(screen);
 
     /* Swap video buffers */
-    gfx_swap_buffers();
+    gfx->swap_buffers();
 
     /* Reduce framerate to target if we finished too fast */
     int now = SDL_GetTicks();
@@ -490,9 +491,9 @@ main(int argc, char *argv[])
   char *data_file = NULL;
   char *save_file = NULL;
 
-  int screen_width = DEFAULT_SCREEN_WIDTH;
-  int screen_height = DEFAULT_SCREEN_HEIGHT;
-  int fullscreen = 0;
+  unsigned int screen_width = DEFAULT_SCREEN_WIDTH;
+  unsigned int screen_height = DEFAULT_SCREEN_HEIGHT;
+  bool fullscreen = false;
   int map_generator = 0;
 
   init_missions();
@@ -581,7 +582,7 @@ main(int argc, char *argv[])
   }
 
   LOGI("main", "Initialize graphics...");
-  if (!gfx_init(screen_width, screen_height, fullscreen)) exit(EXIT_FAILURE);
+  gfx_t *gfx = new gfx_t(screen_width, screen_height, fullscreen);
 
   /* TODO move to right place */
   audio_init();
@@ -592,7 +593,7 @@ main(int argc, char *argv[])
 
   /* Initialize interface */
   interface = new interface_t();
-  gfx_get_resolution(&screen_width, &screen_height);
+  gfx->get_resolution(screen_width, screen_height);
   interface->set_size(screen_width, screen_height);
   interface->set_displayed(1);
 
@@ -631,7 +632,7 @@ main(int argc, char *argv[])
   delete interface;
   map_deinit(&game.map);
   audio_deinit();
-  gfx_deinit();
+  delete gfx;
   data_deinit();
   game_deinit();
 

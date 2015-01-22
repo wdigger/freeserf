@@ -310,7 +310,8 @@ viewport_t::get_tile_frame(uint tid, int tc, int tr)
     tile_frame = it->second;
   }
   else {
-    tile_frame = gfx_frame_create(tile_width, tile_height);
+    gfx_t *gfx = gfx_t::get_gfx();
+    tile_frame = gfx->create_frame(tile_width, tile_height);
     tile_frame->fill_rect(0, 0, tile_width, tile_height, 0);
 
     int col = (tc*MAP_TILE_COLS + (tr*MAP_TILE_ROWS)/2) % game.map.cols;
