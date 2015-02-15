@@ -25,11 +25,11 @@
 #include "viewport.h"
 #include "data.h"
 #include "audio.h"
+#include "input_handler.h"
 
 #ifndef _MSC_VER
 extern "C" {
 #endif
-  #include "freeserf.h"
   #include "game.h"
   #include "debug.h"
 #ifndef _MSC_VER

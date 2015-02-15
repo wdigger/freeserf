@@ -1,7 +1,7 @@
 /*
- * freeserf.h - Various definitions.
+ * input_handler.h - User and system events handling
  *
- * Copyright (C) 2013  Jon Lund Steffensen <jonlst@gmail.com>
+ * Copyright (C) 2012-2014  Jon Lund Steffensen <jonlst@gmail.com>
  *
  * This file is part of freeserf.
  *
@@ -19,7 +19,12 @@
  * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _FREESERF_H
-#define _FREESERF_H
+#ifndef _INPUT_HANDLER
+#define _INPUT_HANDLER
 
-#endif /* ! _FREESERF_H */
+class interface_t;
+
+void game_loop_quit();
+void game_loop(interface_t *interface);
+
+#endif /* ! _INPUT_HANDLER */

@@ -21,18 +21,14 @@
 
 #include "interface.h"
 #include "viewport.h"
-#include "notification.h"
-#include "popup.h"
 #include "data.h"
-#include "gfx.h"
 #include "audio.h"
+#include "input_handler.h"
 
 #ifndef _MSC_VER
 extern "C" {
 #endif
-  #include "freeserf.h"
   #include "log.h"
-  #include "savegame.h"
   #include "mission.h"
   #include "version.h"
   #include "game.h"
@@ -44,19 +40,9 @@ extern "C" {
 }
 #endif
 
-#include <cstdio>
-#include <cstdlib>
-#include <ctime>
-#include <cstring>
-
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
-
-#include "SDL.h"
 
 #define DEFAULT_SCREEN_WIDTH  800
 #define DEFAULT_SCREEN_HEIGHT 600
@@ -68,406 +54,6 @@ extern "C" {
 #  define DEFAULT_LOG_LEVEL  LOG_LEVEL_INFO
 # endif
 #endif
-
-/* Autosave interval */
-#define AUTOSAVE_INTERVAL  (10*60*TICKS_PER_SEC)
-
-/* How fast consequtive mouse events need to be generated
-   in order to be interpreted as click and double click. */
-#define MOUSE_TIME_SENSITIVITY  600
-/* How much the mouse can move between events to be still
-   considered as a double click. */
-#define MOUSE_MOVE_SENSITIVITY  8
-
-
-static int game_loop_run;
-
-static interface_t *interface;
-
-/* In target, replace any character from needle with replacement character. */
-static void
-strreplace(char *target, const char *needle, char replace)
-{
-  for (int i = 0; target[i] != '\0'; i++) {
-    for (int j = 0; needle[j] != '\0'; j++) {
-      if (needle[j] == target[i]) {
-        target[i] = replace;
-        break;
-      }
-    }
-  }
-}
-
-static int
-save_game(int autosave)
-{
-  size_t r;
-
-  /* Build filename including time stamp. */
-  char name[128];
-  time_t t = time(NULL);
-
-  struct tm *tm = localtime(&t);
-  if (tm == NULL) return -1;
-
-  if (!autosave) {
-    r = strftime(name, sizeof(name), "%c.save", tm);
-    if (r == 0) return -1;
-  } else {
-    r = strftime(name, sizeof(name), "autosave-%c.save", tm);
-    if (r == 0) return -1;
-  }
-
-  /* Substitute problematic characters. These are problematic
-     particularly on windows platforms, but also in general on FAT
-     filesystems through any platform. */
-  /* TODO Possibly use PathCleanupSpec() when building for windows platform. */
-  strreplace(name, "\\/:*?\"<>| ", '_');
-
-  FILE *f = fopen(name, "wb");
-  if (f == NULL) return -1;
-
-  int r1 = save_text_state(f);
-  if (r1 < 0) return -1;
-
-  fclose(f);
-
-  LOGI("main", "Game saved to `%s'.", name);
-
-  return 0;
-}
-
-
-void
-game_loop_quit()
-{
-  game_loop_run = 0;
-}
-
-/* game_loop() has been turned into a SDL based loop.
-   The code for one iteration of the original game_loop is
-   in game_loop_iter. */
-static void
-game_loop()
-{
-  /* FPS */
-  float fps = 0;
-  float fps_ema = 0;
-  int fps_target = 25;
-  /* TODO: compute alpha dynamically based on frametime */
-  const float ema_alpha = 0.07f;
-
-  const int frametime_target = 1000 / fps_target; /* in milliseconds */
-  int last_frame = SDL_GetTicks();
-
-  int drag_button = 0;
-  int drag_x = 0;
-  int drag_y = 0;
-
-  uint last_down[3] = {0};
-  uint last_click[3] = {0};
-  uint last_click_x = 0;
-  uint last_click_y = 0;
-
-  uint current_ticks = SDL_GetTicks();
-  uint accum = 0;
-
-  SDL_Event event;
-  gui_event_t ev;
-
-  gfx_t *gfx = gfx_t::get_gfx();
-  frame_t *screen = NULL;
-
-  game_loop_run = 1;
-  while (game_loop_run) {
-    while (SDL_PollEvent(&event)) {
-      switch (event.type) {
-        case SDL_MOUSEBUTTONUP:
-          if (drag_button == event.button.button) {
-            ev.type = GUI_EVENT_TYPE_DRAG_END;
-            ev.x = event.button.x;
-            ev.y = event.button.y;
-            ev.button = (gui_event_button_t)drag_button;
-            interface->handle_event(&ev);
-
-            drag_button = 0;
-          }
-
-          ev.type = GUI_EVENT_TYPE_BUTTON_UP;
-          ev.x = event.button.x;
-          ev.y = event.button.y;
-          ev.button = (gui_event_button_t)event.button.button;
-          interface->handle_event(&ev);
-
-          if (event.button.button <= 3 &&
-              current_ticks - last_down[event.button.button-1] < MOUSE_TIME_SENSITIVITY) {
-            ev.type = GUI_EVENT_TYPE_CLICK;
-            ev.x = event.button.x;
-            ev.y = event.button.y;
-            ev.button = (gui_event_button_t)event.button.button;
-            interface->handle_event(&ev);
-
-            if (current_ticks - last_click[event.button.button-1] < MOUSE_TIME_SENSITIVITY &&
-                event.button.x >= static_cast<int>(last_click_x - MOUSE_MOVE_SENSITIVITY) &&
-                event.button.x <= static_cast<int>(last_click_x + MOUSE_MOVE_SENSITIVITY) &&
-                event.button.y >= static_cast<int>(last_click_y - MOUSE_MOVE_SENSITIVITY) &&
-                event.button.y <= static_cast<int>(last_click_y + MOUSE_MOVE_SENSITIVITY)) {
-              ev.type = GUI_EVENT_TYPE_DBL_CLICK;
-              ev.x = event.button.x;
-              ev.y = event.button.y;
-              ev.button = (gui_event_button_t)event.button.button;
-              interface->handle_event(&ev);
-            }
-
-            last_click[event.button.button-1] = current_ticks;
-            last_click_x = event.button.x;
-            last_click_y = event.button.y;
-          }
-          break;
-        case SDL_MOUSEBUTTONDOWN:
-          ev.type = GUI_EVENT_TYPE_BUTTON_DOWN;
-          ev.x = event.button.x;
-          ev.y = event.button.y;
-          ev.button = (gui_event_button_t)event.button.button;
-          interface->handle_event(&ev);
-
-          if (event.button.button <= 3) last_down[event.button.button-1] = current_ticks;
-          break;
-        case SDL_MOUSEMOTION:
-          for (int button = 1; button <= 3; button++) {
-            if (event.motion.state & SDL_BUTTON(button)) {
-              if (drag_button == 0) {
-                drag_button = button;
-                drag_x = event.motion.x;
-                drag_y = event.motion.y;
-
-                ev.type = GUI_EVENT_TYPE_DRAG_START;
-                ev.x = event.motion.x;
-                ev.y = event.motion.y;
-                ev.button = (gui_event_button_t)drag_button;
-                interface->handle_event(&ev);
-              }
-
-              ev.type = GUI_EVENT_TYPE_DRAG_MOVE;
-              ev.x = drag_x;
-              ev.y = drag_y;
-              ev.dx = event.motion.x - drag_x;
-              ev.dy = event.motion.y - drag_y;
-              ev.button = (gui_event_button_t)drag_button;
-              interface->handle_event(&ev);
-
-              gfx->warp_mouse(drag_x, drag_y);
-
-              break;
-            }
-          }
-          break;
-        case SDL_KEYDOWN:
-          if (event.key.keysym.sym <= SDLK_z) {
-            ev.type = GUI_EVENT_KEY_PRESSED;
-            ev.dx = event.key.keysym.sym;
-            ev.dy = event.key.keysym.mod;
-            if (interface->handle_event(&ev)) {
-              break;
-            }
-          }
-
-          if (event.key.keysym.sym == SDLK_q &&
-              (event.key.keysym.mod & KMOD_CTRL)) {
-            game_loop_quit();
-            break;
-          }
-
-          switch (event.key.keysym.sym) {
-            /* Map scroll */
-            case SDLK_UP: {
-              viewport_t *viewport = interface->get_viewport();
-              viewport->move_by_pixels(0, -32);
-            }
-              break;
-            case SDLK_DOWN: {
-              viewport_t *viewport = interface->get_viewport();
-              viewport->move_by_pixels(0, 32);
-            }
-              break;
-            case SDLK_LEFT: {
-              viewport_t *viewport = interface->get_viewport();
-              viewport->move_by_pixels(-32, 0);
-            }
-              break;
-            case SDLK_RIGHT: {
-              viewport_t *viewport = interface->get_viewport();
-              viewport->move_by_pixels(32, 0);
-            }
-              break;
-
-            case SDLK_TAB:
-              if (event.key.keysym.mod & KMOD_SHIFT) {
-                interface->return_from_message();
-              } else {
-                interface->open_message();
-              }
-              break;
-
-              /* Game speed */
-            case SDLK_PLUS:
-            case SDLK_KP_PLUS:
-            case SDLK_EQUALS:
-              if (game.game_speed < 40) game.game_speed += 1;
-              LOGI("main", "Game speed: %u", game.game_speed);
-              break;
-            case SDLK_MINUS:
-            case SDLK_KP_MINUS:
-              if (game.game_speed >= 1) game.game_speed -= 1;
-              LOGI("main", "Game speed: %u", game.game_speed);
-              break;
-            case SDLK_0:
-              game.game_speed = DEFAULT_GAME_SPEED;
-              LOGI("main", "Game speed: %u", game.game_speed);
-              break;
-            case SDLK_p:
-              if (game.game_speed == 0) game_pause(0);
-              else game_pause(1);
-              break;
-
-              /* Audio */
-            case SDLK_s:
-              sfx_enable(!sfx_is_enabled());
-              break;
-            case SDLK_m:
-              midi_enable(!midi_is_enabled());
-              break;
-
-              /* Video */
-            case SDLK_f:
-              if (event.key.keysym.mod & KMOD_CTRL) {
-                gfx->set_fullscreen(!gfx->is_fullscreen());
-              }
-              break;
-
-              /* Misc */
-            case SDLK_ESCAPE:
-              if (interface->get_notification_box()->is_displayed()) {
-                interface->close_message();
-              } else if (interface->get_popup_box()->is_displayed()) {
-                interface->close_popup();
-              } else if (interface->get_building_road()) {
-                interface->build_road_end();
-              }
-              break;
-
-              /* Debug */
-            case SDLK_g: {
-              viewport_t *viewport = interface->get_viewport();
-              viewport->switch_layer(VIEWPORT_LAYER_GRID);
-            }
-              break;
-            case SDLK_b: {
-              viewport_t *viewport = interface->get_viewport();
-              viewport->switch_possible_build();
-            }
-              break;
-            case SDLK_j: {
-              int current = 0;
-              for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
-                if (interface->get_player() == game.player[i]) {
-                  current = i;
-                  break;
-                }
-              }
-
-              for (int i = (current+1) % GAME_MAX_PLAYER_COUNT;
-                   i != current; i = (i+1) % GAME_MAX_PLAYER_COUNT) {
-                if (PLAYER_IS_ACTIVE(game.player[i])) {
-                  interface->set_player(i);
-                  LOGD("main", "Switched to player %i.", i);
-                  break;
-                }
-              }
-            }
-              break;
-            case SDLK_z:
-              if (event.key.keysym.mod & KMOD_CTRL) {
-                save_game(0);
-              }
-              break;
-            case SDLK_F10:
-              interface->open_game_init();
-              break;
-
-            default:
-              break;
-          }
-          break;
-        case SDL_QUIT:
-          game_loop_quit();
-          break;
-        case SDL_WINDOWEVENT:
-          if (SDL_WINDOWEVENT_SIZE_CHANGED == event.window.event){
-            unsigned int width = 0;
-            unsigned int height = 0;
-            gfx->get_resolution(width, height);
-            gfx->set_resolution(width, height, gfx->is_fullscreen());
-            interface->set_size(width, height);
-          }
-          break;
-      }
-    }
-
-    uint new_ticks = SDL_GetTicks();
-    int delta_ticks = new_ticks - current_ticks;
-    current_ticks = new_ticks;
-
-    /* Update FPS EMA per frame */
-    fps = 1000.f*(1.f / static_cast<float>(delta_ticks));
-    if (fps_ema > 0) fps_ema = ema_alpha*fps + (1-ema_alpha)*fps_ema;
-    else if (fps > 0) fps_ema = fps;
-
-    accum += delta_ticks;
-    while (accum >= TICK_LENGTH) {
-      game_update();
-
-      /* Autosave periodically */
-      if ((game.const_tick % AUTOSAVE_INTERVAL) == 0 &&
-          game.game_speed > 0) {
-        int r = save_game(1);
-        if (r < 0) LOGW("main", "Autosave failed.");
-      }
-
-      /* Print FPS */
-      if ((game.const_tick % (10*TICKS_PER_SEC)) == 0) {
-        LOGV("main", "FPS: %i", static_cast<int>(fps_ema));
-      }
-
-      accum -= TICK_LENGTH;
-    }
-
-    /* Update and draw interface */
-    interface->update();
-
-    if (screen == NULL) {
-      screen = gfx->get_screen_frame();
-    }
-    interface->draw(screen);
-
-    /* Swap video buffers */
-    gfx->swap_buffers();
-
-    /* Reduce framerate to target if we finished too fast */
-    int now = SDL_GetTicks();
-    int frametime_spent = now - last_frame;
-
-    if (frametime_spent < frametime_target) {
-      SDL_Delay(frametime_target - frametime_spent);
-    }
-    last_frame = SDL_GetTicks();
-  }
-
-  if (screen != NULL) {
-    delete screen;
-  }
-}
-
 
 #define USAGE					\
   "Usage: %s [-g DATA-FILE]\n"
@@ -592,8 +178,9 @@ main(int argc, char *argv[])
   game_init(map_generator);
 
   /* Initialize interface */
-  interface = new interface_t();
   gfx->get_resolution(screen_width, screen_height);
+
+  interface_t *interface = new interface_t();
   interface->set_size(screen_width, screen_height);
   interface->set_displayed(1);
 
@@ -624,7 +211,7 @@ main(int argc, char *argv[])
   }
 
   /* Start game loop */
-  game_loop();
+  game_loop(interface);
 
   LOGI("main", "Cleaning up...");
 

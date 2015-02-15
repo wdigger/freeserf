@@ -36,4 +36,6 @@ int load_text_state(FILE *f);
 int save_state(const char *path);
 int load_state(const char *path);
 
+int save_game(int autosave);
+
 #endif /* !_SAVEGAME_H */

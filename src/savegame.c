@@ -2915,3 +2915,56 @@ save_state(const char *path)
 
 	return r;
 }
+
+/* In target, replace any character from needle with replacement character. */
+static void
+strreplace(char *target, const char *needle, char replace)
+{
+  for (int i = 0; target[i] != '\0'; i++) {
+    for (int j = 0; needle[j] != '\0'; j++) {
+      if (needle[j] == target[i]) {
+        target[i] = replace;
+        break;
+      }
+    }
+  }
+}
+
+int
+save_game(int autosave)
+{
+  size_t r;
+
+  /* Build filename including time stamp. */
+  char name[128];
+  time_t t = time(NULL);
+
+  struct tm *tm = localtime(&t);
+  if (tm == NULL) return -1;
+
+  if (!autosave) {
+    r = strftime(name, sizeof(name), "%c.save", tm);
+    if (r == 0) return -1;
+  } else {
+    r = strftime(name, sizeof(name), "autosave-%c.save", tm);
+    if (r == 0) return -1;
+  }
+
+  /* Substitute problematic characters. These are problematic
+   particularly on windows platforms, but also in general on FAT
+   filesystems through any platform. */
+  /* TODO Possibly use PathCleanupSpec() when building for windows platform. */
+  strreplace(name, "\\/:*?\"<>| ", '_');
+
+  FILE *f = fopen(name, "wb");
+  if (f == NULL) return -1;
+
+  int r1 = save_text_state(f);
+  if (r1 < 0) return -1;
+
+  fclose(f);
+
+  LOGI("main", "Game saved to `%s'.", name);
+  
+  return 0;
+}
