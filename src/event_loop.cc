@@ -1,5 +1,5 @@
 /*
- * input_handler.h - User and system events handling
+ * event_loop.cc - User and system events handling
  *
  * Copyright (C) 2012-2014  Jon Lund Steffensen <jonlst@gmail.com>
  *
@@ -19,27 +19,19 @@
  * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "input_handler.h"
-#include "interface.h"
-#include "viewport.h"
-#include "notification.h"
-#include "popup.h"
-#include "audio.h"
+#include "event_loop.h"
+#include "gfx.h"
+#include "freeserf.h"
 
 #ifndef _MSC_VER
 extern "C" {
 #endif
   #include "log.h"
-  #include "savegame.h"
-  #include "game.h"
 #ifndef _MSC_VER
 }
 #endif
 
 #include "SDL.h"
-
-/* Autosave interval */
-#define AUTOSAVE_INTERVAL  (10*60*TICKS_PER_SEC)
 
 /* How fast consequtive mouse events need to be generated
  in order to be interpreted as click and double click. */
@@ -47,6 +39,23 @@ extern "C" {
 /* How much the mouse can move between events to be still
  considered as a double click. */
 #define MOUSE_MOVE_SENSITIVITY  8
+
+event_loop_t *event_loop_t::instance = NULL;
+
+event_loop_t *
+event_loop_t::get_instance()
+{
+  if (instance == NULL) {
+    instance = new event_loop_t();
+  }
+
+  return instance;
+}
+
+event_loop_t::event_loop_t()
+{
+  event_handlers = NULL;
+}
 
 Uint32 timer_callback(Uint32 interval, void *param)
 {
@@ -62,7 +71,7 @@ Uint32 timer_callback(Uint32 interval, void *param)
 }
 
 void
-game_loop_quit()
+event_loop_t::quit()
 {
   SDL_Event event;
   event.type = SDL_USEREVENT;
@@ -73,11 +82,22 @@ game_loop_quit()
   SDL_PushEvent(&event);
 }
 
-/* game_loop() has been turned into a SDL based loop.
+void
+event_loop_t::notify_handlers(event_t *event) {
+  if (event_handlers == NULL) {
+    return;
+  }
+
+  for (int i = 0; event_handlers[i] != NULL; i++) {
+    event_handlers[i]->handle_event(event);
+  }
+}
+
+/* event_loop() has been turned into a SDL based loop.
  The code for one iteration of the original game_loop is
  in game_loop_iter. */
 void
-game_loop(interface_t *interface)
+event_loop_t::run(event_handler_t **handlers)
 {
   SDL_InitSubSystem(SDL_INIT_EVENTS | SDL_INIT_TIMER);
 
@@ -85,6 +105,8 @@ game_loop(interface_t *interface)
   if (timer_id == 0) {
     return;
   }
+
+  event_handlers = handlers;
 
   int drag_button = 0;
   int drag_x = 0;
@@ -96,7 +118,7 @@ game_loop(interface_t *interface)
   uint last_click_y = 0;
 
   SDL_Event event;
-  gui_event_t ev;
+  event_t ev;
 
   gfx_t *gfx = gfx_t::get_gfx();
   frame_t *screen = NULL;
@@ -107,39 +129,27 @@ game_loop(interface_t *interface)
     switch (event.type) {
       case SDL_MOUSEBUTTONUP:
         if (drag_button == event.button.button) {
-          ev.type = GUI_EVENT_TYPE_DRAG_END;
-          ev.x = event.button.x;
-          ev.y = event.button.y;
-          ev.button = (gui_event_button_t)drag_button;
-          interface->handle_event(&ev);
-
           drag_button = 0;
         }
 
-        ev.type = GUI_EVENT_TYPE_BUTTON_UP;
-        ev.x = event.button.x;
-        ev.y = event.button.y;
-        ev.button = (gui_event_button_t)event.button.button;
-        interface->handle_event(&ev);
-
         if (event.button.button <= 3 &&
             current_ticks - last_down[event.button.button-1] < MOUSE_TIME_SENSITIVITY) {
-          ev.type = GUI_EVENT_TYPE_CLICK;
+          ev.type = EVENT_TYPE_CLICK;
           ev.x = event.button.x;
           ev.y = event.button.y;
-          ev.button = (gui_event_button_t)event.button.button;
-          interface->handle_event(&ev);
+          ev.button = (event_button_t)event.button.button;
+          notify_handlers(&ev);
 
           if (current_ticks - last_click[event.button.button-1] < MOUSE_TIME_SENSITIVITY &&
               event.button.x >= static_cast<int>(last_click_x - MOUSE_MOVE_SENSITIVITY) &&
               event.button.x <= static_cast<int>(last_click_x + MOUSE_MOVE_SENSITIVITY) &&
               event.button.y >= static_cast<int>(last_click_y - MOUSE_MOVE_SENSITIVITY) &&
               event.button.y <= static_cast<int>(last_click_y + MOUSE_MOVE_SENSITIVITY)) {
-            ev.type = GUI_EVENT_TYPE_DBL_CLICK;
+            ev.type = EVENT_TYPE_DBL_CLICK;
             ev.x = event.button.x;
             ev.y = event.button.y;
-            ev.button = (gui_event_button_t)event.button.button;
-            interface->handle_event(&ev);
+            ev.button = (event_button_t)event.button.button;
+            notify_handlers(&ev);
           }
 
           last_click[event.button.button-1] = current_ticks;
@@ -148,12 +158,6 @@ game_loop(interface_t *interface)
         }
         break;
       case SDL_MOUSEBUTTONDOWN:
-        ev.type = GUI_EVENT_TYPE_BUTTON_DOWN;
-        ev.x = event.button.x;
-        ev.y = event.button.y;
-        ev.button = (gui_event_button_t)event.button.button;
-        interface->handle_event(&ev);
-
         if (event.button.button <= 3) last_down[event.button.button-1] = current_ticks;
         break;
       case SDL_MOUSEMOTION:
@@ -163,21 +167,15 @@ game_loop(interface_t *interface)
               drag_button = button;
               drag_x = event.motion.x;
               drag_y = event.motion.y;
-
-              ev.type = GUI_EVENT_TYPE_DRAG_START;
-              ev.x = event.motion.x;
-              ev.y = event.motion.y;
-              ev.button = (gui_event_button_t)drag_button;
-              interface->handle_event(&ev);
             }
 
-            ev.type = GUI_EVENT_TYPE_DRAG_MOVE;
+            ev.type = EVENT_TYPE_DRAG;
             ev.x = drag_x;
             ev.y = drag_y;
             ev.dx = event.motion.x - drag_x;
             ev.dy = event.motion.y - drag_y;
-            ev.button = (gui_event_button_t)drag_button;
-            interface->handle_event(&ev);
+            ev.button = (event_button_t)drag_button;
+            notify_handlers(&ev);
 
             gfx->warp_mouse(drag_x, drag_y);
 
@@ -185,80 +183,79 @@ game_loop(interface_t *interface)
           }
         }
         break;
-      case SDL_KEYDOWN:
-        if (event.key.keysym.sym <= SDLK_z) {
-          ev.type = GUI_EVENT_KEY_PRESSED;
-          ev.dx = event.key.keysym.sym;
-          ev.dy = event.key.keysym.mod;
-          if (interface->handle_event(&ev)) {
-            break;
-          }
-        }
-
+      case SDL_KEYDOWN: {
         if (event.key.keysym.sym == SDLK_q &&
             (event.key.keysym.mod & KMOD_CTRL)) {
-          game_loop_quit();
+          quit();
           break;
         }
 
+        ev.type = EVENT_KEY_PRESSED;
+        ev.dx = event.key.keysym.sym;
+        ev.dy = 0;
+        if (event.key.keysym.mod & KMOD_CTRL) {
+          ev.dy |= 1;
+        }
+        if (event.key.keysym.mod & KMOD_SHIFT) {
+          ev.dy |= 2;
+        }
+        if (event.key.keysym.mod & KMOD_ALT) {
+          ev.dy |= 4;
+        }
+
         switch (event.key.keysym.sym) {
-            /* Map scroll */
+          /* Map scroll */
           case SDLK_UP: {
-            viewport_t *viewport = interface->get_viewport();
-            viewport->move_by_pixels(0, -32);
+            ev.type = EVENT_TYPE_DRAG;
+            ev.x = 0;
+            ev.y = 0;
+            ev.dx = 0;
+            ev.dy = -32;
+            ev.button = EVENT_BUTTON_LEFT;
+            notify_handlers(&ev);
           }
             break;
           case SDLK_DOWN: {
-            viewport_t *viewport = interface->get_viewport();
-            viewport->move_by_pixels(0, 32);
+            ev.type = EVENT_TYPE_DRAG;
+            ev.x = 0;
+            ev.y = 0;
+            ev.dx = 0;
+            ev.dy = 32;
+            ev.button = EVENT_BUTTON_LEFT;
+            notify_handlers(&ev);
           }
             break;
           case SDLK_LEFT: {
-            viewport_t *viewport = interface->get_viewport();
-            viewport->move_by_pixels(-32, 0);
+            ev.type = EVENT_TYPE_DRAG;
+            ev.x = 0;
+            ev.y = 0;
+            ev.dx = -32;
+            ev.dy = 0;
+            ev.button = EVENT_BUTTON_LEFT;
+            notify_handlers(&ev);
           }
             break;
           case SDLK_RIGHT: {
-            viewport_t *viewport = interface->get_viewport();
-            viewport->move_by_pixels(32, 0);
+            ev.type = EVENT_TYPE_DRAG;
+            ev.x = 0;
+            ev.y = 0;
+            ev.dx = 32;
+            ev.dy = 0;
+            ev.button = EVENT_BUTTON_LEFT;
+            notify_handlers(&ev);
           }
             break;
 
-          case SDLK_TAB:
-            if (event.key.keysym.mod & KMOD_SHIFT) {
-              interface->return_from_message();
-            } else {
-              interface->open_message();
-            }
-            break;
-
-            /* Game speed */
           case SDLK_PLUS:
           case SDLK_KP_PLUS:
           case SDLK_EQUALS:
-            if (game.game_speed < 40) game.game_speed += 1;
-            LOGI("main", "Game speed: %u", game.game_speed);
+            ev.dx = '+';
+            notify_handlers(&ev);
             break;
           case SDLK_MINUS:
           case SDLK_KP_MINUS:
-            if (game.game_speed >= 1) game.game_speed -= 1;
-            LOGI("main", "Game speed: %u", game.game_speed);
-            break;
-          case SDLK_0:
-            game.game_speed = DEFAULT_GAME_SPEED;
-            LOGI("main", "Game speed: %u", game.game_speed);
-            break;
-          case SDLK_p:
-            if (game.game_speed == 0) game_pause(0);
-            else game_pause(1);
-            break;
-
-            /* Audio */
-          case SDLK_s:
-            sfx_enable(!sfx_is_enabled());
-            break;
-          case SDLK_m:
-            midi_enable(!midi_is_enabled());
+            ev.dx = '-';
+            notify_handlers(&ev);
             break;
 
             /* Video */
@@ -269,61 +266,24 @@ game_loop(interface_t *interface)
             break;
 
             /* Misc */
-          case SDLK_ESCAPE:
-            if (interface->get_notification_box()->is_displayed()) {
-              interface->close_message();
-            } else if (interface->get_popup_box()->is_displayed()) {
-              interface->close_popup();
-            } else if (interface->get_building_road()) {
-              interface->build_road_end();
-            }
-            break;
-
-            /* Debug */
-          case SDLK_g: {
-            viewport_t *viewport = interface->get_viewport();
-            viewport->switch_layer(VIEWPORT_LAYER_GRID);
-          }
-            break;
-          case SDLK_b: {
-            viewport_t *viewport = interface->get_viewport();
-            viewport->switch_possible_build();
-          }
-            break;
-          case SDLK_j: {
-            int current = 0;
-            for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
-              if (interface->get_player() == game.player[i]) {
-                current = i;
-                break;
-              }
-            }
-
-            for (int i = (current+1) % GAME_MAX_PLAYER_COUNT;
-                 i != current; i = (i+1) % GAME_MAX_PLAYER_COUNT) {
-              if (PLAYER_IS_ACTIVE(game.player[i])) {
-                interface->set_player(i);
-                LOGD("main", "Switched to player %i.", i);
-                break;
-              }
-            }
-          }
-            break;
-          case SDLK_z:
-            if (event.key.keysym.mod & KMOD_CTRL) {
-              save_game(0);
-            }
-            break;
           case SDLK_F10:
-            interface->open_game_init();
+            ev.dx = 'n';
+            ev.dy = 1;
+            notify_handlers(&ev);
             break;
 
           default:
+            notify_handlers(&ev);
             break;
         }
+
         break;
+      }
       case SDL_QUIT:
-        interface->open_popup(BOX_QUIT_CONFIRM);
+        ev.type = EVENT_KEY_PRESSED;
+        ev.dx = 'c';
+        ev.dy = 1;
+        notify_handlers(&ev);
         break;
       case SDL_WINDOWEVENT:
         if (SDL_WINDOWEVENT_SIZE_CHANGED == event.window.event){
@@ -331,7 +291,10 @@ game_loop(interface_t *interface)
           unsigned int height = 0;
           gfx->get_resolution(width, height);
           gfx->set_resolution(width, height, gfx->is_fullscreen());
-          interface->set_size(width, height);
+          ev.type = EVENT_RESIZE;
+          ev.x = width;
+          ev.y = height;
+          notify_handlers(&ev);
         }
         break;
       case SDL_USEREVENT:
@@ -341,22 +304,17 @@ game_loop(interface_t *interface)
           }
           return;
         }
-        game_update();
-
-        /* Autosave periodically */
-        if ((game.const_tick % AUTOSAVE_INTERVAL) == 0 &&
-            game.game_speed > 0) {
-          int r = save_game(1);
-          if (r < 0) LOGW("main", "Autosave failed.");
-        }
 
         /* Update and draw interface */
-        interface->update();
+        ev.type = EVENT_UPDATE;
+        notify_handlers(&ev);
 
         if (screen == NULL) {
           screen = gfx->get_screen_frame();
         }
-        interface->draw(screen);
+        ev.type = EVENT_DRAW;
+        ev.object = screen;
+        notify_handlers(&ev);
 
         /* Swap video buffers */
         gfx->swap_buffers();

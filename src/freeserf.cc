@@ -23,7 +23,7 @@
 #include "viewport.h"
 #include "data.h"
 #include "audio.h"
-#include "input_handler.h"
+#include "event_loop.h"
 
 #ifndef _MSC_VER
 extern "C" {
@@ -54,6 +54,21 @@ extern "C" {
 #  define DEFAULT_LOG_LEVEL  LOG_LEVEL_INFO
 # endif
 #endif
+
+class game_wrapper_t
+  : public event_handler_t
+{
+public:
+  virtual bool handle_event(const event_t *event) {
+    switch (event->type) {
+      case EVENT_UPDATE:
+        game_update();
+        break;
+      default:
+        break;
+    }
+  }
+};
 
 #define USAGE					\
   "Usage: %s [-g DATA-FILE]\n"
@@ -176,6 +191,7 @@ main(int argc, char *argv[])
   midi_play_track(MIDI_TRACK_0);
 
   game_init(map_generator);
+  game_wrapper_t *game_wrapper = new game_wrapper_t();
 
   /* Initialize interface */
   gfx->get_resolution(screen_width, screen_height);
@@ -211,7 +227,10 @@ main(int argc, char *argv[])
   }
 
   /* Start game loop */
-  game_loop(interface);
+  event_handler_t *handlers[] = {
+    interface, game_wrapper, NULL
+  };
+  event_loop_t::get_instance()->run(handlers);
 
   LOGI("main", "Cleaning up...");
 

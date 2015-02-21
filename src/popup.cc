@@ -25,7 +25,7 @@
 #include "viewport.h"
 #include "data.h"
 #include "audio.h"
-#include "input_handler.h"
+#include "event_loop.h"
 
 #ifndef _MSC_VER
 extern "C" {
@@ -3357,7 +3357,7 @@ popup_box_t::handle_action(int action, int x, int y)
       interface->open_popup(BOX_NO_SAVE_QUIT_CONFIRM);
     } else {
       sfx_play_clip(SFX_AHHH);
-      game_loop_quit();
+      event_loop_t::get_instance()->quit();
     }
     break;
   case ACTION_QUIT_CANCEL:
@@ -3366,7 +3366,7 @@ popup_box_t::handle_action(int action, int x, int y)
     break;
   case ACTION_NO_SAVE_QUIT_CONFIRM:
     sfx_play_clip(SFX_AHHH);
-    game_loop_quit();
+    event_loop_t::get_instance()->quit();
     break;
   case ACTION_SHOW_QUIT:
     interface->get_panel_bar()->set_button_type(3, PANEL_BTN_STATS_INACTIVE);

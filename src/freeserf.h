@@ -22,4 +22,8 @@
 #ifndef _FREESERF_H
 #define _FREESERF_H
 
+/* The length between game updates in miliseconds. */
+#define TICK_LENGTH  20
+#define TICKS_PER_SEC  (1000/TICK_LENGTH)
+
 #endif /* ! _FREESERF_H */

@@ -26,6 +26,7 @@
 #include "viewport.h"
 #include "data.h"
 #include "audio.h"
+#include "freeserf.h"
 
 #ifndef _MSC_VER
 extern "C" {

@@ -2284,9 +2284,9 @@ viewport_t::handle_click_left(int x, int y)
 }
 
 int
-viewport_t::handle_dbl_click(int x, int y, gui_event_button_t button)
+viewport_t::handle_dbl_click(int x, int y, event_button_t button)
 {
-  if (button != GUI_EVENT_BUTTON_LEFT) return 0;
+  if (button != EVENT_BUTTON_LEFT) return 0;
 
   set_redraw();
 

@@ -28,12 +28,14 @@
 #include "data.h"
 #include "gfx.h"
 #include "audio.h"
+#include "freeserf.h"
 
 #ifndef _MSC_VER
 extern "C" {
 #endif
   #include "debug.h"
   #include "game.h"
+  #include "savegame.h"
 #ifndef _MSC_VER
 }
 #endif
@@ -865,9 +867,132 @@ interface_t::handle_key_pressed(char key, int modifier)
       panel->activate_button(4);
       break;
     }
+
+    /* Interface control */
+    case '\t': {
+      if (modifier & 2) {
+        return_from_message();
+      }
+      else {
+        open_message();
+      }
+      break;
+    }
+    case '\033': {
+      if (get_notification_box()->is_displayed()) {
+        close_message();
+      }
+      else if (get_popup_box()->is_displayed()) {
+        close_popup();
+      }
+      else if (get_building_road()) {
+        build_road_end();
+      }
+      break;
+    }
+
+    /* Game speed */
+    case '+': {
+      if (game.game_speed < 40) game.game_speed += 1;
+      LOGI("game", "Game speed: %u", game.game_speed);
+      break;
+    }
+    case '-': {
+      if (game.game_speed >= 1) game.game_speed -= 1;
+      LOGI("game", "Game speed: %u", game.game_speed);
+      break;
+    }
+    case '0': {
+      game.game_speed = DEFAULT_GAME_SPEED;
+      LOGI("game", "Game speed: %u", game.game_speed);
+      break;
+    }
+    case 'p': {
+      game_pause((game.game_speed == 0) ? 0 : 1);
+      break;
+    }
+
+    /* Audio */
+    case 's': {
+      sfx_enable(!sfx_is_enabled());
+      break;
+    }
+    case 'm': {
+      midi_enable(!midi_is_enabled());
+      break;
+    }
+
+    /* Debug */
+    case 'g': {
+      viewport->switch_layer(VIEWPORT_LAYER_GRID);
+      break;
+    }
+
+    /* Game control */
+    case 'b': {
+      viewport->switch_possible_build();
+      break;
+    }
+    case 'j': {
+      int current = 0;
+      for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
+        if (get_player() == game.player[i]) {
+          current = i;
+          break;
+        }
+      }
+
+      for (int i = (current+1) % GAME_MAX_PLAYER_COUNT;
+           i != current; i = (i+1) % GAME_MAX_PLAYER_COUNT) {
+        if (PLAYER_IS_ACTIVE(game.player[i])) {
+          set_player(i);
+          LOGD("main", "Switched to player %i.", i);
+          break;
+        }
+      }
+      break;
+    }
+    case 'z':
+      if (modifier & 1) {
+        save_game(0);
+      }
+      break;
+    case 'n':
+      if (modifier & 1) {
+        open_game_init();
+      }
+      break;
+    case 'c':
+      if (modifier & 1) {
+        open_popup(BOX_QUIT_CONFIRM);
+      }
+      break;
+
     default:
       return 0;
   }
 
   return 1;
+}
+
+bool
+interface_t::handle_event(const event_t *event)
+{
+  switch (event->type) {
+    case EVENT_RESIZE:
+      set_size(event->x, event->y);
+      break;
+    case EVENT_UPDATE:
+      update();
+      break;
+    case EVENT_DRAW:
+      draw((frame_t*)event->object);
+      break;
+
+    default:
+      return gui_object_t::handle_event(event);
+      break;
+  }
+
+  return true;
 }

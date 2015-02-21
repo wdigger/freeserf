@@ -36,10 +36,6 @@ extern "C" {
 }
 #endif
 
-/* The length between game updates in miliseconds. */
-#define TICK_LENGTH  20
-#define TICKS_PER_SEC  (1000/TICK_LENGTH)
-
 #define MAX_ROAD_LENGTH  256
 
 static const int map_building_sprite[] = {
@@ -137,13 +133,13 @@ public:
   int remove_road_segment();
   int extend_road(dir_t *dirs, uint length);
 
+  void update();
+
   void demolish_object();
 
   void build_flag();
   void build_building(building_type_t type);
   void build_castle();
-
-  void update();
 
   int get_config() { return config; }
   void set_config(int config) { this->config = config; }
@@ -160,6 +156,8 @@ public:
   random_state_t *get_random() { return &random; }
 
   int *get_map_cursor_sprites() { return map_cursor_sprites; }
+
+  virtual bool handle_event(const event_t *event);
 
 protected:
   virtual void internal_draw();

@@ -91,11 +91,11 @@ gui_object_t::draw(frame_t *frame)
   frame->draw_frame(x, y, 0, 0, this->frame, width, height);
 }
 
-int
-gui_object_t::handle_event(const gui_event_t *event)
+bool
+gui_object_t::handle_event(const event_t *event)
 {
   if (!enabled || !displayed) {
-    return 0;
+    return false;
   }
 
   int event_x = event->x - x;
@@ -103,10 +103,10 @@ gui_object_t::handle_event(const gui_event_t *event)
   if (event_x < 0 || event_y < 0 ||
       event_x > width || event_y > height)
   {
-    return 0;
+    return false;
   }
 
-  gui_event_t internal_event;
+  event_t internal_event;
   internal_event.type = event->type;
   internal_event.x = event_x;
   internal_event.y = event_y;
@@ -123,20 +123,20 @@ gui_object_t::handle_event(const gui_event_t *event)
     }
   }
 
-  int result = 0;
+  bool result = false;
   switch (event->type) {
-    case GUI_EVENT_TYPE_CLICK:
-      if (event->button == GUI_EVENT_BUTTON_LEFT) {
+    case EVENT_TYPE_CLICK:
+      if (event->button == EVENT_BUTTON_LEFT) {
         result = handle_click_left(event_x, event_y);
       }
       break;
-    case GUI_EVENT_TYPE_DRAG_MOVE:
+    case EVENT_TYPE_DRAG:
       result = handle_drag(event->dx, event->dy);
       break;
-    case GUI_EVENT_TYPE_DBL_CLICK:
+    case EVENT_TYPE_DBL_CLICK:
       result = handle_dbl_click(x, y, event->button);
       break;
-    case GUI_EVENT_KEY_PRESSED:
+    case EVENT_KEY_PRESSED:
       result = handle_key_pressed(event->dx, event->dy);
       break;
     default:

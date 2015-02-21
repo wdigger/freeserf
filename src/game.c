@@ -28,10 +28,14 @@
 #include "savegame.h"
 #include "debug.h"
 #include "log.h"
+#include "freeserf.h"
 
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+
+/* Autosave interval */
+#define AUTOSAVE_INTERVAL  (10*60*TICKS_PER_SEC)
 
 #define GROUND_ANALYSIS_RADIUS  25
 
@@ -2381,6 +2385,13 @@ game_update()
 	update_buildings();
 	update_serfs();
 	update_game_stats();
+
+  /* Autosave periodically */
+  if ((game.const_tick % AUTOSAVE_INTERVAL) == 0 &&
+      game.game_speed > 0) {
+    int r = save_game(1);
+    if (r < 0) LOGW("main", "Autosave failed.");
+  }
 }
 
 /* Pause or unpause the game. */

@@ -23,34 +23,12 @@
 #define _GUI_H
 
 #include "gfx.h"
+#include "event_loop.h"
 
 #include <list>
 
-typedef enum {
-  GUI_EVENT_TYPE_CLICK,
-  GUI_EVENT_TYPE_DBL_CLICK,
-  GUI_EVENT_TYPE_BUTTON_UP,
-  GUI_EVENT_TYPE_BUTTON_DOWN,
-  GUI_EVENT_TYPE_DRAG_START,
-  GUI_EVENT_TYPE_DRAG_MOVE,
-  GUI_EVENT_TYPE_DRAG_END,
-  GUI_EVENT_KEY_PRESSED,
-} gui_event_type_t;
-
-typedef enum {
-  GUI_EVENT_BUTTON_LEFT = 1,
-  GUI_EVENT_BUTTON_MIDDLE,
-  GUI_EVENT_BUTTON_RIGHT
-} gui_event_button_t;
-
-typedef struct {
-  gui_event_type_t type;
-  int x, y;
-  int dx, dy;
-  gui_event_button_t button;
-} gui_event_t;
-
 class gui_object_t
+  : public event_handler_t
 {
 private:
   typedef std::list<gui_object_t*> float_list_t;
@@ -71,7 +49,7 @@ protected:
   virtual void layout();
 
   virtual int handle_click_left(int x, int y) { return 0; }
-  virtual int handle_dbl_click(int x, int y, gui_event_button_t button) { return 0; }
+  virtual int handle_dbl_click(int x, int y, event_button_t button) { return 0; }
   virtual int handle_drag(int dx, int dy) { return 0; }
   virtual int handle_key_pressed(char key, int modifier) { return 0; }
   virtual int handle_focus_loose() { return 0; }
@@ -83,7 +61,6 @@ public:
   virtual ~gui_object_t();
 
   void draw(frame_t *frame);
-  int handle_event(const gui_event_t *event);
   void move_to(int x, int y);
   void get_position(int &x, int &y);
   void set_size(int width, int height);
@@ -97,6 +74,8 @@ public:
   bool point_inside(int point_x, int point_y);
 
   void add_float(gui_object_t *obj, int x, int y);
+
+  virtual bool handle_event(const event_t *event);
 };
 
 int gui_get_slider_click_value(int x);
