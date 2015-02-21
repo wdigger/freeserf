@@ -55,19 +55,27 @@ public:
 
 class event_loop_t
 {
-private:
+protected:
   static event_loop_t *instance;
   event_handler_t **event_handlers;
 
 public:
   static event_loop_t *get_instance();
-  void quit();
-  void run(event_handler_t **handlers);
+  virtual void quit() = 0;
+  virtual void run(event_handler_t **handlers) = 0;
 
-private:
+protected:
   event_loop_t();
 
-  void notify_handlers(event_t *event);
+  bool notify_handlers(event_t *event);
+
+  bool notify_click(int x, int y, event_button_t button);
+  bool notify_dbl_click(int x, int y, event_button_t button);
+  bool notify_drag(int x, int y, int dx, int dy, event_button_t button);
+  bool notify_key_pressed(unsigned char key, unsigned char morifier);
+  bool notify_resize(unsigned int width, unsigned int height);
+  bool notify_update();
+  bool notify_draw(frame_t *frame);
 };
 
 #endif /* ! _EVENT_LOOP */

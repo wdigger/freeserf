@@ -980,7 +980,7 @@ interface_t::handle_event(const event_t *event)
 {
   switch (event->type) {
     case EVENT_RESIZE:
-      set_size(event->x, event->y);
+      set_size(event->dx, event->dy);
       break;
     case EVENT_UPDATE:
       update();
