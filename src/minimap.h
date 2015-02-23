@@ -77,10 +77,10 @@ protected:
   void draw_minimap_grid(frame_t *frame);
   void draw_minimap_rect(frame_t *frame);
 
-  virtual int handle_drag(int dx, int dy);
+  virtual bool handle_drag(int dx, int dy);
   int handle_scroll(int up);
 
-	void map_pix_from_map_coord(map_pos_t pos, int *mx, int *my);
+  void map_pix_from_map_coord(map_pos_t pos, int *mx, int *my);
 };
 
 class game_minimap_t
@@ -101,7 +101,7 @@ protected:
   void draw_minimap_traffic(frame_t *frame);
 
   virtual void internal_draw();
-  virtual int handle_click_left(int x, int y);
+  virtual bool handle_click_left(int x, int y);
 };
 
 #endif /* !_MINIMAP_H */

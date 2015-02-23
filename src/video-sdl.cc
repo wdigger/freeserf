@@ -204,12 +204,6 @@ sdl_video_t::frame_create(unsigned int width, unsigned int height)
   return new sdl_frame_t(width, height, this);
 }
 
-void
-sdl_video_t::warp_mouse(int x, int y)
-{
-  SDL_WarpMouseInWindow(NULL, x, y);
-}
-
 SDL_Surface *
 sdl_image_t::create_surface_from_sprite(const sprite_t *sprite, Uint32 pixel_format)
 {

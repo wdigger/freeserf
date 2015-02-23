@@ -457,7 +457,7 @@ gfx_t::get_screen_frame()
 
 /* Enable or disable fullscreen mode */
 bool
-gfx_t::set_fullscreen(int enable)
+gfx_t::set_fullscreen(bool enable)
 {
   return video->set_fullscreen(enable);
 }
@@ -491,12 +491,6 @@ void
 gfx_t::swap_buffers()
 {
   video->swap_buffers();
-}
-
-void
-gfx_t::warp_mouse(int x, int y)
-{
-  video->warp_mouse(x, y);
 }
 
 void

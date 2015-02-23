@@ -192,14 +192,14 @@ minimap_t::handle_scroll(int up)
   return 0;
 }
 
-int
+bool
 minimap_t::handle_drag(int x, int y)
 {
   if (x != 0 || y != 0) {
     move_by_pixels(x, y);
   }
 
-  return 1;
+  return true;
 }
 
 minimap_t::minimap_t(map_t *map)
@@ -390,7 +390,7 @@ game_minimap_t::internal_draw()
   draw_minimap_rect(frame);
 }
 
-int
+bool
 game_minimap_t::handle_click_left(int x, int y)
 {
   map_pos_t pos = map_pos_from_screen_pix(x, y);
@@ -399,5 +399,5 @@ game_minimap_t::handle_click_left(int x, int y)
   interface->update_map_cursor_pos(pos);
   interface->close_popup();
 
-  return 0;
+  return true;
 }

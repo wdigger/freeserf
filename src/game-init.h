@@ -60,7 +60,7 @@ protected:
   virtual void internal_draw();
   void draw_player_box(int player, int x, int y, frame_t *frame);
 
-  virtual int handle_click_left(int x, int y);
+  virtual bool handle_click_left(int x, int y);
   void handle_action(int action);
   int handle_player_click(int player, int x, int y);
 

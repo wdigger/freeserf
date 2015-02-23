@@ -150,7 +150,8 @@ protected:
   void draw_building_stock_box(frame_t *frame);
   void draw_map_box(frame_t *frame);
 
-  virtual int handle_click_left(int x, int y);
+  virtual bool handle_click_left(int x, int y);
+
   void handle_action(int action, int x, int y);
   int handle_clickmap(int x, int y, const int clkmap[]);
   void handle_box_close_clk(int x, int y);

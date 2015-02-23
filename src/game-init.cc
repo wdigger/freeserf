@@ -66,19 +66,20 @@ protected:
     return true;
   }
 
-  virtual int handle_click_left(int x, int y) {
+  virtual bool handle_click_left(int x, int y) {
     text_input_t::handle_click_left(x, y);
     saved_text = text;
     text.clear();
-    return 1;
+    return true;
   }
-  virtual int handle_focus_loose() {
+
+  virtual bool handle_focus_loose() {
     text_input_t::handle_focus_loose();
     if ((text.length() < 16) && (saved_text.length() == 16)) {
       text = saved_text;
       saved_text.clear();
     }
-    return 1;
+    return true;
   }
 };
 
@@ -310,7 +311,7 @@ game_init_box_t::handle_action(int action)
   }
 }
 
-int
+bool
 game_init_box_t::handle_click_left(int x, int y)
 {
   const int clickmap_mission[] = {
@@ -370,7 +371,7 @@ game_init_box_t::handle_click_left(int x, int y)
     }
   }
 
-  return 1;
+  return true;
 }
 
 int

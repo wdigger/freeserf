@@ -48,11 +48,11 @@ protected:
   virtual void internal_draw() = 0;
   virtual void layout();
 
-  virtual int handle_click_left(int x, int y) { return 0; }
-  virtual int handle_dbl_click(int x, int y, event_button_t button) { return 0; }
-  virtual int handle_drag(int dx, int dy) { return 0; }
-  virtual int handle_key_pressed(char key, int modifier) { return 0; }
-  virtual int handle_focus_loose() { return 0; }
+  virtual bool handle_click_left(int x, int y) { return 0; }
+  virtual bool handle_dbl_click(int x, int y, event_button_t button) { return 0; }
+  virtual bool handle_drag(int dx, int dy) { return 0; }
+  virtual bool handle_key_pressed(char key, int modifier) { return 0; }
+  virtual bool handle_focus_loose() { return 0; }
 
   void delete_frame();
 

@@ -54,9 +54,9 @@ public:
 protected:
   virtual void internal_draw();
 
-  virtual int handle_click_left(int x, int y);
-  virtual int handle_key_pressed(char key, int modifier);
-  virtual int handle_focus_loose();
+  virtual bool handle_click_left(int x, int y);
+  virtual bool handle_key_pressed(char key, int modifier);
+  virtual bool handle_focus_loose();
 };
 
 #endif /* ! _TEXT_INPUT_H */

@@ -258,7 +258,7 @@ public:
   int offset_y;
   uint width;
   uint height;
-  void *data;      // Allways RGBA 32bit
+  void *data;      // Allways ARGB 32bit
 };
 
 int data_init(const char *path);

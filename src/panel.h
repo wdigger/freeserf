@@ -73,7 +73,7 @@ protected:
   void draw_panel_frame(frame_t *frame);
   void draw_panel_buttons(frame_t *frame);
   void draw_message_notify(frame_t *frame);
-  virtual int handle_click_left(int x, int y);
+  virtual bool handle_click_left(int x, int y);
   void handle_panel_button_click(int button);
 };
 

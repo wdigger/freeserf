@@ -90,7 +90,7 @@ protected:
   static video_t *video;
   static gfx_t *gfx;
 
-  typedef std::map<uint64_t, image_t *> image_map_t;
+  typedef std::map<unsigned long long, image_t *> image_map_t;
   image_map_t image_cache;
 
 public:
@@ -108,19 +108,17 @@ public:
   frame_t *get_screen_frame();
   void set_resolution(unsigned int width, unsigned int height, bool fullscreen);
   void get_resolution(unsigned int &width, unsigned int &height);
-  bool set_fullscreen(int enable);
+  bool set_fullscreen(bool enable);
   bool is_fullscreen();
   bool is_fullscreen_possible();
 
   void swap_buffers();
 
-  void warp_mouse(int x, int y);
-
   virtual void add_image_to_cache(unsigned int sprite, unsigned int mask, unsigned char offset, image_t *image);
   virtual image_t *get_image_from_cache(unsigned int sprite, unsigned int mask, unsigned char offset);
 
 protected:
-  uint64_t gfx_image_id(unsigned int sprite, unsigned int mask, unsigned char offset);
+  unsigned long long gfx_image_id(unsigned int sprite, unsigned int mask, unsigned char offset);
 };
 
 #endif /* ! _GFX_H */

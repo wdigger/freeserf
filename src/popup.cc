@@ -4247,7 +4247,7 @@ popup_box_t::handle_box_bld_4(int x, int y)
   handle_clickmap(x, y, clkmap);
 }
 
-int
+bool
 popup_box_t::handle_click_left(int x, int y)
 {
   x -= 8;
@@ -4391,7 +4391,7 @@ popup_box_t::handle_click_left(int x, int y)
     break;
   }
 
-  return 1;
+  return true;
 }
 
 popup_box_t::popup_box_t(interface_t *interface)

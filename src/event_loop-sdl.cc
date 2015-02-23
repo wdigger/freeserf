@@ -94,7 +94,6 @@ event_loop_sdl_t::run(event_handler_t **handlers)
   uint last_click_y = 0;
 
   SDL_Event event;
-  event_t ev;
 
   gfx_t *gfx = gfx_t::get_gfx();
   frame_t *screen = NULL;
@@ -143,7 +142,7 @@ event_loop_sdl_t::run(event_handler_t **handlers)
                         event.motion.x - drag_x, event.motion.y - drag_y,
                         (event_button_t)drag_button);
 
-            gfx->warp_mouse(drag_x, drag_y);
+            SDL_WarpMouseInWindow(NULL, drag_x, drag_y);
 
             break;
           }

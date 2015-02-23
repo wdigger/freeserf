@@ -2225,7 +2225,7 @@ viewport_t::internal_draw()
   if (layers & VIEWPORT_LAYER_CURSOR) draw_map_cursor(frame);
 }
 
-int
+bool
 viewport_t::handle_click_left(int x, int y)
 {
   set_redraw();
@@ -2280,10 +2280,10 @@ viewport_t::handle_click_left(int x, int y)
     sfx_play_clip(SFX_CLICK);
   }
 
-  return 0;
+  return true;
 }
 
-int
+bool
 viewport_t::handle_dbl_click(int x, int y, event_button_t button)
 {
   if (button != EVENT_BUTTON_LEFT) return 0;
@@ -2330,7 +2330,7 @@ viewport_t::handle_dbl_click(int x, int y, event_button_t button)
   } else {
     if (MAP_OBJ(clk_pos) == MAP_OBJ_NONE ||
         MAP_OBJ(clk_pos) > MAP_OBJ_CASTLE) {
-      return 0;
+      return false;
     }
 
     if (MAP_OBJ(clk_pos) == MAP_OBJ_FLAG) {
@@ -2366,7 +2366,7 @@ viewport_t::handle_dbl_click(int x, int y, event_button_t button)
 
         interface->get_player()->index = MAP_OBJ_INDEX(clk_pos);
       } else if (BIT_TEST(game.split, 5)) { /* Demo mode*/
-        return 0;
+        return false;
       } else { /* Foreign building */
         /* TODO handle coop mode*/
         building_t *building = game_get_building(MAP_OBJ_INDEX(clk_pos));
@@ -2383,7 +2383,7 @@ viewport_t::handle_dbl_click(int x, int y, event_button_t button)
                if currently not occupied or
                is too far from the border. */
             sfx_play_clip(SFX_NOT_ACCEPTED);
-            return 0;
+            return false;
           }
 
           const map_pos_t *p = &game.map.spiral_pos_pattern[7];
@@ -2399,7 +2399,7 @@ viewport_t::handle_dbl_click(int x, int y, event_button_t button)
 
           if (!found) {
             sfx_play_clip(SFX_NOT_ACCEPTED);
-            return 0;
+            return false;
           }
 
           /* Action accepted */
@@ -2429,17 +2429,17 @@ viewport_t::handle_dbl_click(int x, int y, event_button_t button)
     interface->get_panel_bar()->set_button_type(4, PANEL_BTN_SETT_INACTIVE);
   }
 
-  return 0;
+  return false;
 }
 
-int
+bool
 viewport_t::handle_drag(int x, int y)
 {
   if (x != 0 || y != 0) {
     move_by_pixels(x, y);
   }
 
-  return 1;
+  return true;
 }
 
 viewport_t::viewport_t(interface_t *interface)

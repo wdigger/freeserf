@@ -162,7 +162,7 @@ public:
 protected:
   virtual void internal_draw();
   virtual void layout();
-  virtual int handle_key_pressed(char key, int modifier);
+  virtual bool handle_key_pressed(char key, int modifier);
 
   void interface_determine_map_cursor_type();
   void interface_determine_map_cursor_type_road();

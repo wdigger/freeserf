@@ -57,35 +57,35 @@ text_input_t::internal_draw()
   }
 }
 
-int
+bool
 text_input_t::handle_click_left(int x, int y)
 {
   focused_object = this;
   focused = true;
   set_redraw();
-  return 1;
+  return true;
 }
 
-int
+bool
 text_input_t::handle_key_pressed(char key, int modifier)
 {
   if (!focused) {
-    return 0;
+    return false;
   }
 
   if ((max_length != 0) && (text.length() >= max_length)) {
-    return 1;
+    return true;
   }
 
   if ((key == '\b') && (text.length() > 0)) {
     text = text.substr(0, text.length() - 1);
     set_redraw();
-    return 1;
+    return true;
   }
 
   if (filter != NULL) {
     if (!filter(key, this)) {
-      return 0;
+      return true;
     }
   }
 
@@ -93,15 +93,15 @@ text_input_t::handle_key_pressed(char key, int modifier)
 
   set_redraw();
 
-  return 1;
+  return true;
 }
 
-int
+bool
 text_input_t::handle_focus_loose()
 {
   focused = false;
   set_redraw();
-  return 1;
+  return true;
 }
 
 void

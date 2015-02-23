@@ -73,8 +73,6 @@ public:
   virtual video_frame_t *get_screen_frame() = 0;
   virtual video_frame_t *frame_create(unsigned int width, unsigned int height) = 0;
 
-  virtual void warp_mouse(int x, int y) = 0;
-
   virtual void swap_buffers() = 0;
 
   virtual void set_cursor(const sprite_t *sprite) = 0;

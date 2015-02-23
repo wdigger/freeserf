@@ -40,7 +40,7 @@ public:
   virtual void internal_draw();
 
 protected:
-  int handle_click_left(int x, int y);
+  virtual bool handle_click_left(int x, int y);
 };
 
 #endif /* !_NOTIFICATION_H */

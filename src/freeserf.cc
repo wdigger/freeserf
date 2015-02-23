@@ -63,10 +63,12 @@ public:
     switch (event->type) {
       case EVENT_UPDATE:
         game_update();
+		return true;
         break;
       default:
         break;
     }
+	return false;
   }
 };
 

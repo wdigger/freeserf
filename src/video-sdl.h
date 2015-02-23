@@ -101,8 +101,6 @@ public:
   virtual video_frame_t *get_screen_frame();
   virtual video_frame_t *frame_create(unsigned int width, unsigned int height);
 
-  virtual void warp_mouse(int x, int y);
-
   virtual void swap_buffers();
 
   virtual void set_cursor(const sprite_t *sprite);

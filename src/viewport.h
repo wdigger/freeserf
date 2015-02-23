@@ -112,9 +112,9 @@ protected:
                             frame_t *frame);
   void draw_serf_row(map_pos_t pos, int y_base, int cols, int x_base,
                      frame_t *frame);
-  virtual int handle_click_left(int x, int y);
-  virtual int handle_dbl_click(int x, int y, event_button_t button);
-  virtual int handle_drag(int x, int y);
+  virtual bool handle_click_left(int x, int y);
+  virtual bool handle_dbl_click(int x, int y, event_button_t button);
+  virtual bool handle_drag(int x, int y);
 
   void load_serf_animation_table();
 };

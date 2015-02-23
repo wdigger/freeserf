@@ -293,7 +293,7 @@ panel_bar_t::handle_panel_button_click(int button)
   }
 }
 
-int
+bool
 panel_bar_t::handle_click_left(int x, int y)
 {
   set_redraw();
@@ -314,7 +314,7 @@ panel_bar_t::handle_click_left(int x, int y)
     if (BIT_TEST(game.svga, 3)) { /* Game has started */
       if (interface->get_player()->timers_count >= 64) {
         sfx_play_clip(SFX_NOT_ACCEPTED);
-        return 0;
+        return false;
       }
 
       /* Call to map position */
@@ -340,16 +340,16 @@ panel_bar_t::handle_click_left(int x, int y)
     while (1) {
       if (x < 32) {
         if (button < 5) break;
-        else return 0;
+        else return false;
       }
       button += 1;
-      if (x < 48) return 0;
+      if (x < 48) return false;
       x -= 48;
     }
     handle_panel_button_click(button);
   }
 
-  return 1;
+  return true;
 }
 
 panel_bar_t::panel_bar_t(interface_t *interface)

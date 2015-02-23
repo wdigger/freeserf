@@ -339,11 +339,11 @@ notification_box_t::internal_draw()
   }
 }
 
-int
+bool
 notification_box_t::handle_click_left(int x, int y)
 {
   set_displayed(0);
-  return 0;
+  return true;
 }
 
 notification_box_t::notification_box_t(interface_t *interface)

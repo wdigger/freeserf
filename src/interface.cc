@@ -842,7 +842,7 @@ interface_t::update()
   set_redraw();
 }
 
-int
+bool
 interface_t::handle_key_pressed(char key, int modifier)
 {
   switch (key) {
@@ -972,7 +972,7 @@ interface_t::handle_key_pressed(char key, int modifier)
       return 0;
   }
 
-  return 1;
+  return true;
 }
 
 bool
