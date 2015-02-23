@@ -24,8 +24,6 @@
 
 #include <cstdlib>
 
-#include <cstdlib>
-
 /* Get the resulting value from a click on a slider bar. */
 int
 gui_get_slider_click_value(int x)

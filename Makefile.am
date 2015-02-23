@@ -12,7 +12,7 @@ freeserf_SOURCES = \
 	src/building.c src/building.h \
 	src/random.c src/random.h \
 	src/pathfinder.cc src/pathfinder.h \
-	src/gfx.cc src/gfx.h src/gfx-cache.cc \
+	src/gfx.cc src/gfx.h \
 	src/viewport.cc src/viewport.h \
 	src/minimap.cc src/minimap.h \
 	src/interface.cc src/interface.h \
@@ -35,7 +35,9 @@ freeserf_SOURCES = \
 	src/freeserf_endian.h \
 	src/version.c src/version.h src/version-vcs.h \
 	src/data-source-dos.cc \
-	src/text-input.cc src/text-input.h
+	src/text-input.cc src/text-input.h \
+	src/event_loop.cc src/event_loop.h \
+	src/event_loop-sdl.cc src/event_loop-sdl.h
 
 AM_CFLAGS = $(SDL2_CFLAGS) -I$(top_builddir)/src
 AM_CXXFLAGS = $(SDL2_CFLAGS) -I$(top_builddir)/src
