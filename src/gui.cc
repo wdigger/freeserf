@@ -58,20 +58,6 @@ gui_object_t::~gui_object_t()
   delete_frame();
 }
 
-gui_object_t::~gui_object_t()
-{
-  delete_frame();
-}
-
-void
-gui_object_t::delete_frame()
-{
-  if(frame != NULL) {
-    gfx_frame_destroy(frame);
-    frame = NULL;
-  }
-}
-
 void
 gui_object_t::delete_frame()
 {
