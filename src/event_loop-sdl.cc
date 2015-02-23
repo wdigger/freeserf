@@ -88,10 +88,10 @@ event_loop_sdl_t::run(event_handler_t **handlers)
   int drag_x = 0;
   int drag_y = 0;
 
-  uint last_down[3] = {0};
-  uint last_click[3] = {0};
-  uint last_click_x = 0;
-  uint last_click_y = 0;
+  unsigned int last_down[3] = {0};
+  unsigned int last_click[3] = { 0 };
+  unsigned int last_click_x = 0;
+  unsigned int last_click_y = 0;
 
   SDL_Event event;
 
@@ -99,7 +99,7 @@ event_loop_sdl_t::run(event_handler_t **handlers)
   frame_t *screen = NULL;
 
   while (SDL_WaitEvent(&event)) {
-    uint current_ticks = SDL_GetTicks();
+    unsigned int current_ticks = SDL_GetTicks();
 
     switch (event.type) {
       case SDL_MOUSEBUTTONUP:

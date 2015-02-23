@@ -28,6 +28,7 @@
 #include "version.h"
 
 #include <algorithm>
+#include <sstream>
 
 class random_input_t
   : public text_input_t
@@ -139,23 +140,23 @@ game_init_box_t::internal_draw()
   if (game_mission < 0) {
     draw_box_icon(5, 0, 263, frame);
 
-    char map_size[4] = {0};
-    snprintf(map_size, 4, "%d", this->map_size);
+    std::stringstream map_size;
+    map_size << this->map_size;
 
     draw_box_string(10, 2, frame, "New game");
     draw_box_string(10, 18, frame, "Mapsize:");
-    draw_box_string(18, 18, frame, map_size);
+    draw_box_string(18, 18, frame, map_size.str().c_str());
 
     draw_box_icon(20, 0, 265, frame);
   } else {
     draw_box_icon(5, 0, 260, frame);
 
-    char level[4] = {0};
-    snprintf(level, 4, "%d", game_mission+1);
+    std::stringstream level;
+    level << (game_mission + 1);
 
     draw_box_string(10, 2, frame, "Start mission");
     draw_box_string(10, 18, frame, "Mission:");
-    draw_box_string(20, 18, frame, level);
+    draw_box_string(20, 18, frame, level.str().c_str());
 
     draw_box_icon(28, 0, 237, frame);
     draw_box_icon(28, 16, 240, frame);
@@ -174,10 +175,9 @@ game_init_box_t::internal_draw()
   }
 
   /* Display program name and version in caption */
-  char caption[64];
-  snprintf(caption, 64, "Version: %s", FREESERF_VERSION);
-
-  draw_box_string(0, 208, frame, caption);
+  std::string caption = "Version: ";
+  caption += FREESERF_VERSION;
+  draw_box_string(0, 208, frame, caption.c_str());
 
   draw_box_icon(38, 208, 60, frame); /* exit */
 }

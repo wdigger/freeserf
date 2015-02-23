@@ -40,6 +40,7 @@ extern "C" {
 #include <cassert>
 #include <cstring>
 #include <algorithm>
+#include <sstream>
 
 /* Action types that can be fired from
    clicks in the popup window. */
@@ -1983,9 +1984,9 @@ popup_box_t::draw_options_box(frame_t *frame)
   draw_popup_icon(11, 50, 220, frame); /* Volume minus */
   draw_popup_icon(13, 50, 221, frame); /* Volume plus */
 
-  char volume[4] = {0};
-  snprintf(volume, 4, "%d", audio_volume());
-  draw_green_string(8, 54, frame, volume);
+  std::stringstream volume;
+  volume << audio_volume();
+  draw_green_string(8, 54, frame, volume.str().c_str());
 
   gfx_t *gfx = gfx_t::get_gfx();
   if (gfx->is_fullscreen_possible()) {
