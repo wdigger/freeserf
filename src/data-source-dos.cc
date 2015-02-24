@@ -21,13 +21,13 @@
 
 #include "data.h"
 #include "freeserf_endian.h"
+#include "sfx2wav.h"
+#include "xmi2mid.h"
 
 #ifndef _MSC_VER
 extern "C" {
 #endif
   #include "log.h"
-  #include "sfx2wav.h"
-  #include "xmi2mid.h"
 #ifndef _MSC_VER
 }
 #endif

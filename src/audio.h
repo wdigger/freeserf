@@ -1,7 +1,7 @@
 /*
  * audio.h - Music and sound effects playback.
  *
- * Copyright (C) 2012  Wicked_Digger <wicked_digger@mail.ru>
+ * Copyright (C) 2012-2015  Wicked_Digger <wicked_digger@mail.ru>
  *
  * This file is part of freeserf.
  *
@@ -24,8 +24,6 @@
 #define _AUDIO_H
 
 #include <map>
-
-#include <SDL_Mixer.h>
 
 typedef enum {
   SFX_MESSAGE = 1,
@@ -77,15 +75,23 @@ typedef enum {
   MIDI_TRACK_3 = 4,
 } midi_t;
 
+class audio_track_t
+{
+public:
+  virtual ~audio_track_t() {}
+
+  virtual bool play() = 0;
+};
+
 /* Common audio. */
 
 class audio_t
 {
-private:
+protected:
   static audio_t *audio;
 
-  std::map<int, Mix_Chunk*> sfx_clips_to_play;
-  std::map<int, Mix_Music*> midi_tracks;
+  std::map<int, audio_track_t*> sfx_clips;
+  std::map<int, audio_track_t*> midi_tracks;
 
   bool sfx_enabled;
   bool midi_enabled;
@@ -96,8 +102,8 @@ public:
   audio_t();
   virtual ~audio_t();
 
-  int get_volume();
-  void set_volume(int volume);
+  virtual int get_volume() = 0;
+  virtual void set_volume(int volume) = 0;
   void volume_up();
   void volume_down();
 
@@ -112,7 +118,8 @@ public:
   bool midi_is_enabled();
 
 protected:
-  static void midi_track_finished();
+  virtual audio_track_t *create_sound_track(void *data, size_t size) = 0;
+  virtual audio_track_t *create_music_track(void *data, size_t size) = 0;
 };
 
 #endif /* ! _AUDIO_H */
