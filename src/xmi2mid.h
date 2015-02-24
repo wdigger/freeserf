@@ -1,7 +1,7 @@
 /*
  * xmi2mid.h - XMI to MID converter.
  *
- * Copyright (C) 2012-2014  Wicked_Digger <wicked_digger@mail.ru>
+ * Copyright (C) 2012-2015  Wicked_Digger <wicked_digger@mail.ru>
  *
  * This file is part of freeserf.
  *
@@ -22,7 +22,7 @@
 #ifndef _XMI2MID_H
 #define _XMI2MID_H
 
-#include <stdlib.h>
+#include <cstdlib>
 
 void *xmi2mid(void *xmi, size_t xmi_size, size_t *mid_size);
 

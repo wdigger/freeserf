@@ -44,6 +44,8 @@ extern "C" {
 #include <unistd.h>
 #endif
 
+#include <SDL.h>
+
 #define DEFAULT_SCREEN_WIDTH  800
 #define DEFAULT_SCREEN_HEIGHT 600
 
@@ -188,9 +190,9 @@ main(int argc, char *argv[])
   gfx_t *gfx = new gfx_t(screen_width, screen_height, fullscreen);
 
   /* TODO move to right place */
-  audio_init();
-  audio_set_volume(75);
-  midi_play_track(MIDI_TRACK_0);
+  audio_t *audio = audio_t::get_audio();
+  audio->set_volume(75);
+  audio->midi_play_track(MIDI_TRACK_0);
 
   game_init(map_generator);
   game_wrapper_t *game_wrapper = new game_wrapper_t();
@@ -239,7 +241,7 @@ main(int argc, char *argv[])
   /* Clean up */
   delete interface;
   map_deinit(&game.map);
-  audio_deinit();
+  delete audio;
   delete gfx;
   data_deinit();
   game_deinit();

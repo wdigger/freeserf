@@ -23,6 +23,10 @@
 #ifndef _AUDIO_H
 #define _AUDIO_H
 
+#include <map>
+
+#include <SDL_Mixer.h>
+
 typedef enum {
   SFX_MESSAGE = 1,
   SFX_ACCEPTED = 2,
@@ -74,21 +78,41 @@ typedef enum {
 } midi_t;
 
 /* Common audio. */
-int audio_init();
-void audio_deinit();
-int audio_volume();
-void audio_set_volume(int volume);
-void audio_volume_up();
-void audio_volume_down();
 
-/* Play sound. */
-void sfx_play_clip(sfx_t sfx);
-void sfx_enable(int enable);
-int sfx_is_enabled();
+class audio_t
+{
+private:
+  static audio_t *audio;
 
-/* Play music. */
-void midi_play_track(midi_t midi);
-void midi_enable(int enable);
-int midi_is_enabled();
+  std::map<int, Mix_Chunk*> sfx_clips_to_play;
+  std::map<int, Mix_Music*> midi_tracks;
+
+  bool sfx_enabled;
+  bool midi_enabled;
+  midi_t current_track;
+
+public:
+  static audio_t *get_audio();
+  audio_t();
+  virtual ~audio_t();
+
+  int get_volume();
+  void set_volume(int volume);
+  void volume_up();
+  void volume_down();
+
+  /* Play sound. */
+  void sfx_play_clip(sfx_t sfx);
+  void sfx_enable(bool enable);
+  bool sfx_is_enabled();
+
+  /* Play music. */
+  void midi_play_track(midi_t midi);
+  void midi_enable(bool enable);
+  bool midi_is_enabled();
+
+protected:
+  static void midi_track_finished();
+};
 
 #endif /* ! _AUDIO_H */

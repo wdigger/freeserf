@@ -147,7 +147,7 @@ panel_bar_t::handle_panel_button_click(int button)
   switch (panel_btns[button]) {
   case PANEL_BTN_MAP:
   case PANEL_BTN_MAP_STARRED:
-    sfx_play_clip(SFX_CLICK);
+    play_sound(SFX_CLICK);
     if (interface->get_popup_box()->is_displayed()) {
       interface->close_popup();
     } else {
@@ -168,7 +168,7 @@ panel_bar_t::handle_panel_button_click(int button)
     break;
   case PANEL_BTN_SETT:
   case PANEL_BTN_SETT_STARRED:
-    sfx_play_clip(SFX_CLICK);
+    play_sound(SFX_CLICK);
     if (interface->get_popup_box()->is_displayed()) {
       interface->close_popup();
     } else {
@@ -182,7 +182,7 @@ panel_bar_t::handle_panel_button_click(int button)
     break;
   case PANEL_BTN_STATS:
   case PANEL_BTN_STATS_STARRED:
-    sfx_play_clip(SFX_CLICK);
+    play_sound(SFX_CLICK);
     if (interface->get_popup_box()->is_displayed()) {
       interface->close_popup();
     } else {
@@ -196,7 +196,7 @@ panel_bar_t::handle_panel_button_click(int button)
     break;
   case PANEL_BTN_BUILD_ROAD:
   case PANEL_BTN_BUILD_ROAD_STARRED:
-    sfx_play_clip(SFX_CLICK);
+    play_sound(SFX_CLICK);
     if (interface->get_building_road()) {
       interface->build_road_end();
     } else {
@@ -204,12 +204,12 @@ panel_bar_t::handle_panel_button_click(int button)
     }
     break;
   case PANEL_BTN_BUILD_FLAG:
-    sfx_play_clip(SFX_CLICK);
+    play_sound(SFX_CLICK);
     interface->build_flag();
     break;
   case PANEL_BTN_BUILD_SMALL:
   case PANEL_BTN_BUILD_SMALL_STARRED:
-    sfx_play_clip(SFX_CLICK);
+    play_sound(SFX_CLICK);
     if (interface->get_popup_box()->is_displayed()) {
       interface->close_popup();
     } else {
@@ -223,7 +223,7 @@ panel_bar_t::handle_panel_button_click(int button)
     break;
   case PANEL_BTN_BUILD_LARGE:
   case PANEL_BTN_BUILD_LARGE_STARRED:
-    sfx_play_clip(SFX_CLICK);
+    play_sound(SFX_CLICK);
     if (interface->get_popup_box()->is_displayed()) {
       interface->close_popup();
     } else {
@@ -237,7 +237,7 @@ panel_bar_t::handle_panel_button_click(int button)
     break;
   case PANEL_BTN_BUILD_MINE:
   case PANEL_BTN_BUILD_MINE_STARRED:
-    sfx_play_clip(SFX_CLICK);
+    play_sound(SFX_CLICK);
     if (interface->get_popup_box()->is_displayed()) {
       interface->close_popup();
     } else {
@@ -269,16 +269,16 @@ panel_bar_t::handle_panel_button_click(int button)
     int r = game_demolish_road(interface->get_map_cursor_pos(),
              interface->get_player());
     if (r < 0) {
-      sfx_play_clip(SFX_NOT_ACCEPTED);
+      play_sound(SFX_NOT_ACCEPTED);
       interface->update_map_cursor_pos(interface->get_map_cursor_pos());
     } else {
-      sfx_play_clip(SFX_ACCEPTED);
+      play_sound(SFX_ACCEPTED);
     }
   }
     break;
   case PANEL_BTN_GROUND_ANALYSIS:
   case PANEL_BTN_GROUND_ANALYSIS_STARRED:
-    sfx_play_clip(SFX_CLICK);
+    play_sound(SFX_CLICK);
     if (interface->get_popup_box()->is_displayed()) {
       interface->close_popup();
     } else {
@@ -313,7 +313,7 @@ panel_bar_t::handle_click_left(int x, int y)
     /* Timer bar click */
     if (BIT_TEST(game.svga, 3)) { /* Game has started */
       if (interface->get_player()->timers_count >= 64) {
-        sfx_play_clip(SFX_NOT_ACCEPTED);
+        play_sound(SFX_NOT_ACCEPTED);
         return false;
       }
 
@@ -330,7 +330,7 @@ panel_bar_t::handle_click_left(int x, int y)
       interface->get_player()->timers[timer_id].timeout = timer_length*TICKS_PER_SEC;
       interface->get_player()->timers[timer_id].pos = interface->get_map_cursor_pos();
 
-      sfx_play_clip(SFX_ACCEPTED);
+      play_sound(SFX_ACCEPTED);
     }
   } else if (y >= 4 && y < 36 && x >= 64) {
     x -= 64;
@@ -375,4 +375,10 @@ panel_bar_t::set_button_type(int button, panel_btn_t type)
 {
   panel_btns[button] = type;
   set_redraw();
+}
+
+void
+panel_bar_t::play_sound(int sound)
+{
+  audio_t::get_audio()->sfx_play_clip((sfx_t)sound);
 }

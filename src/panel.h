@@ -75,6 +75,7 @@ protected:
   void draw_message_notify(frame_t *frame);
   virtual bool handle_click_left(int x, int y);
   void handle_panel_button_click(int button);
+  void play_sound(int sound);
 };
 
 #endif /* !_PANEL_H */

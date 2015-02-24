@@ -1,7 +1,7 @@
 /*
  * sfx2wav.h - SFX to WAV converter.
  *
- * Copyright (C) 2012-2014  Wicked_Digger <wicked_digger@mail.ru>
+ * Copyright (C) 2012-2015  Wicked_Digger <wicked_digger@mail.ru>
  *
  * This file is part of freeserf.
  *
@@ -22,7 +22,7 @@
 #ifndef _SFX2WAV_H
 #define _SFX2WAV_H
 
-#include <stdlib.h>
+#include <cstdlib>
 
 void *sfx2wav(void* sfx, size_t sfx_size, size_t *wav_size);
 

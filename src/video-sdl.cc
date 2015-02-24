@@ -215,7 +215,7 @@ sdl_image_t::create_surface_from_sprite(const sprite_t *sprite, Uint32 pixel_for
   if (sprite_surf == NULL) {
     LOGE("sdl-video", "Unable to create sprite surface: %s.",
          SDL_GetError());
-    exit(EXIT_FAILURE);
+    exit(-1);
   }
 
   /* Covert to screen format */
@@ -225,7 +225,7 @@ sdl_image_t::create_surface_from_sprite(const sprite_t *sprite, Uint32 pixel_for
   if (surf == NULL) {
     LOGE("sdl-video", "Unable to convert sprite surface: %s.",
          SDL_GetError());
-    exit(EXIT_FAILURE);
+    exit(-1);
   }
 
   SDL_FreeSurface(sprite_surf);
