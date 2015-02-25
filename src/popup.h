@@ -24,6 +24,11 @@
 
 #include "gui.h"
 
+extern "C" {
+  #include "player.h"
+  #include "building.h"
+}
+
 typedef enum {
   BOX_MAP = 1,
   BOX_MAP_OVERLAY, /* UNUSED */
@@ -113,6 +118,11 @@ public:
 protected:
   virtual void internal_draw();
 
+  void draw_adv_1_building_box(frame_t *frame);
+  void draw_resources_box(frame_t *frame, const int resources[]);
+  void draw_serfs_box(frame_t *frame, const int serfs[], int total);
+  void draw_stat_select_box(popup_box_t *popup, frame_t *frame);
+  void draw_gauge_balance(int x, int y, unsigned int value, unsigned int count, frame_t *frame);
   void draw_transport_info_box(frame_t *frame);
   void draw_mine_building_box(frame_t *frame);
   void draw_basic_building_box(frame_t *frame, int flip);
@@ -126,6 +136,7 @@ protected:
   void draw_stat_7_box(frame_t *frame);
   void draw_stat_1_box(frame_t *frame);
   void draw_stat_2_box(frame_t *frame);
+  void draw_stat_3_meter(int x, int y, int value, frame_t *frame);
   void draw_stat_6_box(frame_t *frame);
   void draw_stat_3_box(frame_t *frame);
   void draw_start_attack_redraw_box(frame_t *frame);
@@ -147,8 +158,20 @@ protected:
   void draw_sett_8_box(frame_t *frame);
   void draw_sett_6_box(frame_t *frame);
   void draw_bld_1_box(frame_t *frame);
+  void draw_bld_2_box(frame_t *frame);
+  void draw_bld_3_box(frame_t *frame);
+  void draw_bld_4_box(frame_t *frame);
   void draw_building_stock_box(frame_t *frame);
   void draw_map_box(frame_t *frame);
+  void draw_gauge_full(int x, int y, unsigned int value, unsigned int count, frame_t *frame);
+  void draw_sett_select_box(frame_t *frame);
+  void draw_slide_bar(int x, int y, int value, frame_t *frame);
+  void draw_popup_resource_stairs(int order[], frame_t *frame);
+  void draw_quit_confirm_box(frame_t *frame);
+  void draw_no_save_quit_confirm_box(frame_t *frame);
+  void draw_player_faces_box(frame_t *frame);
+  void draw_demolish_box(frame_t *frame);
+  void draw_player_stat_chart(const int *data, int index, int color, frame_t *frame);
 
   virtual bool handle_click_left(int x, int y);
 
@@ -190,6 +213,31 @@ protected:
   void handle_box_bld_2(int x, int y);
   void handle_box_bld_3(int x, int y);
   void handle_box_bld_4(int x, int y);
+  void handle_send_geologist(interface_t *interface);
+
+  void draw_popup_box_frame(frame_t *frame);
+  void draw_popup_icon(int x, int y, int sprite, frame_t *frame);
+  void draw_popup_building(int x, int y, int sprite, frame_t *frame);
+  void draw_box_background(int sprite, frame_t *frame);
+  void draw_box_row(int sprite, int y, frame_t *frame);
+  void draw_green_string(int x, int y, frame_t *frame, const char *str);
+  void draw_green_number(int x, int y, frame_t *frame, int n);
+  void draw_green_large_number(int x, int y, frame_t *frame, int n);
+  void draw_additional_number(int x, int y, frame_t *frame, int n);
+  void draw_player_face(int x, int y, int player, frame_t *frame);
+  void draw_custom_bld_box(const int sprites[], frame_t *frame);
+  void draw_custom_icon_box(const int sprites[], frame_t *frame);
+
+  void activate_sett_5_6_item(interface_t *interface, int index);
+
+  void move_sett_5_6_item(interface_t *interface, int up, int to_end);
+  void sett_8_train(interface_t *interface, int number);
+  void set_inventory_resource_mode(interface_t *interface, int mode);
+  void set_inventory_serf_mode(interface_t *interface, int mode);
+
+  int get_player_face_sprite(int face);
+  const char * prepare_res_amount_text(int amount);
+  void calculate_gauge_values(player_t *player, unsigned int values[24][BUILDING_MAX_STOCK][2]);
 };
 
 #endif /* !_POPUP_H */

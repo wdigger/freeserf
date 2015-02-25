@@ -63,6 +63,7 @@ class audio_sdlmixer_t
   : public audio_t
 {
 private:
+  static audio_sdlmixer_t *audio_sdlmixer;
 
 public:
   audio_sdlmixer_t();

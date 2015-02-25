@@ -22,8 +22,7 @@
 #include "interface.h"
 #include "viewport.h"
 #include "data.h"
-#include "audio.h"
-#include "event_loop.h"
+#include "application.h"
 
 #ifndef _MSC_VER
 extern "C" {
@@ -190,9 +189,11 @@ main(int argc, char *argv[])
   gfx_t *gfx = new gfx_t(screen_width, screen_height, fullscreen);
 
   /* TODO move to right place */
-  audio_t *audio = audio_t::get_audio();
-  audio->set_volume(75);
-  audio->midi_play_track(MIDI_TRACK_0);
+  audio_t *audio = application_t::get_application()->get_audio();
+  if (audio != NULL) {
+    audio->set_volume(75);
+    audio->midi_play_track(MIDI_TRACK_0);
+  }
 
   game_init(map_generator);
   game_wrapper_t *game_wrapper = new game_wrapper_t();
@@ -234,7 +235,8 @@ main(int argc, char *argv[])
   event_handler_t *handlers[] = {
     interface, game_wrapper, NULL
   };
-  event_loop_t::get_instance()->run(handlers);
+
+  application_t::get_application()->get_event_loop()->run(handlers);
 
   LOGI("main", "Cleaning up...");
 

@@ -88,8 +88,6 @@ public:
 class audio_t
 {
 protected:
-  static audio_t *audio;
-
   std::map<int, audio_track_t*> sfx_clips;
   std::map<int, audio_track_t*> midi_tracks;
 
@@ -98,7 +96,6 @@ protected:
   midi_t current_track;
 
 public:
-  static audio_t *get_audio();
   audio_t();
   virtual ~audio_t();
 

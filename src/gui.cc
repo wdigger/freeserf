@@ -21,6 +21,7 @@
 
 #include "gui.h"
 #include "misc.h"
+#include "application.h"
 
 #include <cstdlib>
 
@@ -223,4 +224,13 @@ gui_object_t::add_float(gui_object_t *obj,
   floats.push_back(obj);
   obj->move_to(x, y);
   set_redraw();
+}
+
+void
+gui_object_t::play_sound(sfx_t sound)
+{
+  audio_t *audio = application_t::get_application()->get_audio();
+  if (audio != NULL) {
+    audio->sfx_play_clip(sound);
+  }
 }

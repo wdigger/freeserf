@@ -376,9 +376,3 @@ panel_bar_t::set_button_type(int button, panel_btn_t type)
   panel_btns[button] = type;
   set_redraw();
 }
-
-void
-panel_bar_t::play_sound(int sound)
-{
-  audio_t::get_audio()->sfx_play_clip((sfx_t)sound);
-}

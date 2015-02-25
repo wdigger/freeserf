@@ -33,18 +33,6 @@ extern "C" {
 
 #include "stdlib.h"
 
-audio_t *audio_t::audio = NULL;
-
-audio_t *
-audio_t::get_audio()
-{
-  if (audio == NULL) {
-    audio = new audio_sdlmixer_t();
-  }
-
-  return audio;
-}
-
 audio_t::audio_t()
 {
   sfx_enabled = true;

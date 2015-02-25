@@ -33,6 +33,12 @@ extern "C" {
 
 #include "SDL.h"
 
+event_loop_t *
+create_event_loop()
+{
+  return new event_loop_sdl_t();
+}
+
 /* How fast consequtive mouse events need to be generated
  in order to be interpreted as click and double click. */
 #define MOUSE_TIME_SENSITIVITY  600

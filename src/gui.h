@@ -24,6 +24,7 @@
 
 #include "gfx.h"
 #include "event_loop.h"
+#include "audio.h"
 
 #include <list>
 
@@ -76,6 +77,8 @@ public:
   void add_float(gui_object_t *obj, int x, int y);
 
   virtual bool handle_event(const event_t *event);
+
+  void play_sound(sfx_t sound);
 };
 
 int gui_get_slider_click_value(int x);

@@ -56,11 +56,11 @@ public:
 class event_loop_t
 {
 protected:
-  static event_loop_t *instance;
   event_handler_t **event_handlers;
 
 public:
-  static event_loop_t *get_instance();
+  virtual ~event_loop_t() {}
+
   virtual void quit() = 0;
   virtual void run(event_handler_t **handlers) = 0;
 

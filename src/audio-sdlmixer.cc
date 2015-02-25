@@ -38,8 +38,18 @@ extern "C" {
 #include "SDL.h"
 #include "SDL_mixer.h"
 
+audio_t *
+create_audio()
+{
+  return new audio_sdlmixer_t();
+}
+
+audio_sdlmixer_t *audio_sdlmixer_t::audio_sdlmixer = NULL;
+
 audio_sdlmixer_t::audio_sdlmixer_t()
 {
+  audio_sdlmixer = this;
+
   SDL_InitSubSystem(SDL_INIT_AUDIO);
 
   LOGI("audio-sdlmixer", "Initializing audio driver `sdlmixer'.");
@@ -114,10 +124,8 @@ audio_sdlmixer_t::create_music_track(void *data, size_t size)
 void
 audio_sdlmixer_t::midi_track_finished()
 {
-  audio_sdlmixer_t *audio = (audio_sdlmixer_t*)audio_t::get_audio();
-
-  if (audio->midi_enabled) {
-    audio->midi_play_track(audio->current_track);
+  if ((audio_sdlmixer != NULL) && (audio_sdlmixer->midi_enabled)) {
+    audio_sdlmixer->midi_play_track(audio_sdlmixer->current_track);
   }
 }
 

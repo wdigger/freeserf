@@ -22,6 +22,7 @@
 #include "gfx.h"
 #include "video.h"
 #include "data.h"
+#include "application.h"
 
 #ifndef _MSC_VER
 extern "C" {
@@ -40,7 +41,7 @@ gfx_t::gfx_t(unsigned int width, unsigned int height, bool fullscreen)
 {
   LOGI("graphics", "Init...");
 
-  video = video_create();
+  video = application_t::get_application()->get_video();
 
   LOGI("graphics", "Setting resolution to %ix%i...", width, height);
 

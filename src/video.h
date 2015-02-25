@@ -80,6 +80,4 @@ public:
   virtual image_t *image_from_sprite(sprite_t *sprite) = 0;
 };
 
-video_t *video_create();
-
 #endif /* ! _VIDEO_H */

@@ -31,7 +31,7 @@ extern "C" {
 #endif
 
 video_t *
-video_create()
+create_video()
 {
   return new sdl_video_t();
 }

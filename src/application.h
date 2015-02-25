@@ -1,7 +1,7 @@
 /*
- * audio-dummy.c - Dummy music and sound effects playback.
+ * application.cc - Platform dependent functionality factory.
  *
- * Copyright (C) 2013  Jon Lund Steffensen <jonlst@gmail.com>
+ * Copyright (C) 2015  Wicked_Digger <wicked_digger@mail.ru>
  *
  * This file is part of freeserf.
  *
@@ -19,10 +19,32 @@
  * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "audio.h"
+#ifndef _PLATFORM_H
+#define _PLATFORM_H
 
-audio_t *
-create_audio()
+#include "video.h"
+#include "audio.h"
+#include "event_loop.h"
+
+class application_t
 {
-  return NULL;
-}
+protected:
+  static application_t *instance;
+
+  video_t *video;
+  audio_t *audio;
+  event_loop_t *event_loop;
+
+public:
+  application_t();
+  virtual ~application_t();
+
+  static application_t *get_application();
+  video_t *get_video();
+  audio_t *get_audio();
+  event_loop_t *get_event_loop();
+
+  void quit();
+};
+
+#endif /* !_PLATFORM_H */

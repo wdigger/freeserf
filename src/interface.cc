@@ -27,8 +27,8 @@
 #include "popup.h"
 #include "data.h"
 #include "gfx.h"
-#include "audio.h"
 #include "freeserf.h"
+#include "application.h"
 
 #ifndef _MSC_VER
 extern "C" {
@@ -104,7 +104,7 @@ void
 interface_t::open_message()
 {
   if (player->msg_queue_type[0] == 0) {
-    audio_t::get_audio()->sfx_play_clip(SFX_CLICK);
+    play_sound(SFX_CLICK);
     return;
   } else if (!BIT_TEST(msg_flags, 3)) {
     msg_flags |= BIT(4);
@@ -142,7 +142,7 @@ interface_t::open_message()
 
   msg_flags |= BIT(1);
   return_timeout = 60*TICKS_PER_SEC;
-  audio_t::get_audio()->sfx_play_clip(SFX_CLICK);
+  play_sound(SFX_CLICK);
 }
 
 void
@@ -156,7 +156,7 @@ interface_t::return_from_message()
     viewport->move_to_map_pos(return_pos);
 
     if (popup->get_box() == BOX_MESSAGE) close_popup();
-    audio_t::get_audio()->sfx_play_clip(SFX_CLICK);
+    play_sound(SFX_CLICK);
   }
 }
 
@@ -573,7 +573,7 @@ interface_t::demolish_object()
   interface_determine_map_cursor_type();
 
   if (map_cursor_type == MAP_CURSOR_TYPE_REMOVABLE_FLAG) {
-    audio_t::get_audio()->sfx_play_clip(SFX_CLICK);
+    play_sound(SFX_CLICK);
     game_demolish_flag(map_cursor_pos, player);
   } else if (map_cursor_type == MAP_CURSOR_TYPE_BUILDING) {
     building_t *building = game_get_building(MAP_OBJ_INDEX(map_cursor_pos));
@@ -585,10 +585,10 @@ interface_t::demolish_object()
       /* TODO */
     }
 
-    audio_t::get_audio()->sfx_play_clip(SFX_AHHH);
+    play_sound(SFX_AHHH);
     game_demolish_building(map_cursor_pos, player);
   } else {
-    audio_t::get_audio()->sfx_play_clip(SFX_NOT_ACCEPTED);
+    play_sound(SFX_NOT_ACCEPTED);
     interface_update_interface();
   }
 }
@@ -599,7 +599,7 @@ interface_t::build_flag()
 {
   int r = game_build_flag(map_cursor_pos, player);
   if (r < 0) {
-    audio_t::get_audio()->sfx_play_clip(SFX_NOT_ACCEPTED);
+    play_sound(SFX_NOT_ACCEPTED);
     return;
   }
 
@@ -612,11 +612,11 @@ interface_t::build_building(building_type_t type)
 {
   int r = game_build_building(map_cursor_pos, type, player);
   if (r < 0) {
-    audio_t::get_audio()->sfx_play_clip(SFX_NOT_ACCEPTED);
+    play_sound(SFX_NOT_ACCEPTED);
     return;
   }
 
-  audio_t::get_audio()->sfx_play_clip(SFX_ACCEPTED);
+  play_sound(SFX_ACCEPTED);
   close_popup();
 
   /* Move cursor to flag. */
@@ -630,11 +630,11 @@ interface_t::build_castle()
 {
   int r = game_build_castle(map_cursor_pos, player);
   if (r < 0) {
-    audio_t::get_audio()->sfx_play_clip(SFX_NOT_ACCEPTED);
+    play_sound(SFX_NOT_ACCEPTED);
     return;
   }
 
-  audio_t::get_audio()->sfx_play_clip(SFX_ACCEPTED);
+  play_sound(SFX_ACCEPTED);
   update_map_cursor_pos(map_cursor_pos);
 }
 
@@ -802,7 +802,7 @@ interface_t::update()
     while (player->msg_queue_type[0] != 0) {
       int type = player->msg_queue_type[0] & 0x1f;
       if (BIT_TEST(config, msg_category[type])) {
-        audio_t::get_audio()->sfx_play_clip(SFX_MESSAGE);
+        play_sound(SFX_MESSAGE);
         msg_flags |= BIT(0);
         break;
       }
@@ -914,11 +914,17 @@ interface_t::handle_key_pressed(char key, int modifier)
 
     /* Audio */
     case 's': {
-      audio_t::get_audio()->sfx_enable(!audio_t::get_audio()->sfx_is_enabled());
+      audio_t *audio = application_t::get_application()->get_audio();
+      if (audio != NULL) {
+        audio->sfx_enable(!audio->sfx_is_enabled());
+      }
       break;
     }
     case 'm': {
-      audio_t::get_audio()->midi_enable(!audio_t::get_audio()->midi_is_enabled());
+      audio_t *audio = application_t::get_application()->get_audio();
+      if (audio != NULL) {
+        audio->midi_enable(!audio->midi_is_enabled());
+      }
       break;
     }
 

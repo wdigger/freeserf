@@ -24,8 +24,7 @@
 #include "minimap.h"
 #include "viewport.h"
 #include "data.h"
-#include "audio.h"
-#include "event_loop.h"
+#include "application.h"
 
 #ifndef _MSC_VER
 extern "C" {
@@ -293,8 +292,8 @@ typedef enum {
 
 
 /* Draw the frame around the popup box. */
-static void
-draw_popup_box_frame(frame_t *frame)
+void
+popup_box_t::draw_popup_box_frame(frame_t *frame)
 {
   frame->draw_sprite(0, 0, DATA_FRAME_POPUP_BASE+0);
   frame->draw_sprite(0, 153, DATA_FRAME_POPUP_BASE+1);
@@ -303,22 +302,22 @@ draw_popup_box_frame(frame_t *frame)
 }
 
 /* Draw icon in a popup frame. */
-static void
-draw_popup_icon(int x, int y, int sprite, frame_t *frame)
+void
+popup_box_t::draw_popup_icon(int x, int y, int sprite, frame_t *frame)
 {
   frame->draw_sprite(8*x+8, y+9, DATA_ICON_BASE + sprite);
 }
 
 /* Draw building in a popup frame. */
-static void
-draw_popup_building(int x, int y, int sprite, frame_t *frame)
+void
+popup_box_t::draw_popup_building(int x, int y, int sprite, frame_t *frame)
 {
   frame->draw_transp_sprite(8*x+8, y+9, DATA_MAP_OBJECT_BASE + sprite, false);
 }
 
 /* Fill the background of a popup frame. */
-static void
-draw_box_background(int sprite, frame_t *frame)
+void
+popup_box_t::draw_box_background(int sprite, frame_t *frame)
 {
   for (int y = 0; y < 144; y += 16) {
     for (int x = 0; x < 16; x += 2) {
@@ -328,23 +327,23 @@ draw_box_background(int sprite, frame_t *frame)
 }
 
 /* Fill one row of a popup frame. */
-static void
-draw_box_row(int sprite, int y, frame_t *frame)
+void
+popup_box_t::draw_box_row(int sprite, int y, frame_t *frame)
 {
   for (int x = 0; x < 16; x += 2) draw_popup_icon(x, y, sprite, frame);
 }
 
 /* Draw a green string in a popup frame. */
-static void
-draw_green_string(int x, int y, frame_t *frame, const char *str)
+void
+popup_box_t::draw_green_string(int x, int y, frame_t *frame, const char *str)
 {
   frame->draw_string(8*x+8, y+9, 31, 0, str);
 }
 
 /* Draw a green number in a popup frame.
    n must be non-negative. If > 999 simply draw ">999" (three characters). */
-static void
-draw_green_number(int x, int y, frame_t *frame, int n)
+void
+popup_box_t::draw_green_number(int x, int y, frame_t *frame, int n)
 {
   if (n >= 1000) {
     draw_popup_icon(x, y, 0xd5, frame); /* Draw >999 */
@@ -376,30 +375,30 @@ draw_green_number(int x, int y, frame_t *frame, int n)
 
 /* Draw a green number in a popup frame.
    No limits on n. */
-static void
-draw_green_large_number(int x, int y, frame_t *frame, int n)
+void
+popup_box_t::draw_green_large_number(int x, int y, frame_t *frame, int n)
 {
   frame->draw_number(8*x+8, 9+y, 31, 0, n);
 }
 
 /* Draw small green number. */
-static void
-draw_additional_number(int x, int y, frame_t *frame, int n)
+void
+popup_box_t::draw_additional_number(int x, int y, frame_t *frame, int n)
 {
   if (n > 0) draw_popup_icon(x, y, 240 + std::min(n, 10), frame);
 }
 
 /* Get the sprite number for a face. */
-static int
-get_player_face_sprite(int face)
+int
+popup_box_t::get_player_face_sprite(int face)
 {
   if (face != 0) return 0x10b + face;
   return 0x119; /* sprite_face_none */
 }
 
 /* Draw player face in popup frame. */
-static void
-draw_player_face(int x, int y, int player, frame_t *frame)
+void
+popup_box_t::draw_player_face(int x, int y, int player, frame_t *frame)
 {
   int color = 0;
   int face = 0;
@@ -413,8 +412,8 @@ draw_player_face(int x, int y, int player, frame_t *frame)
 }
 
 /* Draw a layout of buildings in a popup box. */
-static void
-draw_custom_bld_box(const int sprites[], frame_t *frame)
+void
+popup_box_t::draw_custom_bld_box(const int sprites[], frame_t *frame)
 {
   while (sprites[0] > 0) {
     int x = sprites[1];
@@ -425,8 +424,8 @@ draw_custom_bld_box(const int sprites[], frame_t *frame)
 }
 
 /* Draw a layout of icons in a popup box. */
-static void
-draw_custom_icon_box(const int sprites[], frame_t *frame)
+void
+popup_box_t::draw_custom_icon_box(const int sprites[], frame_t *frame)
 {
   while (sprites[0] > 0) {
     draw_popup_icon(sprites[1], sprites[2], sprites[0], frame);
@@ -435,8 +434,8 @@ draw_custom_icon_box(const int sprites[], frame_t *frame)
 }
 
 /* Translate resource amount to text. */
-static const char *
-prepare_res_amount_text(int amount)
+const char *
+popup_box_t::prepare_res_amount_text(int amount)
 {
   if (amount == 0) return "Not Present";
   else if (amount < 100) return "Minimum";
@@ -519,8 +518,8 @@ popup_box_t::draw_basic_building_box(frame_t *frame, int flip)
   if (flip) draw_popup_icon(0, 128, 0x3d, frame);
 }
 
-static void
-draw_adv_1_building_box(popup_box_t *popup, frame_t *frame)
+void
+popup_box_t::draw_adv_1_building_box(frame_t *frame)
 {
   const int layout[] = {
     0x9c, 0, 15,
@@ -561,8 +560,8 @@ popup_box_t::draw_adv_2_building_box(frame_t *frame)
 }
 
 /* Draw generic popup box of resources. */
-static void
-draw_resources_box(frame_t *frame, const int resources[])
+void
+popup_box_t::draw_resources_box(frame_t *frame, const int resources[])
 {
   const int layout[] = {
     0x28, 1, 0, /* resources */
@@ -630,8 +629,8 @@ draw_resources_box(frame_t *frame, const int resources[])
 }
 
 /* Draw generic popup box of serfs. */
-static void
-draw_serfs_box(frame_t *frame, const int serfs[], int total)
+void
+popup_box_t::draw_serfs_box(frame_t *frame, const int serfs[], int total)
 {
   const int layout[] = {
     0x9, 1, 0, /* serfs */
@@ -702,8 +701,8 @@ draw_serfs_box(frame_t *frame, const int serfs[], int total)
   }
 }
 
-static void
-draw_stat_select_box(popup_box_t *popup, frame_t *frame)
+void
+popup_box_t::draw_stat_select_box(popup_box_t *popup, frame_t *frame)
 {
   const int layout[] = {
     72, 1, 12,
@@ -908,8 +907,8 @@ popup_box_t::draw_stat_bld_4_box(frame_t *frame)
   draw_popup_icon(14, 128, 60, frame); /* exit */
 }
 
-static void
-draw_player_stat_chart(const int *data, int index, int color, frame_t *frame)
+void
+popup_box_t::draw_player_stat_chart(const int *data, int index, int color, frame_t *frame)
 {
   int x = 8;
   int y = 9;
@@ -1147,8 +1146,8 @@ popup_box_t::draw_stat_7_box(frame_t *frame)
   }
 }
 
-static void
-draw_gauge_balance(int x, int y, uint value, uint count, frame_t *frame)
+void
+popup_box_t::draw_gauge_balance(int x, int y, unsigned int value, unsigned int count, frame_t *frame)
 {
   int sprite = -1;
   if (count > 0) {
@@ -1171,8 +1170,8 @@ draw_gauge_balance(int x, int y, uint value, uint count, frame_t *frame)
   draw_popup_icon(x, y, sprite, frame);
 }
 
-static void
-draw_gauge_full(int x, int y, uint value, uint count, frame_t *frame)
+void
+popup_box_t::draw_gauge_full(int x, int y, unsigned int value, unsigned int count, frame_t *frame)
 {
   int sprite = -1;
   if (count > 0) {
@@ -1195,8 +1194,8 @@ draw_gauge_full(int x, int y, uint value, uint count, frame_t *frame)
   draw_popup_icon(x, y, sprite, frame);
 }
 
-static void
-calculate_gauge_values(player_t *player, uint values[24][BUILDING_MAX_STOCK][2])
+void
+popup_box_t::calculate_gauge_values(player_t *player, unsigned int values[24][BUILDING_MAX_STOCK][2])
 {
   for (uint i = 1; i < game.max_building_index; i++) {
     if (!BUILDING_ALLOCATED(i)) continue;
@@ -1398,8 +1397,8 @@ popup_box_t::draw_stat_6_box(frame_t *frame)
   draw_popup_icon(14, 128, 60, frame); /* exit */
 }
 
-static void
-draw_stat_3_meter(int x, int y, int value, frame_t *frame)
+void
+popup_box_t::draw_stat_3_meter(int x, int y, int value, frame_t *frame)
 {
   int sprite = -1;
   if (value < 1) sprite = 0xbc;
@@ -1657,8 +1656,8 @@ popup_box_t::draw_ground_analysis_box(frame_t *frame)
   draw_green_string(3, 114, frame, s);
 }
 
-static void
-draw_sett_select_box(popup_box_t *popup, frame_t *frame)
+void
+popup_box_t::draw_sett_select_box(frame_t *frame)
 {
   const int layout[] = {
     230, 1, 8,
@@ -1683,8 +1682,8 @@ draw_sett_select_box(popup_box_t *popup, frame_t *frame)
 }
 
 /* Draw slide bar in a popup box. */
-static void
-draw_slide_bar(int x, int y, int value, frame_t *frame)
+void
+popup_box_t::draw_slide_bar(int x, int y, int value, frame_t *frame)
 {
   draw_popup_icon(x, y, 236, frame);
 
@@ -1883,8 +1882,8 @@ popup_box_t::draw_sett_4_box(frame_t *frame)
 }
 
 /* Draw generic popup box of resource stairs. */
-static void
-draw_popup_resource_stairs(int order[], frame_t *frame)
+void
+popup_box_t::draw_popup_resource_stairs(int order[], frame_t *frame)
 {
   const int spiral_layout[] = {
     5, 4,
@@ -1943,8 +1942,8 @@ popup_box_t::draw_sett_5_box(frame_t *frame)
   draw_popup_icon(6, 120, 33+interface->get_player()->current_sett_5_item, frame);
 }
 
-static void
-draw_quit_confirm_box(popup_box_t *popup, frame_t *frame)
+void
+popup_box_t::draw_quit_confirm_box(frame_t *frame)
 {
   draw_box_background(310, frame);
 
@@ -1958,8 +1957,8 @@ draw_quit_confirm_box(popup_box_t *popup, frame_t *frame)
   game.svga &= ~BIT(5);
 }
 
-static void
-draw_no_save_quit_confirm_box(popup_box_t *popup, frame_t *frame)
+void
+popup_box_t::draw_no_save_quit_confirm_box(frame_t *frame)
 {
   draw_green_string(0, 70, frame, "The game has not");
   draw_green_string(0, 80, frame, "   been saved");
@@ -1979,14 +1978,17 @@ popup_box_t::draw_options_box(frame_t *frame)
   draw_green_string(1, 39, frame, "effects");
   draw_green_string(1, 54, frame, "Volume");
 
-  draw_popup_icon(13, 10, audio_t::get_audio()->midi_is_enabled() ? 288 : 220, frame); /* Music */
-  draw_popup_icon(13, 30, audio_t::get_audio()->sfx_is_enabled() ? 288 : 220, frame); /* Sfx */
-  draw_popup_icon(11, 50, 220, frame); /* Volume minus */
-  draw_popup_icon(13, 50, 221, frame); /* Volume plus */
+  audio_t *audio = application_t::get_application()->get_audio();
+  if (audio != NULL) {
+    draw_popup_icon(13, 10, audio->midi_is_enabled() ? 288 : 220, frame); /* Music */
+    draw_popup_icon(13, 30, audio->sfx_is_enabled() ? 288 : 220, frame); /* Sfx */
+    draw_popup_icon(11, 50, 220, frame); /* Volume minus */
+    draw_popup_icon(13, 50, 221, frame); /* Volume plus */
 
-  std::stringstream volume;
-  volume << audio_t::get_audio()->get_volume();
-  draw_green_string(8, 54, frame, volume.str().c_str());
+    std::stringstream volume;
+    audio->get_volume();
+    draw_green_string(8, 54, frame, volume.str().c_str());
+  }
 
   gfx_t *gfx = gfx_t::get_gfx();
   if (gfx->is_fullscreen_possible()) {
@@ -2513,8 +2515,8 @@ popup_box_t::draw_bld_1_box(frame_t *frame)
   draw_popup_icon(14, 128, 0x3c, frame); /* exit */
 }
 
-static void
-draw_bld_2_box(popup_box_t *popup, frame_t *frame)
+void
+popup_box_t::draw_bld_2_box(frame_t *frame)
 {
   const int layout[] = {
     153, 0, 4,
@@ -2535,8 +2537,8 @@ draw_bld_2_box(popup_box_t *popup, frame_t *frame)
   draw_popup_icon(14, 128, 0x3c, frame); /* exit */
 }
 
-static void
-draw_bld_3_box(popup_box_t *popup, frame_t *frame)
+void
+popup_box_t::draw_bld_3_box(frame_t *frame)
 {
   const int layout[] = {
     155, 0, 2,
@@ -2556,8 +2558,8 @@ draw_bld_3_box(popup_box_t *popup, frame_t *frame)
   draw_popup_icon(14, 128, 0x3c, frame); /* exit */
 }
 
-static void
-draw_bld_4_box(popup_box_t *popup, frame_t *frame)
+void
+popup_box_t::draw_bld_4_box(frame_t *frame)
 {
   const int layout[] = {
     163, 0, 4,
@@ -2638,8 +2640,8 @@ popup_box_t::draw_building_stock_box(frame_t *frame)
   draw_popup_icon(14, 128, 0x3c, frame); /* exit box */
 }
 
-static void
-draw_player_faces_box(popup_box_t *popup, frame_t *frame)
+void
+popup_box_t::draw_player_faces_box(frame_t *frame)
 {
   draw_box_background(129, frame);
 
@@ -2649,8 +2651,8 @@ draw_player_faces_box(popup_box_t *popup, frame_t *frame)
   draw_player_face(10, 76, 3, frame);
 }
 
-static void
-draw_demolish_box(popup_box_t *popup, frame_t *frame)
+void
+popup_box_t::draw_demolish_box(frame_t *frame)
 {
   draw_box_background(314, frame);
 
@@ -2683,7 +2685,7 @@ popup_box_t::internal_draw()
     draw_basic_building_box(frame, 1);
     break;
   case BOX_ADV_1_BLD:
-    draw_adv_1_building_box(this, frame);
+    draw_adv_1_building_box(frame);
     break;
   case BOX_ADV_2_BLD:
     draw_adv_2_building_box(frame);
@@ -2735,7 +2737,7 @@ popup_box_t::internal_draw()
     break;
     /* TODO */
   case BOX_SETT_SELECT:
-    draw_sett_select_box(this, frame);
+    draw_sett_select_box(frame);
     break;
   case BOX_SETT_1:
     draw_sett_1_box(frame);
@@ -2756,10 +2758,10 @@ popup_box_t::internal_draw()
     draw_sett_5_box(frame);
     break;
   case BOX_QUIT_CONFIRM:
-    draw_quit_confirm_box(this, frame);
+    draw_quit_confirm_box(frame);
     break;
   case BOX_NO_SAVE_QUIT_CONFIRM:
-    draw_no_save_quit_confirm_box(this, frame);
+    draw_no_save_quit_confirm_box(frame);
     break;
   case BOX_OPTIONS:
     draw_options_box(frame);
@@ -2795,30 +2797,30 @@ popup_box_t::internal_draw()
     draw_bld_1_box(frame);
     break;
   case BOX_BLD_2:
-    draw_bld_2_box(this, frame);
+    draw_bld_2_box(frame);
     break;
   case BOX_BLD_3:
-    draw_bld_3_box(this, frame);
+    draw_bld_3_box(frame);
     break;
   case BOX_BLD_4:
-    draw_bld_4_box(this, frame);
+    draw_bld_4_box(frame);
     break;
   case BOX_BLD_STOCK:
     draw_building_stock_box(frame);
     break;
   case BOX_PLAYER_FACES:
-    draw_player_faces_box(this, frame);
+    draw_player_faces_box(frame);
     break;
   case BOX_DEMOLISH:
-    draw_demolish_box(this, frame);
+    draw_demolish_box(frame);
     break;
   default:
     break;
   }
 }
 
-static void
-activate_sett_5_6_item(interface_t *interface, int index)
+void
+popup_box_t::activate_sett_5_6_item(interface_t *interface, int index)
 {
   if (interface->get_popup_box()->get_box() == BOX_SETT_5) {
     int i;
@@ -2835,8 +2837,8 @@ activate_sett_5_6_item(interface_t *interface, int index)
   }
 }
 
-static void
-move_sett_5_6_item(interface_t *interface, int up, int to_end)
+void
+popup_box_t::move_sett_5_6_item(interface_t *interface, int up, int to_end)
 {
   int *prio = NULL;
   int cur = -1;
@@ -2870,40 +2872,40 @@ move_sett_5_6_item(interface_t *interface, int up, int to_end)
   }
 }
 
-static void
-handle_send_geologist(interface_t *interface)
+void
+popup_box_t::handle_send_geologist(interface_t *interface)
 {
   map_pos_t pos = interface->get_map_cursor_pos();
   flag_t *flag = game_get_flag(MAP_OBJ_INDEX(pos));
 
   int r = game_send_geologist(flag);
   if (r < 0) {
-    audio_t::get_audio()->sfx_play_clip(SFX_NOT_ACCEPTED);
+    play_sound(SFX_NOT_ACCEPTED);
   } else {
-    audio_t::get_audio()->sfx_play_clip(SFX_ACCEPTED);
+    play_sound(SFX_ACCEPTED);
     interface->close_popup();
   }
 }
 
-static void
-sett_8_train(interface_t *interface, int number)
+void
+popup_box_t::sett_8_train(interface_t *interface, int number)
 {
   int r = player_promote_serfs_to_knights(interface->get_player(), number);
 
-  if (r == 0) audio_t::get_audio()->sfx_play_clip(SFX_NOT_ACCEPTED);
-  else audio_t::get_audio()->sfx_play_clip(SFX_ACCEPTED);
+  if (r == 0) play_sound(SFX_NOT_ACCEPTED);
+  else play_sound(SFX_ACCEPTED);
 }
 
-static void
-set_inventory_resource_mode(interface_t *interface, int mode)
+void
+popup_box_t::set_inventory_resource_mode(interface_t *interface, int mode)
 {
   building_t *building = game_get_building(interface->get_player()->index);
   inventory_t *inventory = building->u.inventory;
   game_set_inventory_resource_mode(inventory, mode);
 }
 
-static void
-set_inventory_serf_mode(interface_t *interface, int mode)
+void
+popup_box_t::set_inventory_serf_mode(interface_t *interface, int mode)
 {
   building_t *building = game_get_building(interface->get_player()->index);
   inventory_t *inventory = building->u.inventory;
@@ -2913,8 +2915,6 @@ set_inventory_serf_mode(interface_t *interface, int mode)
 void
 popup_box_t::handle_action(int action, int x, int y)
 {
-  audio_t *audio = audio_t::get_audio();
-
   switch (action) {
   case ACTION_MINIMAP_CLICK:
     /* Not handled here, event is passed to minimap. */
@@ -3126,12 +3126,12 @@ popup_box_t::handle_action(int action, int x, int y)
   case ACTION_START_ATTACK:
     if (interface->get_player()->knights_attacking > 0) {
       if (interface->get_player()->attacking_building_count > 0) {
-        audio->sfx_play_clip(SFX_ACCEPTED);
+        play_sound(SFX_ACCEPTED);
         player_start_attack(interface->get_player());
       }
       interface->close_popup();
     } else {
-      audio->sfx_play_clip(SFX_NOT_ACCEPTED);
+      play_sound(SFX_NOT_ACCEPTED);
     }
     break;
   case ACTION_CLOSE_ATTACK_BOX:
@@ -3359,8 +3359,8 @@ popup_box_t::handle_action(int action, int x, int y)
     if (0/* TODO suggest save game*/) {
       interface->open_popup(BOX_NO_SAVE_QUIT_CONFIRM);
     } else {
-      audio->sfx_play_clip(SFX_AHHH);
-      event_loop_t::get_instance()->quit();
+      play_sound(SFX_AHHH);
+      application_t::get_application()->quit();
     }
     break;
   case ACTION_QUIT_CANCEL:
@@ -3368,8 +3368,8 @@ popup_box_t::handle_action(int action, int x, int y)
     interface->close_popup();
     break;
   case ACTION_NO_SAVE_QUIT_CONFIRM:
-    audio->sfx_play_clip(SFX_AHHH);
-    event_loop_t::get_instance()->quit();
+    play_sound(SFX_AHHH);
+    application_t::get_application()->quit();
     break;
   case ACTION_SHOW_QUIT:
     interface->get_panel_bar()->set_button_type(3, PANEL_BTN_STATS_INACTIVE);
@@ -3384,7 +3384,7 @@ popup_box_t::handle_action(int action, int x, int y)
     /* TODO */
   case ACTION_SETT_8_CYCLE:
     player_cycle_knights(interface->get_player());
-    audio->sfx_play_clip(SFX_ACCEPTED);
+    play_sound(SFX_ACCEPTED);
     break;
   case ACTION_CLOSE_OPTIONS:
     interface->close_popup();
@@ -3483,11 +3483,11 @@ popup_box_t::handle_action(int action, int x, int y)
     break;
   case ACTION_SETT_8_SET_COMBAT_MODE_WEAK:
     interface->get_player()->flags &= ~BIT(1);
-    audio->sfx_play_clip(SFX_ACCEPTED);
+    play_sound(SFX_ACCEPTED);
     break;
   case ACTION_SETT_8_SET_COMBAT_MODE_STRONG:
     interface->get_player()->flags |= BIT(1);
-    audio->sfx_play_clip(SFX_ACCEPTED);
+    play_sound(SFX_ACCEPTED);
     break;
   case ACTION_ATTACKING_SELECT_ALL_1:
     interface->get_player()->knights_attacking =
@@ -3572,28 +3572,44 @@ popup_box_t::handle_action(int action, int x, int y)
   case ACTION_SETT_8_CASTLE_DEF_INC:
     interface->get_player()->castle_knights_wanted = std::min(interface->get_player()->castle_knights_wanted+1, 99);
     break;
-  case ACTION_OPTIONS_MUSIC:
-    audio->midi_enable(!audio->midi_is_enabled());
-    audio->sfx_play_clip(SFX_CLICK);
+  case ACTION_OPTIONS_MUSIC: {
+    audio_t *audio = application_t::get_application()->get_audio();
+    if (audio != NULL) {
+      audio->midi_enable(!audio->midi_is_enabled());
+      audio->sfx_play_clip(SFX_CLICK);
+    }
     break;
-  case ACTION_OPTIONS_SFX:
-    audio->sfx_enable(!audio->sfx_is_enabled());
-    audio->sfx_play_clip(SFX_CLICK);
+  }
+  case ACTION_OPTIONS_SFX: {
+    audio_t *audio = application_t::get_application()->get_audio();
+    if (audio != NULL) {
+      audio->sfx_enable(!audio->sfx_is_enabled());
+      audio->sfx_play_clip(SFX_CLICK);
+    }
     break;
+  }
   case ACTION_OPTIONS_FULLSCREEN: {
     gfx_t *gfx = gfx_t::get_gfx();
     gfx->set_fullscreen(!gfx->is_fullscreen());
-    audio->sfx_play_clip(SFX_CLICK);
+    play_sound(SFX_CLICK);
     break;
   }
-  case ACTION_OPTIONS_VOLUME_MINUS:
-    audio->volume_down();
-    audio->sfx_play_clip(SFX_CLICK);
+  case ACTION_OPTIONS_VOLUME_MINUS: {
+    audio_t *audio = application_t::get_application()->get_audio();
+    if (audio != NULL) {
+      audio->volume_down();
+      audio->sfx_play_clip(SFX_CLICK);
+    }
     break;
-  case ACTION_OPTIONS_VOLUME_PLUS:
-    audio->volume_up();
-    audio->sfx_play_clip(SFX_CLICK);
+  }
+  case ACTION_OPTIONS_VOLUME_PLUS: {
+    audio_t *audio = application_t::get_application()->get_audio();
+    if (audio != NULL) {
+      audio->volume_up();
+      audio->sfx_play_clip(SFX_CLICK);
+    }
     break;
+  }
   case ACTION_DEMOLISH:
     interface->demolish_object();
     interface->close_popup();
@@ -3610,8 +3626,9 @@ popup_box_t::handle_clickmap(int x, int y, const int clkmap[])
 {
   while (clkmap[0] >= 0) {
     if (clkmap[1] <= x && x < clkmap[1] + clkmap[3] &&
-        clkmap[2] <= y && y < clkmap[2] + clkmap[4]) {
-      audio_t::get_audio()->sfx_play_clip(SFX_CLICK);
+        clkmap[2] <= y && y < clkmap[2] + clkmap[4])
+    {
+      play_sound(SFX_CLICK);
 
       action_t action = (action_t)clkmap[0];
       handle_action(action, x-clkmap[1], y-clkmap[2]);
