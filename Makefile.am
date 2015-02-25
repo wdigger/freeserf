@@ -38,7 +38,8 @@ freeserf_SOURCES = \
 	src/event_loop.cc src/event_loop.h \
 	src/event_loop-sdl.cc src/event_loop-sdl.h \
 	src/sfx2wav.cc src/sfx2wav.h \
-	src/xmi2mid.cc src/xmi2mid.h
+	src/xmi2mid.cc src/xmi2mid.h \
+	src/application.cc src/application.h
 
 AM_CFLAGS = $(SDL2_CFLAGS) -I$(top_builddir)/src
 AM_CXXFLAGS = $(SDL2_CFLAGS) -I$(top_builddir)/src
@@ -48,7 +49,7 @@ if ENABLE_SDL2_MIXER
 AM_CFLAGS += $(SDL2_mixer_CFLAGS)
 AM_CXXFLAGS += $(SDL2_mixer_CFLAGS)
 freeserf_LDADD += $(SDL2_mixer_LIBS)
-freeserf_SOURCES += src/audio-sdlmixer.cc src/audio-sdlmixer.cc
+freeserf_SOURCES += src/audio-sdlmixer.cc src/audio-sdlmixer.h
 else
 freeserf_SOURCES += src/audio-dummy.cc
 endif

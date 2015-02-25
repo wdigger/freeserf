@@ -21,7 +21,6 @@
 
 #include "audio.h"
 #include "data.h"
-#include "audio-sdlmixer.h"
 
 #ifndef _MSC_VER
 extern "C" {
