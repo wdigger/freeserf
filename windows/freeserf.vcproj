@@ -176,24 +176,12 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath="..\src\audio-sdlmixer.c"
+				RelativePath="..\src\audio-sdlmixer.cc"
 				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"
-					/>
-				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\src\audio.cc"
+				>
 			</File>
 			<File
 				RelativePath="..\src\building.c"
@@ -206,12 +194,8 @@
 						CompileAs="2"
 					/>
 				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\src\data-source-dos.c"
-				>
 				<FileConfiguration
-					Name="Debug|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -220,7 +204,23 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\src\data.c"
+				RelativePath="..\src\data-source-dos.cc"
+				>
+			</File>
+			<File
+				RelativePath="..\src\data.cc"
+				>
+			</File>
+			<File
+				RelativePath="..\src\event_loop-sdl.cc"
+				>
+			</File>
+			<File
+				RelativePath="..\src\event_loop.cc"
+				>
+			</File>
+			<File
+				RelativePath="..\src\flag.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -232,18 +232,6 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\src\flag.c"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -270,13 +258,17 @@
 						CompileAs="2"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\src\gfx-cache.cc"
-				>
-			</File>
-			<File
-				RelativePath="..\src\gfx.c"
+				RelativePath="..\src\gfx.cc"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -306,12 +298,28 @@
 						CompileAs="2"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="..\src\log.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -330,6 +338,14 @@
 						CompileAs="2"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="..\src\minimap.cc"
@@ -340,6 +356,14 @@
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -370,13 +394,21 @@
 						CompileAs="2"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						CompileAs="2"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="..\src\popup.cc"
 				>
 			</File>
 			<File
-				RelativePath="..\src\pqueue.c"
+				RelativePath="..\src\random.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -386,12 +418,8 @@
 						CompileAs="2"
 					/>
 				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\src\random.c"
-				>
 				<FileConfiguration
-					Name="Debug|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -410,12 +438,8 @@
 						CompileAs="2"
 					/>
 				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\src\serf.c"
-				>
 				<FileConfiguration
-					Name="Debug|Win32"
+					Name="Release|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -424,7 +448,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\src\sfx2wav.c"
+				RelativePath="..\src\serf.c"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -442,6 +466,10 @@
 						CompileAs="2"
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\src\sfx2wav.cc"
+				>
 			</File>
 			<File
 				RelativePath="..\src\text-input.cc"
@@ -458,18 +486,6 @@
 						CompileAs="2"
 					/>
 				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\src\video-sdl.c"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"
-					/>
-				</FileConfiguration>
 				<FileConfiguration
 					Name="Release|Win32"
 					>
@@ -478,30 +494,22 @@
 						CompileAs="2"
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\src\video-sdl.cc"
+				>
+			</File>
+			<File
+				RelativePath="..\src\video.cc"
+				>
 			</File>
 			<File
 				RelativePath="..\src\viewport.cc"
 				>
 			</File>
 			<File
-				RelativePath="..\src\xmi2mid.c"
+				RelativePath="..\src\xmi2mid.cc"
 				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						CompileAs="2"
-					/>
-				</FileConfiguration>
 			</File>
 		</Filter>
 		<Filter
@@ -509,6 +517,10 @@
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
+			<File
+				RelativePath="..\src\audio-sdlmixer.h"
+				>
+			</File>
 			<File
 				RelativePath="..\src\audio.h"
 				>
@@ -527,6 +539,14 @@
 			</File>
 			<File
 				RelativePath="..\src\debug.h"
+				>
+			</File>
+			<File
+				RelativePath="..\src\event_loop-sdl.h"
+				>
+			</File>
+			<File
+				RelativePath="..\src\event_loop.h"
 				>
 			</File>
 			<File
@@ -606,10 +626,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\src\pqueue.h"
-				>
-			</File>
-			<File
 				RelativePath="..\src\random.h"
 				>
 			</File>
@@ -635,6 +651,10 @@
 			</File>
 			<File
 				RelativePath="..\src\version.h"
+				>
+			</File>
+			<File
+				RelativePath="..\src\video-sdl.h"
 				>
 			</File>
 			<File
