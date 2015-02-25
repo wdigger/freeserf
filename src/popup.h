@@ -24,10 +24,14 @@
 
 #include "gui.h"
 
+#ifndef _MSC_VER
 extern "C" {
+#endif
   #include "player.h"
   #include "building.h"
+#ifndef _MSC_VER
 }
+#endif
 
 typedef enum {
   BOX_MAP = 1,
