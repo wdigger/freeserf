@@ -25,10 +25,9 @@ freeserf_SOURCES = \
 	src/player.c src/player.h \
 	src/video-sdl.cc src/video-sdl.h \
 	src/video.cc src/video.h \
-	src/audio.h \
+	src/audio.cc src/audio.h \
 	src/savegame.c src/savegame.h \
 	src/list.c src/list.h \
-	src/pqueue.c src/pqueue.h \
 	src/log.c src/log.h \
 	src/misc.h \
 	src/debug.h \
@@ -38,8 +37,8 @@ freeserf_SOURCES = \
 	src/text-input.cc src/text-input.h \
 	src/event_loop.cc src/event_loop.h \
 	src/event_loop-sdl.cc src/event_loop-sdl.h \
-	src/sfx2wav.c src/sfx2wav.h \
-	src/xmi2mid.c src/xmi2mid.h
+	src/sfx2wav.cc src/sfx2wav.h \
+	src/xmi2mid.cc src/xmi2mid.h
 
 AM_CFLAGS = $(SDL2_CFLAGS) -I$(top_builddir)/src
 AM_CXXFLAGS = $(SDL2_CFLAGS) -I$(top_builddir)/src
@@ -49,7 +48,7 @@ if ENABLE_SDL2_MIXER
 AM_CFLAGS += $(SDL2_mixer_CFLAGS)
 AM_CXXFLAGS += $(SDL2_mixer_CFLAGS)
 freeserf_LDADD += $(SDL2_mixer_LIBS)
-freeserf_SOURCES += src/audio-sdlmixer.cc
+freeserf_SOURCES += src/audio-sdlmixer.cc src/audio-sdlmixer.cc
 else
 freeserf_SOURCES += src/audio-dummy.cc
 endif
