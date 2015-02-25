@@ -79,7 +79,18 @@ event_loop_win_t::process_event(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
   case WM_ERASEBKGND:
     return 1;
   case WM_PAINT: {
-    video->swap_buffers();
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hWnd, &ps);
+    RECT cr = { 0 };
+    ::GetClientRect(hWnd, &cr);
+    video_frame_t *screen = video->frame_create(cr.right - cr.left, cr.bottom - cr.top);
+    frame_t *frame = new frame_t(screen, gfx_t::get_gfx());
+    notify_draw(frame);
+    Gdiplus::Graphics *graphics = new Gdiplus::Graphics(hdc);
+    graphics->DrawImage(((frame_win_t*)screen)->get_texture(), 0, 0);
+    delete graphics;
+    delete frame;
+    EndPaint(hWnd, &ps);
     return 0;
     break;
   }
@@ -174,8 +185,6 @@ event_loop_win_t::process_event(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
   case WM_TIMER: {
     if (wParam == 123) {
       notify_update();
-      frame_t *screen = gfx_t::get_gfx()->get_screen_frame();
-      notify_draw(screen);
       RECT rect;
       ::GetClientRect(hWnd, &rect);
       ::InvalidateRect(hWnd, &rect, FALSE);
