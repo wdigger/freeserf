@@ -122,7 +122,7 @@ event_loop_win_t::process_event(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       break;
     }
 
-    unsigned char key = MapVirtualKey(wParam, MAPVK_VK_TO_CHAR);
+    unsigned char key = MapVirtualKey((UINT)wParam, MAPVK_VK_TO_CHAR);
     if (key == 0) {
       return 0;
     }
@@ -221,11 +221,11 @@ event_loop_win_t::run(event_handler_t **handlers)
   }
 }
 
-extern int main(int argc, char *argv[]);
+extern int freeserf_main(int argc, char *argv[]);
 
 int __stdcall
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-  return main(0, NULL);
+  return freeserf_main(0, NULL);
 }
 

@@ -259,3 +259,11 @@ event_loop_sdl_t::run(event_handler_t **handlers)
     delete screen;
   }
 }
+
+extern int freeserf_main(int argc, char *argv[]);
+
+int
+main(int argc, char *argv[])
+{
+  return freeserf_main(argc, argv);
+}

@@ -88,7 +88,7 @@ public:
       "Please report bugs to <" PACKAGE_BUGREPORT ">\n"
 
 int
-main(int argc, char *argv[])
+freeserf_main(int argc, char *argv[])
 {
   int r;
 

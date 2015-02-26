@@ -298,7 +298,7 @@ midi_write_variable_size(midi_file_t *midi, uint8_t **current, uint64_t val)
   for (; val >>= 7; ++count) {
     buf = (buf << 8) | 0x80 | (val & 0x7F);
   }
-  if (midi->size <= (*current-midi->data) + count) {
+  if (midi->size <= (uint64_t)((*current-midi->data) + count)) {
     midi_grow(midi,current);
   }
   for (uint32_t i = 0; i < count; ++i) {
@@ -347,7 +347,7 @@ midi_produce(midi_file_t *midi, size_t *size)
       WRITE_BYTE(node->data2);
       if (node->type == 0xFF) {
         if (node->data2 > 0) {
-          if (midi->size <= (current-midi->data) + node->data2) {
+          if (midi->size <= (uint64_t)((current-midi->data) + node->data2)) {
             midi_grow(midi,&current);
           }
           memcpy(current, node->buffer, node->data2);
