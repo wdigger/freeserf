@@ -226,6 +226,30 @@ extern int freeserf_main(int argc, char *argv[]);
 int __stdcall
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-  return freeserf_main(0, NULL);
+  int argc = 0;
+  LPWSTR* lpArgv = ::CommandLineToArgvW(::GetCommandLineW(), &argc);
+
+  char **argv = NULL;
+  if (argc > 0) {
+    argv = new char*[argc];
+    for (int i = 0 ; i < argc ; i++ ) {
+      size_t res = 0;
+      size_t size = wcslen(lpArgv[i]);
+      size++;
+      argv[i] = (char*)malloc(size);
+      wcstombs_s(&res, argv[i], size, lpArgv[i], size);
+    }
+  }
+
+  if (::AttachConsole(ATTACH_PARENT_PROCESS) || ::AllocConsole()) {
+    freopen("CONOUT$", "w", stdout);
+    freopen("CONOUT$", "w", stderr);
+  }
+
+  int res = freeserf_main(argc, argv);
+
+  ::FreeConsole();
+
+  return res;
 }
 

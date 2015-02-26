@@ -37,6 +37,9 @@ extern "C" {
   #endif
 #ifndef _MSC_VER
 }
+#else
+#include "getopt-win.h"
+#define PACKAGE_BUGREPORT "https://github.com/freeserf/freeserf/issues"
 #endif
 
 #ifdef HAVE_UNISTD_H
@@ -104,7 +107,7 @@ freeserf_main(int argc, char *argv[])
 
   log_level_t log_level = DEFAULT_LOG_LEVEL;
 
-#ifdef HAVE_UNISTD_H
+#ifdef HAVE_GETOPT
   char opt;
   while (1) {
     opt = getopt(argc, argv, "d:fg:hl:r:t:");

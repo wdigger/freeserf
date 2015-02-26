@@ -47,6 +47,7 @@ mac/version_vcs.h
 # windows specific
 windows/Debug
 windows/Release
+windows/x64
 !windows/config.h
 *.ncb
 *.suo

@@ -39,7 +39,7 @@ AC_TYPE_UINT32_T
 # Checks for library functions.
 AC_FUNC_MMAP
 AC_TYPE_SIGNAL
-AC_CHECK_FUNCS([atexit memset munmap strtol])
+AC_CHECK_FUNCS([atexit memset munmap strtol getopt])
 
 # Check SDL2_mixer support
 AC_MSG_CHECKING([whether to enable SDL2_mixer support])
