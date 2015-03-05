@@ -191,8 +191,10 @@ freeserf_main(int argc, char *argv[])
   LOGI("main", "Initialize graphics...");
   gfx_t *gfx = new gfx_t(screen_width, screen_height, fullscreen);
 
+  application_t *application = application_t::get_application();
+
   /* TODO move to right place */
-  audio_t *audio = application_t::get_application()->get_audio();
+  audio_t *audio = application->get_audio();
   if (audio != NULL) {
     audio->set_volume(75);
     audio->midi_play_track(MIDI_TRACK_0);
@@ -239,17 +241,18 @@ freeserf_main(int argc, char *argv[])
     interface, game_wrapper, NULL
   };
 
-  application_t::get_application()->get_event_loop()->run(handlers);
+  application->get_event_loop()->run(handlers);
 
   LOGI("main", "Cleaning up...");
 
   /* Clean up */
   delete interface;
   map_deinit(&game.map);
-  delete audio;
   delete gfx;
   data_deinit();
   game_deinit();
+  delete game_wrapper;
+  delete application;
 
   return EXIT_SUCCESS;
 }

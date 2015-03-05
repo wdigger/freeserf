@@ -60,6 +60,7 @@ class image_win_t
 protected:
   Gdiplus::Bitmap *texture;
   video_win_t *video;
+  void *data;
 
 public:
   image_win_t(sprite_t *sprite, video_win_t *video);
@@ -67,7 +68,7 @@ public:
 
   Gdiplus::Bitmap *get_texture() { return texture; }
 
-  static Gdiplus::Bitmap *create_surface_from_sprite(const sprite_t *sprite);
+  Gdiplus::Bitmap *create_surface_from_sprite(const sprite_t *sprite);
 };
 
 class video_win_t

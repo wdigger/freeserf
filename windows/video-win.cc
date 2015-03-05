@@ -86,6 +86,8 @@ video_win_t::video_win_t()
     0, 0,
     800, 600,
     0, 0, GetModuleHandle(NULL), NULL);
+
+  delete[] className;
 }
 
 video_win_t::~video_win_t()
@@ -200,10 +202,10 @@ Gdiplus::Bitmap *
 image_win_t::create_surface_from_sprite(const sprite_t *sprite)
 {
   unsigned int size = sprite->width * 4 * sprite->height;
-  BYTE *data = (BYTE*)malloc(size);
+  data = malloc(size);
   memcpy(data, sprite->data, size);
   Gdiplus::Bitmap *bitmap = new Gdiplus::Bitmap(sprite->width,
-    sprite->height, sprite->width * 4, PixelFormat32bppARGB, data);
+    sprite->height, sprite->width * 4, PixelFormat32bppARGB, (BYTE*)data);
 
   if (bitmap->GetLastStatus() != Gdiplus::Ok) {
     LOGE("video_win", "Unable to create Gdiplus bitmap from fprite.");
@@ -218,6 +220,7 @@ image_win_t::image_win_t(sprite_t *sprite, video_win_t *video)
   : image_t(sprite)
 {
   this->video = video;
+  data = NULL;
   texture = create_surface_from_sprite(sprite);
 }
 
@@ -226,6 +229,10 @@ image_win_t::~image_win_t()
   if (texture != NULL) {
     delete texture;
     texture = NULL;
+  }
+
+  if (data != NULL) {
+    free(data);
   }
 }
 

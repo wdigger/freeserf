@@ -62,11 +62,6 @@ gfx_t::~gfx_t()
     delete image_cache.begin()->second;
     image_cache.erase(image_cache.begin());
   }
-
-  if (video != NULL) {
-    delete video;
-    video = NULL;
-  }
 }
 
 gfx_t *

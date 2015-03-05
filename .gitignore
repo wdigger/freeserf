@@ -62,5 +62,7 @@ windows/x64
 *.sdf
 *.lastbuildstate
 *.unsuccessfulbuild
-
 *.pbxproj
+windows/UpgradeLog.htm
+*.opensdf
+windows/Backup

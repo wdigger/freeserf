@@ -41,12 +41,12 @@ audio_t::audio_t()
 
 audio_t::~audio_t()
 {
-  for (std::map<int, audio_track_t*>::iterator it = sfx_clips.begin(); it != sfx_clips.end(); it++) {
+  for (std::map<int, audio_track_t*>::iterator it = sfx_clips.begin(); it != sfx_clips.end(); ++it) {
     delete it->second;
   }
   sfx_clips.clear();
 
-  for (std::map<int, audio_track_t*>::iterator it = midi_tracks.begin(); it != midi_tracks.end(); it++) {
+  for (std::map<int, audio_track_t*>::iterator it = midi_tracks.begin(); it != midi_tracks.end(); ++it) {
     delete it->second;
   }
   midi_tracks.clear();

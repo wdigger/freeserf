@@ -36,6 +36,8 @@
 #else
 #ifdef WIN32
 #include <io.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #endif
 #endif
 
@@ -140,14 +142,11 @@ data_init(const char *path)
   return r;
 }
 
-#ifndef R_OK
-#define R_OK (4)
-#endif
-
 int
 data_check_file(const char *path)
 {
-  return access(path, R_OK);
+  struct stat buffer;
+  return (stat(path, &buffer) == 0);
 }
 
 void*

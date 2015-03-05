@@ -5,6 +5,7 @@
 #  if defined(__GNUC__) || defined(__DMC__) || defined(__WATCOMC__)
 #    define HAVE_STDINT_H   1
 #  elif defined(_MSC_VER)
+#include <stddef.h>
 typedef signed __int8 int8_t;
 typedef unsigned __int8 uint8_t;
 typedef signed __int16 int16_t;
@@ -53,8 +54,9 @@ inline int c99_snprintf(char* str, size_t size, const char* format, ...)
   return count;
 }
 
-#      define strdup _strdup
 #    endif
+#    define strdup _strdup
+#    define stat _stat
 #  endif
 #endif
 

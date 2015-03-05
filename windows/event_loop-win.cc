@@ -241,7 +241,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     }
   }
 
-  if (::AttachConsole(ATTACH_PARENT_PROCESS) || ::AllocConsole()) {
+  if (::AttachConsole(ATTACH_PARENT_PROCESS)) {
     freopen("CONOUT$", "w", stdout);
     freopen("CONOUT$", "w", stderr);
   }
@@ -249,6 +249,13 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
   int res = freeserf_main(argc, argv);
 
   ::FreeConsole();
+
+  if (argc > 0) {
+    for (int i = 0; i < argc; i++) {
+      free(argv[i]);
+    }
+    delete[] argv;
+  }
 
   return res;
 }
