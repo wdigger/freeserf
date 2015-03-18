@@ -28,6 +28,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
@@ -37,7 +38,6 @@
 #ifdef WIN32
 #include <io.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #endif
 #endif
 

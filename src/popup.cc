@@ -1986,7 +1986,7 @@ popup_box_t::draw_options_box(frame_t *frame)
     draw_popup_icon(13, 50, 221, frame); /* Volume plus */
 
     std::stringstream volume;
-    audio->get_volume();
+    volume << audio->get_volume();
     draw_green_string(8, 54, frame, volume.str().c_str());
   }
 
