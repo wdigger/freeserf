@@ -69,129 +69,138 @@ LRESULT
 event_loop_win_t::process_event(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
   switch (message){
-  case WM_SYSCOMMAND: {
-    if (wParam == SC_CLOSE) {
-      notify_key_pressed('c', 1);
-      return 0;
-    }
-    break;
-  }
-  case WM_ERASEBKGND:
-    return 1;
-  case WM_PAINT: {
-    PAINTSTRUCT ps;
-    HDC hdc = BeginPaint(hWnd, &ps);
-    RECT cr = { 0 };
-    ::GetClientRect(hWnd, &cr);
-    video_frame_t *screen = video->frame_create(cr.right - cr.left, cr.bottom - cr.top);
-    frame_t *frame = new frame_t(screen, gfx_t::get_gfx());
-    notify_draw(frame);
-    Gdiplus::Graphics *graphics = new Gdiplus::Graphics(hdc);
-    graphics->DrawImage(((frame_win_t*)screen)->get_texture(), 0, 0);
-    delete graphics;
-    delete frame;
-    EndPaint(hWnd, &ps);
-    return 0;
-    break;
-  }
-  case WM_SIZE: {
-    notify_resize(LOWORD(lParam), HIWORD(lParam));
-    break;
-  }
-  case WM_SIZING: {
-    RECT *pRect = (RECT*)lParam;
-    notify_resize(pRect->right - pRect->left, pRect->bottom - pRect->top);
-    break;
-  }
-  case WM_KEYDOWN: {
-    switch (wParam) {
-    case VK_LEFT:
-      notify_drag(0, 0, -32, 0, EVENT_BUTTON_LEFT);
-      break;
-    case VK_RIGHT:
-      notify_drag(0, 0, 32, 0, EVENT_BUTTON_LEFT);
-      break;
-    case VK_UP:
-      notify_drag(0, 0, 0, -32, EVENT_BUTTON_LEFT);
-      break;
-    case VK_DOWN:
-      notify_drag(0, 0, 0, 32, EVENT_BUTTON_LEFT);
-      break;
-    case VK_F10:
-      notify_key_pressed('n', 1);
-      break;
-    }
-
-    unsigned char key = MapVirtualKey((UINT)wParam, MAPVK_VK_TO_CHAR);
-    if (key == 0) {
-      return 0;
-    }
-
-    char modifier = 0;
-    if (GetKeyState(VK_CONTROL)) {
-      if (lParam & (1 << 29)) {
-        modifier |= 4;
+    case WM_SYSCOMMAND: {
+      if (wParam == SC_CLOSE) {
+        notify_key_pressed('c', 1);
+        return 0;
       }
-      else {
-        modifier |= 1;
-      }
+      break;
     }
-    if (GetKeyState(VK_SHIFT)) {
-      modifier |= 2;
-    }
-
-    if (key >= 'A' && key <= 'Z') {
-      key = 'a' + (key - 'A');
-    }
-    else if (key == '=') {
-      key = '+';
-    }
-
-    if (key == 'q' && modifier == 1) {
-      quit();
+    case WM_ERASEBKGND:
+      return 1;
+    case WM_PAINT: {
+      PAINTSTRUCT ps;
+      HDC hdc = BeginPaint(hWnd, &ps);
+      RECT cr = { 0 };
+      ::GetClientRect(hWnd, &cr);
+      video_frame_t *screen = video->frame_create(cr.right - cr.left, cr.bottom - cr.top);
+      frame_t *frame = new frame_t(screen, gfx_t::get_gfx());
+      notify_draw(frame);
+      Gdiplus::Graphics *graphics = new Gdiplus::Graphics(hdc);
+      graphics->DrawImage(((frame_win_t*)screen)->get_texture(), 0, 0);
+      delete graphics;
+      delete frame;
+      EndPaint(hWnd, &ps);
       return 0;
+      break;
     }
-
-    notify_key_pressed(key, modifier);
-
-    return 0;
-    break;
-  }
-  case WM_RBUTTONDOWN: {
-    notify_click(LOWORD(lParam), HIWORD(lParam), EVENT_BUTTON_RIGHT);
-
-    dragging = true;
-    drag_pos_x = LOWORD(lParam);
-    drag_pos_y = HIWORD(lParam);
-
-    break;
-  }
-  case WM_RBUTTONUP: {
-    dragging = false;
-    break;
-  }
-  case WM_LBUTTONDOWN: {
-    notify_click(LOWORD(lParam), HIWORD(lParam), EVENT_BUTTON_LEFT);
-    break;
-  }
-  case WM_MOUSEMOVE: {
-    if (dragging) {
-      notify_drag(drag_pos_x, drag_pos_y, LOWORD(lParam) - drag_pos_x, HIWORD(lParam) - drag_pos_y, EVENT_BUTTON_RIGHT);
-      drag_pos_x = LOWORD(lParam);
-      drag_pos_y = HIWORD(lParam);
+    case WM_SIZE: {
+      notify_resize(LOWORD(lParam), HIWORD(lParam));
+      break;
     }
-    break;
-  }
-  case WM_TIMER: {
-    if (wParam == 123) {
-      notify_update();
-      RECT rect;
-      ::GetClientRect(hWnd, &rect);
-      ::InvalidateRect(hWnd, &rect, FALSE);
+    case WM_SIZING: {
+      RECT *pRect = (RECT*)lParam;
+      notify_resize(pRect->right - pRect->left, pRect->bottom - pRect->top);
+      break;
     }
-    return 0;
-    break;
-  }
+    case WM_KEYDOWN: {
+      switch (wParam) {
+      case VK_LEFT:
+        notify_drag(0, 0, -32, 0, EVENT_BUTTON_LEFT);
+        break;
+      case VK_RIGHT:
+        notify_drag(0, 0, 32, 0, EVENT_BUTTON_LEFT);
+        break;
+      case VK_UP:
+        notify_drag(0, 0, 0, -32, EVENT_BUTTON_LEFT);
+        break;
+      case VK_DOWN:
+        notify_drag(0, 0, 0, 32, EVENT_BUTTON_LEFT);
+        break;
+      case VK_F10:
+        notify_key_pressed('n', 1);
+        break;
+      }
+
+      unsigned char key = MapVirtualKey((UINT)wParam, MAPVK_VK_TO_CHAR);
+      if (key == 0) {
+        return 0;
+      }
+
+      char modifier = 0;
+      if (GetKeyState(VK_CONTROL)) {
+        if (lParam & (1 << 29)) {
+          modifier |= 4;
+        }
+        else {
+          modifier |= 1;
+        }
+      }
+      if (GetKeyState(VK_SHIFT)) {
+        modifier |= 2;
+      }
+
+      if (key >= 'A' && key <= 'Z') {
+        key = 'a' + (key - 'A');
+      }
+      else if (key == '=') {
+        key = '+';
+      }
+
+      if (key == 'q' && modifier == 1) {
+        quit();
+        return 0;
+      }
+
+      notify_key_pressed(key, modifier);
+
+      return 0;
+      break;
+    }
+    case WM_RBUTTONDOWN: {
+      notify_click(LOWORD(lParam), HIWORD(lParam), EVENT_BUTTON_RIGHT);
+
+      dragging = true;
+      POINT point;
+      ::GetCursorPos(&point);
+      drag_start_pos_x = drag_pos_x = point.x;
+      drag_start_pos_y = drag_pos_y = point.y;
+      ::SetCapture(hWnd);
+      ::ShowCursor(FALSE);
+
+      break;
+    }
+    case WM_RBUTTONUP: {
+      dragging = false;
+      ::SetCursorPos(drag_start_pos_x, drag_start_pos_y);
+      ::ReleaseCapture();
+      ::ShowCursor(TRUE);
+      break;
+    }
+    case WM_LBUTTONDOWN: {
+      notify_click(LOWORD(lParam), HIWORD(lParam), EVENT_BUTTON_LEFT);
+      break;
+    }
+    case WM_MOUSEMOVE: {
+      if (dragging) {
+        POINT point;
+        ::GetCursorPos(&point);
+        notify_drag(drag_start_pos_x, drag_start_pos_y, point.x - drag_pos_x, point.y - drag_pos_y, EVENT_BUTTON_RIGHT);
+        drag_pos_x = point.x;
+        drag_pos_y = point.y;
+      }
+      break;
+    }
+    case WM_TIMER: {
+      if (wParam == 123) {
+        notify_update();
+        RECT rect;
+        ::GetClientRect(hWnd, &rect);
+        ::InvalidateRect(hWnd, &rect, FALSE);
+      }
+      return 0;
+      break;
+    }
   }
 
   return ::DefWindowProc(hWnd, message, wParam, lParam);

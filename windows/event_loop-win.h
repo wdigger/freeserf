@@ -35,6 +35,8 @@ private:
   bool dragging;
   int drag_pos_x;
   int drag_pos_y;
+  int drag_start_pos_x;
+  int drag_start_pos_y;
 
   video_win_t *video;
 
