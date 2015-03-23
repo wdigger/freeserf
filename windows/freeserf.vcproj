@@ -64,9 +64,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="GdiPlus.lib"
+				AdditionalDependencies="GdiPlus.lib winmm.lib"
 				LinkIncremental="2"
-				IgnoreDefaultLibraryNames="msvcrt.lib"
+				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				RandomizedBaseAddress="1"
@@ -141,9 +141,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="GdiPlus.lib"
+				AdditionalDependencies="GdiPlus.lib winmm.lib"
 				LinkIncremental="2"
-				IgnoreDefaultLibraryNames="msvcrt.lib"
+				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				RandomizedBaseAddress="1"
@@ -214,7 +214,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="GdiPlus.lib"
+				AdditionalDependencies="GdiPlus.lib winmm.lib"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
 				SubSystem="2"
@@ -289,7 +289,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="GdiPlus.lib"
+				AdditionalDependencies="GdiPlus.lib winmm.lib"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
 				SubSystem="2"
@@ -335,7 +335,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\src\audio-dummy.cc"
+				RelativePath=".\audio-win.cc"
+				>
+			</File>
+			<File
+				RelativePath=".\audio-win.h"
 				>
 			</File>
 			<File
