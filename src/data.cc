@@ -146,7 +146,7 @@ int
 data_check_file(const char *path)
 {
   struct stat buffer;
-  return (stat(path, &buffer) == 0);
+  return stat(path, &buffer);
 }
 
 void*
