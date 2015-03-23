@@ -83,6 +83,8 @@ public:
   virtual bool play();
   bool create(void *data, size_t size);
 
+  bool play_next_buffer();
+
 protected:
   void push_event(DWORD time, DWORD event);
 };

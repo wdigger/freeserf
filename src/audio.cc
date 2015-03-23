@@ -37,6 +37,7 @@ audio_t::audio_t()
   sfx_enabled = true;
   midi_enabled = true;
   current_track = MIDI_TRACK_NONE;
+  current_midi_track = NULL;
 }
 
 audio_t::~audio_t()
@@ -121,6 +122,8 @@ audio_t::sfx_is_enabled()
 void
 audio_t::midi_play_track(midi_t midi)
 {
+  current_midi_track = NULL;
+
   if (0 == midi_enabled) {
     return;
   }
@@ -154,6 +157,8 @@ audio_t::midi_play_track(midi_t midi)
     return;
   }
 
+  current_midi_track = track;
+
   return;
 }
 
@@ -161,11 +166,12 @@ void
 audio_t::midi_enable(bool enable)
 {
   midi_enabled = enable;
-  if (0 != enable) {
+  if (enable) {
     if (current_track != -1) {
       midi_play_track(current_track);
     }
   } else {
+    current_midi_track = NULL;
 //    Mix_HaltMusic();
   }
 }
@@ -174,4 +180,16 @@ bool
 audio_t::midi_is_enabled()
 {
   return midi_enabled;
+}
+
+void
+audio_t::on_midi_track_finished()
+{
+  if (current_track == MIDI_TRACK_LAST) {
+    current_track = MIDI_TRACK_NONE;
+  }
+  current_track = (midi_t)((int)current_track + 1);
+  if (midi_enabled) {
+    midi_play_track(current_track);
+  }
 }

@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 #include <string.h>
+#include <algorithm>
 
 audio_t *
 create_audio()
@@ -153,13 +154,16 @@ audio_win_t::midiCallback(HMIDIOUT hwo, UINT uMsg, DWORD_PTR dwParam1, DWORD_PTR
 {
   switch (uMsg) {
     case MOM_DONE: {
-      int ggg = 0;
-      ggg++;
-      break;
-    }
-    case MOM_POSITIONCB: {
-      int ggg = 0;
-      ggg++;
+      MMRESULT res = ::midiStreamRestart(hMidiStream);
+      if (res != MMSYSERR_NOERROR) {
+        LOGE("audio-win", "Failed to restart midi stream.");
+        return;
+      }
+      if (current_midi_track != NULL) {
+        if (!((audio_midi_win_t*)current_midi_track)->play_next_buffer()) {
+          on_midi_track_finished();
+        }
+      }
       break;
     }
   }
@@ -264,6 +268,35 @@ audio_midi_win_t::play()
   return current_buffer->play(stream);
 }
 
+bool
+audio_midi_win_t::play_next_buffer()
+{
+  HMIDISTRM stream = audio->get_midistream();
+  if (stream == NULL) {
+    return false;
+  }
+
+  if (current_buffer == NULL) {
+    if (buffers.empty()) {
+      return false;
+    }
+    current_buffer = buffers.front();
+  }
+  else {
+    std::list<midi_buffer_t*>::iterator it = std::find(buffers.begin(), buffers.end(), current_buffer);
+    if (it == buffers.end()) {
+      return false;
+    }
+    it++;
+    if (it == buffers.end()) {
+      return false;
+    }
+    current_buffer = *it;
+  }
+
+  return current_buffer->play(stream);
+}
+
 static size_t
 read_varible_value(unsigned char* bufer, unsigned long &value)
 {
@@ -311,8 +344,6 @@ audio_midi_win_t::create(void *data, size_t size)
     unsigned char type = *(input_buf++);
     if (!(type & 0x80)) {
       // ToDo: implement if needed
-      int ggg = 0;
-      ggg = ggg / ggg;
     }
     else if(type == 0xff){
       unsigned char meta = *(input_buf++);

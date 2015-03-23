@@ -73,6 +73,7 @@ typedef enum {
   MIDI_TRACK_1 = 1,
   MIDI_TRACK_2 = 2,
   MIDI_TRACK_3 = 4,
+  MIDI_TRACK_LAST = 4,
 } midi_t;
 
 class audio_track_t
@@ -94,6 +95,7 @@ protected:
   bool sfx_enabled;
   bool midi_enabled;
   midi_t current_track;
+  audio_track_t *current_midi_track;
 
 public:
   audio_t();
@@ -117,6 +119,8 @@ public:
 protected:
   virtual audio_track_t *create_sound_track(void *data, size_t size) = 0;
   virtual audio_track_t *create_music_track(void *data, size_t size) = 0;
+
+  virtual void on_midi_track_finished();
 };
 
 #endif /* ! _AUDIO_H */
