@@ -27,12 +27,14 @@
 
 #include "src/gui.h"
 #include "src/map.h"
-#include "src/building.h"
+#include "src/player_controller.h"
+#include "src/game.h"
 
 class Interface;
 class DataSource;
 
-class Viewport : public GuiObject, public Map::Handler {
+class Viewport : public GuiObject, public Map::Handler,
+                 public PlayerController::Handler {
  public:
   typedef enum Layer {
     LayerLandscape = 1<<0,
@@ -53,20 +55,24 @@ class Viewport : public GuiObject, public Map::Handler {
   /* Cache prerendered tiles of the landscape. */
   typedef std::map<unsigned int, std::unique_ptr<Frame>> TilesMap;
   TilesMap landscape_tiles;
+  PGame game;
+  PPlayerController player_controller;
 
   int offset_x, offset_y;
   unsigned int layers;
-  Interface *interface;
   unsigned int last_tick;
   Data::PSource data_source;
 
   PMap map;
+  unsigned int animation_tick;
+
+  int map_cursor_sprites[7];
 
  public:
-  Viewport(Interface *interface, PMap map);
+  explicit Viewport(PGame game);
   virtual ~Viewport();
 
-  void switch_layer(Layer layer) { layers ^= layer; }
+  void set_player_controller(PPlayerController player_controller);
 
   void move_to_map_pos(MapPos pos);
   void move_by_pixels(int x, int y);
@@ -80,6 +86,10 @@ class Viewport : public GuiObject, public Map::Handler {
   void redraw_map_pos(MapPos pos);
 
   void update();
+
+  void switch_layer(Layer layer);
+  void set_layers(unsigned int layers);
+  void move_offset(int dx, int dy);
 
  protected:
   void draw_triangle_up(int x, int y, int m, int left, int right, MapPos pos,
@@ -117,6 +127,8 @@ class Viewport : public GuiObject, public Map::Handler {
   void draw_serf_row_behind(MapPos pos, int y_base, int cols, int x_base);
   void draw_game_objects(int layers);
   void draw_map_cursor_sprite(MapPos pos, int sprite);
+  void draw_game_objects_line(MapPos pos, int y_base, int cols, int x_base);
+
   void draw_map_cursor_possible_build();
   void draw_map_cursor();
   void draw_base_grid_overlay(const Color &color);
@@ -124,17 +136,35 @@ class Viewport : public GuiObject, public Map::Handler {
   MapPos get_offset(int *x_off, int *y_off,
                     int *col = nullptr, int *row = nullptr);
 
+  Color get_player_color(unsigned int index) const;
+
+  void update_cursor();
+
+ public:  // GuiObject implementation
   virtual void internal_draw();
-  virtual void layout();
+  virtual void layout() {}
+
+ protected:
   virtual bool handle_click_left(int x, int y);
   virtual bool handle_dbl_click(int x, int y, Event::Button button);
   virtual bool handle_drag(int x, int y);
 
   Frame *get_tile_frame(unsigned int tid, int tc, int tr);
 
- public:
+ public:  // Map::Handler implementation
   virtual void on_height_changed(MapPos pos);
   virtual void on_object_changed(MapPos pos);
+
+ public:  // player_controller_handler_t implementation
+  virtual void road_building_state_changed(bool building_road);
+  virtual void cursor_position_changed(MapPos pos, bool scroll);
+  virtual void cursor_type_changed(PlayerController::CursorType type);
+  virtual void build_possibility_changed(
+                                PlayerController::BuildPossibility possibility);
+  virtual void open_dialog(int id) {}
+  virtual void close_dialog() {}
+  virtual void present_notification(
+                                 PlayerController::Notification notification) {}
 };
 
 #endif  // SRC_VIEWPORT_H_

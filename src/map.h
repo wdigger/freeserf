@@ -55,8 +55,10 @@ class Road {
   Direction get_last() const { return dirs.back(); }
   bool is_extendable() const { return (dirs.size() < max_length); }
   bool is_valid_extension(Map *map, Direction dir) const;
+  bool is_valid_extension(Map *map, const Road &road) const;
   bool is_undo(Direction dir) const;
   bool extend(Direction dir);
+  bool extend(const Road &road);
   bool undo();
   MapPos get_end(Map *map) const;
   bool has_pos(Map *map, MapPos pos) const;

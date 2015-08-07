@@ -58,7 +58,7 @@ class Timer {
   class Handler {
    public:
     virtual ~Handler() {}
-    virtual void on_timer_fired(unsigned int id) = 0;
+    virtual void on_timer_fired(Timer *timer, unsigned int id) = 0;
   };
 
  protected:

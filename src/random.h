@@ -46,6 +46,8 @@ class Random {
 
   operator std::string() const;
   friend Random& operator^=(Random& left, const Random& right);
+
+  static uint16_t rnd();
 };
 
 #endif  // SRC_RANDOM_H_

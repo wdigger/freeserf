@@ -1,7 +1,7 @@
 /*
  * notification.h - Notification GUI component
  *
- * Copyright (C) 2013  Jon Lund Steffensen <jonlst@gmail.com>
+ * Copyright (C) 2013-2017  Jon Lund Steffensen <jonlst@gmail.com>
  *
  * This file is part of freeserf.
  *
@@ -25,30 +25,39 @@
 #include <string>
 
 #include "src/gui.h"
-#include "src/player.h"
+#include "src/player_controller.h"
 
 class Interface;
 
 class NotificationBox : public GuiObject {
  public:
-  typedef struct NotificationView {
-    Message::Type type;
-    unsigned int decoration;
+  typedef enum Decoration {
+    DecorationNone = 0,
+    DecorationOpponent,
+    DecorationMine,
+    DecorationBuilding,
+    DecorationMapObject,
+    DecorationIcon,
+    DecorationMenu
+  } Decoration;
+
+  typedef struct NotificationAppearance {
+    Decoration decoration;
     unsigned int icon;
     const char *text;
-  } NotificationView;
+  } NotificationAppearance;
 
  protected:
-  Message message;
+  PlayerController::Notification notification;
   Interface *interface;
 
  public:
   explicit NotificationBox(Interface *interface);
 
-  void show(const Message &message);
+  void show(const PlayerController::Notification notification);
 
  protected:
-  void draw_notification(NotificationView *view);
+  void draw_notification(NotificationAppearance *view);
 
   void draw_icon(int x, int y, int sprite);
   void draw_background(int width, int height, int sprite);

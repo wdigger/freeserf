@@ -206,8 +206,8 @@ GuiObject::get_size(int *pwidth, int *pheight) {
 }
 
 void
-GuiObject::set_displayed(bool displayed) {
-  this->displayed = displayed;
+GuiObject::set_displayed(bool displayed_) {
+  displayed = displayed_;
   set_redraw();
 }
 

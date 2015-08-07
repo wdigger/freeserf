@@ -338,7 +338,7 @@ GameInitBox::handle_action(int action) {
       break;
     case ActionShowOptions: {
       if (interface) {
-        interface->open_popup(PopupBox::TypeOptions);
+        interface->open_dialog(PopupBox::TypeOptions);
       }
       break;
     }

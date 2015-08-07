@@ -288,12 +288,14 @@ typedef enum Action {
   ACTION_NEW_NAME
 } Action;
 
-PopupBox::PopupBox(Interface *_interface)
-  : minimap(new MinimapGame(_interface, _interface->get_game()))
-  , file_list(new ListSavedFiles())
+PopupBox::PopupBox(Interface *_interface, PGame _game,
+                   PPlayerController _player_controller)
+  : file_list(new ListSavedFiles())
   , file_field(new TextInput())
   , box(TypeNone) {
   interface = _interface;
+  game = _game;
+  player_controller = _player_controller;
 
   current_sett_5_item = 8;
   current_sett_6_item = 15;
@@ -301,10 +303,13 @@ PopupBox::PopupBox(Interface *_interface)
   current_stat_8_mode = 0;
 
   /* Initialize minimap */
-  minimap->set_displayed(false);
-  minimap->set_parent(this);
-  minimap->set_size(128, 128);
-  add_float(minimap.get(), 8, 9);
+//  minimap = new MinimapGame(player_controller);
+//  minimap->set_displayed(false);
+//  minimap->set_parent(this);
+//  minimap->set_size(128, 128);
+//  add_float(minimap.get(), 8, 9);
+
+  in_quit_confirm = false;
 
   file_list->set_size(120, 100);
   file_list->set_displayed(false);
@@ -341,10 +346,10 @@ PopupBox::draw_popup_icon(int x_, int y_, int sprite) {
 /* Draw building in a popup frame. */
 void
 PopupBox::draw_popup_building(int x_, int y_, int sprite) {
-  Player *player = interface->get_player();
-  Color color = interface->get_player_color(player->get_index());
-  frame->draw_sprite(8 * x_ + 8, y_ + 9,
-                     Data::AssetMapObject, sprite, false, color);
+  PlayerInfo::Color player_color = player_controller->get_color();
+  Color color(player_color.red, player_color.green, player_color.blue);
+  frame->draw_sprite(8 * x_ + 8, y_ + 9, Data::AssetMapObject,
+                     sprite, false, color);
 }
 
 /* Fill the background of a popup frame. */
@@ -410,13 +415,13 @@ PopupBox::get_player_face_sprite(size_t face) {
 
 /* Draw player face in popup frame. */
 void
-PopupBox::draw_player_face(int ix, int iy, int player) {
+PopupBox::draw_player_face(int ix, int iy, int player_index) {
   Color color;
   size_t face = 0;
-  Player *p = interface->get_game()->get_player(player);
-  if (p != nullptr) {
-    color = interface->get_player_color(player);
-    face = p->get_face();
+  Player *player = game->get_player(player_index);
+  if (player != nullptr) {
+    color = interface->get_player_color(player_index);
+    face = interface->get_player_face(player_index);
   }
 
   frame->fill_rect(8 * ix, iy + 5, 48, 72, color);
@@ -486,9 +491,9 @@ PopupBox::draw_mine_building_box() {
 
   draw_box_background(PatternConstruction);
 
-  if (interface->get_game()->can_build_flag(interface->get_map_cursor_pos(),
-                                            interface->get_player())) {
-    draw_popup_building(2, 114, 0x80+4*interface->get_player()->get_index());
+  if (player_controller->can_build_flag()) {
+    draw_popup_building(2, 114,
+                       0x80 + 4 * player_controller->get_player()->get_index());
   }
 
   draw_custom_bld_box(layout);
@@ -511,16 +516,15 @@ PopupBox::draw_basic_building_box(int flip) {
   draw_box_background(PatternConstruction);
 
   const int *l = layout;
-  if (!interface->get_game()->can_build_military(
-                                             interface->get_map_cursor_pos())) {
+  if (!player_controller->can_build_military()) {
     l += 3; /* Skip hut */
   }
 
   draw_custom_bld_box(l);
 
-  if (interface->get_game()->can_build_flag(interface->get_map_cursor_pos(),
-                                            interface->get_player())) {
-    draw_popup_building(8, 108, 0x80+4*interface->get_player()->get_index());
+  if (player_controller->can_build_flag()) {
+    draw_popup_building(8, 108,
+                       0x80 + 4 * player_controller->get_player()->get_index());
   }
 
   if (flip) draw_popup_icon(0, 128, 0x3d);
@@ -556,8 +560,7 @@ PopupBox::draw_adv_2_building_box() {
   };
 
   const int *l = layout;
-  if (!interface->get_game()->can_build_military(
-                                             interface->get_map_cursor_pos())) {
+  if (!player_controller->can_build_military()) {
     l += 2*3; /* Skip tower and fortress */
   }
 
@@ -738,7 +741,8 @@ PopupBox::draw_stat_4_box() {
   draw_box_background(PatternStripedGreen);
 
   /* Sum up resources of all inventories. */
-  ResourceMap resources = interface->get_player()->get_stats_resources();
+  ResourceMap resources =
+                         player_controller->get_player()->get_stats_resources();
 
   draw_resources_box(resources);
 
@@ -747,7 +751,7 @@ PopupBox::draw_stat_4_box() {
 
 void
 PopupBox::draw_building_count(int x_, int y_, int type) {
-  Player *player = interface->get_player();
+  Player *player = player_controller->get_player();
   draw_green_number(x_, y_,
              player->get_completed_building_count((Building::Type)type));
   draw_additional_number(x_+1, y_,
@@ -917,7 +921,7 @@ PopupBox::draw_stat_8_box() {
     -1
   };
 
-  int mode = interface->get_current_stat_8_mode();
+  int mode = current_stat_8_mode;
   int aspect = (mode >> 2) & 3;
   int scale = mode & 3;
 
@@ -949,14 +953,13 @@ PopupBox::draw_stat_8_box() {
   draw_popup_icon(10, 103, 94 + 3*scale + 2);
 
   /* Draw chart */
-  PGame game = interface->get_game();
   int index = game->get_player_history_index(scale);
   for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
     if (game->get_player(GAME_MAX_PLAYER_COUNT-i-1) != nullptr) {
       Player *player = game->get_player(GAME_MAX_PLAYER_COUNT-i-1);
       Color color = interface->get_player_color(GAME_MAX_PLAYER_COUNT-i-1);
-      draw_player_stat_chart(player->get_player_stat_history(mode), index,
-                             color);
+      draw_player_stat_chart(player->get_player_stat_history(mode),
+                             index, color);
     }
   }
 }
@@ -1023,13 +1026,13 @@ PopupBox::draw_stat_7_box() {
   /* Create array of historical counts */
   int historical_data[112];
   int max_val = 0;
-  int index = interface->get_game()->get_resource_history_index();
+  int index = game->get_resource_history_index();
 
   for (int i = 0; i < 112; i++) {
     historical_data[i] = 0;
     int j = index;
     for (int k = 0; k < 9; k++) {
-      historical_data[i] += sample_weights[k]*interface->
+      historical_data[i] += sample_weights[k]*player_controller->
                               get_player()->get_resource_count_history(item)[j];
       j = j > 0 ? j-1 : 119;
     }
@@ -1177,7 +1180,7 @@ calculate_gauge_values(Player *player,
     for (int i = 0; i < Building::kMaxStock; i++) {
       if (building->get_maximum_in_stock(i) > 0) {
         int v = 2*building->get_res_count_in_stock(i) +
-          building->get_requested_in_stock(i);
+        building->get_requested_in_stock(i);
         values[type][i][0] += (16*v)/(2*building->get_maximum_in_stock(i));
         values[type][i][1] += 1;
       }
@@ -1245,7 +1248,7 @@ PopupBox::draw_stat_1_box() {
   draw_custom_icon_box(layout);
 
   unsigned int values[24][Building::kMaxStock][2] = {{{0}}};
-  calculate_gauge_values(interface->get_player(), values);
+  calculate_gauge_values(player_controller->get_player(), values);
 
   draw_gauge_balance(10, 0, values[Building::TypeMill][0][0],
                      values[Building::TypeMill][0][1]);
@@ -1321,7 +1324,7 @@ PopupBox::draw_stat_2_box() {
   draw_custom_icon_box(layout);
 
   unsigned int values[24][Building::kMaxStock][2] = {{{0}}};
-  calculate_gauge_values(interface->get_player(), values);
+  calculate_gauge_values(player_controller->get_player(), values);
 
   draw_gauge_balance(6, 0, values[Building::TypeGoldSmelter][1][0],
                      values[Building::TypeGoldSmelter][1][1]);
@@ -1367,11 +1370,11 @@ PopupBox::draw_stat_6_box() {
   int total = 0;
   for (int i = 0; i < 27; i++) {
     if (i != Serf::TypeTransporterInventory) {
-      total += interface->get_player()->get_serf_count(i);
+      total += player_controller->get_player()->get_serf_count(i);
     }
   }
 
-  draw_serfs_box(interface->get_player()->get_serfs(), total);
+  draw_serfs_box(player_controller->get_player()->get_serfs(), total);
 
   draw_popup_icon(14, 128, 60); /* exit */
 }
@@ -1403,9 +1406,9 @@ void
 PopupBox::draw_stat_3_box() {
   draw_box_background(PatternStripedGreen);
 
-  Serf::SerfMap serfs = interface->get_player()->get_stats_serfs_idle();
+  Serf::SerfMap serfs = player_controller->get_player()->get_stats_serfs_idle();
   Serf::SerfMap serfs_potential =
-                           interface->get_player()->get_stats_serfs_potential();
+                   player_controller->get_player()->get_stats_serfs_potential();
   for (int i = 0; i < 27; ++i) {
     serfs[(Serf::Type)i] += serfs_potential[(Serf::Type)i];
   }
@@ -1482,7 +1485,7 @@ PopupBox::draw_start_attack_redraw_box() {
   /* TODO Should overwrite the previously drawn number.
      Just use fill_rect(), perhaps? */
   draw_green_string(6, 116, "    ");
-  draw_green_number(7, 116, interface->get_player()->knights_attacking);
+  draw_green_number(7, 116, player_controller->get_player()->knights_attacking);
 }
 
 void
@@ -1520,8 +1523,8 @@ PopupBox::draw_start_attack_box() {
                         building_layout[i]);
   }
 
-  Building *building = interface->get_game()->get_building(
-                                    interface->get_player()->building_attacked);
+  Building *building =
+         game->get_building(player_controller->get_player()->building_attacked);
   int ly = 0;
 
   switch (building->get_type()) {
@@ -1537,7 +1540,8 @@ PopupBox::draw_start_attack_box() {
 
   /* Draw number of knight at each distance. */
   for (int i = 0; i < 4; i++) {
-    draw_green_number(1+4*i, 96, interface->get_player()->attacking_knights[i]);
+    draw_green_number(1 + 4 * i, 96,
+                      player_controller->get_player()->attacking_knights[i]);
   }
 
   draw_start_attack_redraw_box();
@@ -1555,12 +1559,11 @@ PopupBox::draw_ground_analysis_box() {
     -1
   };
 
-  MapPos pos = interface->get_map_cursor_pos();
   int estimates[5];
 
   draw_box_background(PatternStripedGreen);
   draw_custom_icon_box(layout);
-  interface->get_game()->prepare_ground_analysis(pos, estimates);
+  player_controller->get_ground_analysis(estimates);
   draw_green_string(0, 30, "GROUND-ANALYSIS:");
 
   /* Gold */
@@ -1638,7 +1641,7 @@ PopupBox::draw_sett_1_box() {
   draw_custom_bld_box(bld_layout);
   draw_custom_icon_box(layout);
 
-  Player *player = interface->get_player();
+  Player *player = player_controller->get_player();
 
   unsigned int prio_layout[] = {
     4,  21, Building::TypeStoneMine,
@@ -1675,7 +1678,7 @@ PopupBox::draw_sett_2_box() {
   draw_custom_bld_box(bld_layout);
   draw_custom_icon_box(layout);
 
-  Player *player = interface->get_player();
+  Player *player = player_controller->get_player();
 
   draw_slide_bar(0, 26, player->get_planks_construction());
   draw_slide_bar(0, 36, player->get_planks_boatbuilder());
@@ -1707,7 +1710,7 @@ PopupBox::draw_sett_3_box() {
   draw_custom_bld_box(bld_layout);
   draw_custom_icon_box(layout);
 
-  Player *player = interface->get_player();
+  Player *player = player_controller->get_player();
 
   draw_slide_bar(0, 39, player->get_coal_steelsmelter());
   draw_slide_bar(8, 39, player->get_coal_goldsmelter());
@@ -1751,7 +1754,7 @@ PopupBox::draw_knight_level_box() {
 
   draw_box_background(PatternCheckerdDiagonalBrown);
 
-  Player *player = interface->get_player();
+  Player *player = player_controller->get_player();
 
   for (int i = 0; i < 4; i++) {
     int ly = 8 + (34*i);
@@ -1786,7 +1789,7 @@ PopupBox::draw_sett_4_box() {
   draw_box_background(PatternCheckerdDiagonalBrown);
   draw_custom_icon_box(layout);
 
-  Player *player = interface->get_player();
+  Player *player = player_controller->get_player();
   draw_slide_bar(4, 4, player->get_tool_prio(0)); /* shovel */
   draw_slide_bar(4, 20, player->get_tool_prio(1)); /* hammer */
   draw_slide_bar(4, 36, player->get_tool_prio(5)); /* axe */
@@ -1850,7 +1853,7 @@ PopupBox::draw_sett_5_box() {
 
   draw_box_background(PatternCheckerdDiagonalBrown);
   draw_custom_icon_box(layout);
-  draw_popup_resource_stairs(interface->get_player()->get_flag_prio());
+  draw_popup_resource_stairs(player_controller->get_player()->get_flag_prio());
 
   draw_popup_icon(6, 120, 33+current_sett_5_item);
 }
@@ -1863,6 +1866,10 @@ PopupBox::draw_quit_confirm_box() {
   draw_green_string(0, 20, "     to quit");
   draw_green_string(0, 30, "   this game?");
   draw_green_string(0, 45, "  Yes       No");
+
+  /* wait_x_timer_ticks(8); */
+
+  in_quit_confirm = true;
 }
 
 void
@@ -1909,18 +1916,21 @@ PopupBox::draw_options_box() {
   draw_popup_icon(13, 70,   /* Fullscreen mode */
                   Graphics::get_instance().is_fullscreen() ? 288 : 220);
 
-  const char *value = "All";
-  if (!interface->get_config(3)) {
-    value = "Most";
-    if (!interface->get_config(4)) {
-      value = "Few";
-      if (!interface->get_config(5)) {
-        value = "None";
+  if (player_controller != nullptr) {
+    const char *value = "All";
+    if (!player_controller->get_config(3)) {
+      value = "Most";
+      if (!player_controller->get_config(4)) {
+        value = "Few";
+        if (!player_controller->get_config(5)) {
+          value = "None";
+        }
       }
     }
+
+    draw_green_string(1, 94, "Messages");
+    draw_green_string(11, 94, value);
   }
-  draw_green_string(1, 94, "Messages");
-  draw_green_string(11, 94, value);
 
   draw_popup_icon(14, 128, 60); /* exit */
 }
@@ -1936,21 +1946,21 @@ PopupBox::draw_castle_res_box() {
   draw_box_background(PatternPlaidAlongGreen);
   draw_custom_icon_box(layout);
 
-  if (interface->get_player()->temp_index == 0) {
-    interface->close_popup();
+  if (player_controller->get_player()->temp_index == 0) {
+    interface->close_dialog();
     return;
   }
 
-  Building *building =
-       interface->get_game()->get_building(interface->get_player()->temp_index);
+  Building *building = game->get_building(
+                                   player_controller->get_player()->temp_index);
   if (building->is_burning()) {
-    interface->close_popup();
+    interface->close_dialog();
     return;
   }
 
   if (building->get_type() != Building::TypeStock &&
       building->get_type() != Building::TypeCastle) {
-    interface->close_popup();
+    interface->close_dialog();
     return;
   }
 
@@ -1963,15 +1973,15 @@ void
 PopupBox::draw_mine_output_box() {
   draw_box_background(PatternPlaidAlongGreen);
 
-  if (interface->get_player()->temp_index == 0) {
-    interface->close_popup();
+  if (player_controller->get_player()->temp_index == 0) {
+    interface->close_dialog();
     return;
   }
 
-  Building *building =
-       interface->get_game()->get_building(interface->get_player()->temp_index);
+  Building *building = game->get_building(
+                                   player_controller->get_player()->temp_index);
   if (building->is_burning()) {
-    interface->close_popup();
+    interface->close_dialog();
     return;
   }
 
@@ -1981,7 +1991,7 @@ PopupBox::draw_mine_output_box() {
       type != Building::TypeCoalMine &&
       type != Building::TypeIronMine &&
       type != Building::TypeGoldMine) {
-    interface->close_popup();
+    interface->close_dialog();
     return;
   }
 
@@ -2037,15 +2047,15 @@ void
 PopupBox::draw_ordered_building_box() {
   draw_box_background(PatternPlaidAlongGreen);
 
-  if (interface->get_player()->temp_index == 0) {
-    interface->close_popup();
+  if (player_controller->get_player()->temp_index == 0) {
+    interface->close_dialog();
     return;
   }
 
-  Building *building =
-       interface->get_game()->get_building(interface->get_player()->temp_index);
+  Building *building = game->get_building(
+                                   player_controller->get_player()->temp_index);
   if (building->is_burning()) {
-    interface->close_popup();
+    interface->close_dialog();
     return;
   }
 
@@ -2076,27 +2086,27 @@ void
 PopupBox::draw_defenders_box() {
   draw_box_background(PatternPlaidAlongGreen);
 
-  Player *player = interface->get_player();
-  if (player->temp_index == 0) {
-    interface->close_popup();
+  if (player_controller->get_player()->temp_index == 0) {
+    interface->close_dialog();
     return;
   }
 
-  Building *building = interface->get_game()->get_building(player->temp_index);
+  Building *building = game->get_building(
+                                   player_controller->get_player()->temp_index);
   if (building->is_burning()) {
-    interface->close_popup();
+    interface->close_dialog();
     return;
   }
 
-  if (building->get_owner() != player->get_index()) {
-    interface->close_popup();
+  if (building->get_owner() != player_controller->get_player()->get_index()) {
+    interface->close_dialog();
     return;
   }
 
   if (building->get_type() != Building::TypeHut &&
       building->get_type() != Building::TypeTower &&
       building->get_type() != Building::TypeFortress) {
-    interface->close_popup();
+    interface->close_dialog();
     return;
   }
 
@@ -2142,7 +2152,7 @@ PopupBox::draw_defenders_box() {
   /* Draw knights */
   int next_knight = building->get_first_knight();
   for (int i = 0; next_knight != 0; i++) {
-    Serf *serf = interface->get_game()->get_serf(next_knight);
+    Serf *serf = game->get_serf(next_knight);
     draw_popup_icon(3 + 4*(i%3), 72 + 16*(i/3), 7 + serf->get_type());
     next_knight = serf->get_next();
   }
@@ -2169,27 +2179,25 @@ PopupBox::draw_transport_info_box() {
   /* TODO show path merge button. */
   /* if (r == 0) draw_popup_icon(7, 51, 0x135); */
 
-  if (interface->get_player()->temp_index == 0) {
-    interface->close_popup();
+  if (player_controller->get_player()->temp_index == 0) {
+    interface->close_dialog();
     return;
   }
 
-  Flag *flag =
-           interface->get_game()->get_flag(interface->get_player()->temp_index);
+  Flag *flag = game->get_flag(player_controller->get_player()->temp_index);
 
 #if 1
   /* Draw viewport of flag */
-  Viewport flag_view(interface, interface->get_game()->get_map());
+  Viewport flag_view(game);
+  flag_view.set_player_controller(player_controller);
   flag_view.switch_layer(Viewport::LayerLandscape);
   flag_view.switch_layer(Viewport::LayerSerfs);
   flag_view.switch_layer(Viewport::LayerCursor);
   flag_view.set_displayed(true);
-
   flag_view.set_parent(this);
   flag_view.set_size(128, 64);
   flag_view.move_to_map_pos(flag->get_position());
   flag_view.move_by_pixels(0, -10);
-
   flag_view.move_to(8, 24);
   flag_view.draw(frame);
 #else
@@ -2239,21 +2247,21 @@ PopupBox::draw_castle_serf_box() {
   draw_box_background(PatternPlaidAlongGreen);
   draw_custom_icon_box(layout);
 
-  if (interface->get_player()->temp_index == 0) {
-    interface->close_popup();
+  if (player_controller->get_player()->temp_index == 0) {
+    interface->close_dialog();
     return;
   }
 
-  Building *building =
-       interface->get_game()->get_building(interface->get_player()->temp_index);
+  Building *building = game->get_building(
+                                   player_controller->get_player()->temp_index);
   if (building->is_burning()) {
-    interface->close_popup();
+    interface->close_dialog();
     return;
   }
 
   Building::Type type = building->get_type();
   if (type != Building::TypeStock && type != Building::TypeCastle) {
-    interface->close_popup();
+    interface->close_dialog();
     return;
   }
 
@@ -2293,15 +2301,15 @@ PopupBox::draw_resdir_box() {
   draw_box_background(PatternPlaidAlongGreen);
   draw_custom_icon_box(layout);
 
-  if (interface->get_player()->temp_index == 0) {
-    interface->close_popup();
+  if (player_controller->get_player()->temp_index == 0) {
+    interface->close_dialog();
     return;
   }
 
-  Building *building =
-       interface->get_game()->get_building(interface->get_player()->temp_index);
+  Building *building = game->get_building(
+                                   player_controller->get_player()->temp_index);
   if (building->is_burning()) {
-    interface->close_popup();
+    interface->close_dialog();
     return;
   }
 
@@ -2313,7 +2321,7 @@ PopupBox::draw_resdir_box() {
     /* Follow linked list of knights on duty */
     int serf_index = building->get_first_knight();
     while (serf_index != 0) {
-      Serf *serf = interface->get_game()->get_serf(serf_index);
+      Serf *serf = game->get_serf(serf_index);
       Serf::Type serf_type = serf->get_type();
       if ((serf_type < Serf::TypeKnight0) || (serf_type > Serf::TypeKnight4)) {
         throw ExceptionFreeserf("Not a knight among the castle defenders.");
@@ -2328,7 +2336,7 @@ PopupBox::draw_resdir_box() {
     draw_green_number(14, 80, knights[1]);
     draw_green_number(14, 100, knights[0]);
   } else if (type != Building::TypeStock) {
-    interface->close_popup();
+    interface->close_dialog();
     return;
   }
 
@@ -2378,7 +2386,7 @@ PopupBox::draw_sett_8_box() {
   draw_box_background(PatternCheckerdDiagonalBrown);
   draw_custom_icon_box(layout);
 
-  Player *player = interface->get_player();
+  Player *player = player_controller->get_player();
 
   draw_slide_bar(4, 12, player->get_serf_to_knight_rate());
   draw_green_string(8, 63, "%");
@@ -2421,7 +2429,8 @@ PopupBox::draw_sett_6_box() {
 
   draw_box_background(PatternCheckerdDiagonalBrown);
   draw_custom_icon_box(layout);
-  draw_popup_resource_stairs(interface->get_player()->get_inventory_prio());
+  draw_popup_resource_stairs(
+                         player_controller->get_player()->get_inventory_prio());
 
   draw_popup_icon(6, 120, 33+current_sett_6_item);
 }
@@ -2438,7 +2447,8 @@ PopupBox::draw_bld_1_box() {
 
   draw_box_background(PatternStaresGreen);
 
-  draw_popup_building(4, 112, 0x80 + 4*interface->get_player()->get_index());
+  draw_popup_building(4, 112,
+                      0x80 + 4 * player_controller->get_player()->get_index());
   draw_custom_bld_box(layout);
 
   draw_popup_icon(0, 128, 0x3d); /* flipbox */
@@ -2510,15 +2520,15 @@ void
 PopupBox::draw_building_stock_box() {
   draw_box_background(PatternPlaidAlongGreen);
 
-  if (interface->get_player()->temp_index == 0) {
-    interface->close_popup();
+  if (player_controller->get_player()->temp_index == 0) {
+    interface->close_dialog();
     return;
   }
 
-  Building *building = interface->get_game()->get_building(
-                                           interface->get_player()->temp_index);
+  Building *building = game->get_building(
+                                   player_controller->get_player()->temp_index);
   if (building->is_burning()) {
-    interface->close_popup();
+    interface->close_dialog();
     return;
   }
 
@@ -2766,13 +2776,15 @@ PopupBox::activate_sett_5_6_item(int index) {
   if (box == TypeSett5) {
     int i;
     for (i = 0; i < 26; i++) {
-      if (interface->get_player()->get_flag_prio(i) == index) break;
+      if (player_controller->get_player()->get_flag_prio(i) == index) break;
     }
     current_sett_5_item = i+1;
   } else {
     int i;
     for (i = 0; i < 26; i++) {
-      if (interface->get_player()->get_inventory_prio(i) == index) break;
+      if (player_controller->get_player()->get_inventory_prio(i) == index) {
+        break;
+      }
     }
     current_sett_6_item = i+1;
   }
@@ -2784,10 +2796,10 @@ PopupBox::move_sett_5_6_item(int up, int to_end) {
   int cur = -1;
 
   if (interface->get_popup_box()->get_box() == TypeSett5) {
-    prio = interface->get_player()->get_flag_prio();
+    prio = player_controller->get_player()->get_flag_prio();
     cur = current_sett_5_item-1;
   } else {
-    prio = interface->get_player()->get_inventory_prio();
+    prio = player_controller->get_player()->get_inventory_prio();
     cur = current_sett_6_item-1;
   }
 
@@ -2820,20 +2832,20 @@ PopupBox::move_sett_5_6_item(int up, int to_end) {
 
 void
 PopupBox::handle_send_geologist() {
-  MapPos pos = interface->get_map_cursor_pos();
-  Flag *flag = interface->get_game()->get_flag_at_pos(pos);
+  MapPos pos = player_controller->get_cursor_pos();
+  Flag *flag = game->get_flag_at_pos(pos);
 
   if (!interface->get_game()->send_geologist(flag)) {
     play_sound(Audio::TypeSfxNotAccepted);
   } else {
     play_sound(Audio::TypeSfxAccepted);
-    interface->close_popup();
+    interface->close_dialog();
   }
 }
 
 void
 PopupBox::sett_8_train(int number) {
-  int r = interface->get_player()->promote_serfs_to_knights(number);
+  int r = player_controller->get_player()->promote_serfs_to_knights(number);
 
   if (r == 0) {
     play_sound(Audio::TypeSfxNotAccepted);
@@ -2845,7 +2857,7 @@ PopupBox::sett_8_train(int number) {
 void
 PopupBox::set_inventory_resource_mode(int mode) {
   Building *building = interface->get_game()->get_building(
-                                           interface->get_player()->temp_index);
+                                   player_controller->get_player()->temp_index);
   Inventory *inventory = building->get_inventory();
   interface->get_game()->set_inventory_resource_mode(inventory, mode);
 }
@@ -2853,16 +2865,21 @@ PopupBox::set_inventory_resource_mode(int mode) {
 void
 PopupBox::set_inventory_serf_mode(int mode) {
   Building *building = interface->get_game()->get_building(
-                                           interface->get_player()->temp_index);
+                                   player_controller->get_player()->temp_index);
   Inventory *inventory = building->get_inventory();
   interface->get_game()->set_inventory_serf_mode(inventory, mode);
+}
+
+bool
+PopupBox::build_building(int type) {
+  bool res = player_controller->build_building((Building::Type)type);
+  play_sound(res ? Audio::TypeSfxAccepted : Audio::TypeSfxNotAccepted);
+  return res;
 }
 
 void
 PopupBox::handle_action(int action, int x_, int /*y_*/) {
   set_redraw();
-
-  Player *player = interface->get_player();
 
   switch (action) {
   case ACTION_MINIMAP_CLICK:
@@ -2904,74 +2921,74 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
     set_box(TypeMap);
     break;
   case ACTION_BUILD_STONEMINE:
-    interface->build_building(Building::TypeStoneMine);
+    build_building(Building::TypeStoneMine);
     break;
   case ACTION_BUILD_COALMINE:
-    interface->build_building(Building::TypeCoalMine);
+    build_building(Building::TypeCoalMine);
     break;
   case ACTION_BUILD_IRONMINE:
-    interface->build_building(Building::TypeIronMine);
+    build_building(Building::TypeIronMine);
     break;
   case ACTION_BUILD_GOLDMINE:
-    interface->build_building(Building::TypeGoldMine);
+    build_building(Building::TypeGoldMine);
     break;
   case ACTION_BUILD_FLAG:
-    interface->build_flag();
-    interface->close_popup();
+    player_controller->build_flag();
+    interface->close_dialog();
     break;
   case ACTION_BUILD_STONECUTTER:
-    interface->build_building(Building::TypeStonecutter);
+    build_building(Building::TypeStonecutter);
     break;
   case ACTION_BUILD_HUT:
-    interface->build_building(Building::TypeHut);
+    build_building(Building::TypeHut);
     break;
   case ACTION_BUILD_LUMBERJACK:
-    interface->build_building(Building::TypeLumberjack);
+    build_building(Building::TypeLumberjack);
     break;
   case ACTION_BUILD_FORESTER:
-    interface->build_building(Building::TypeForester);
+    build_building(Building::TypeForester);
     break;
   case ACTION_BUILD_FISHER:
-    interface->build_building(Building::TypeFisher);
+    build_building(Building::TypeFisher);
     break;
   case ACTION_BUILD_MILL:
-    interface->build_building(Building::TypeMill);
+    build_building(Building::TypeMill);
     break;
   case ACTION_BUILD_BOATBUILDER:
-    interface->build_building(Building::TypeBoatbuilder);
+    build_building(Building::TypeBoatbuilder);
     break;
   case ACTION_BUILD_BUTCHER:
-    interface->build_building(Building::TypeButcher);
+    build_building(Building::TypeButcher);
     break;
   case ACTION_BUILD_WEAPONSMITH:
-    interface->build_building(Building::TypeWeaponSmith);
+    build_building(Building::TypeWeaponSmith);
     break;
   case ACTION_BUILD_STEELSMELTER:
-    interface->build_building(Building::TypeSteelSmelter);
+    build_building(Building::TypeSteelSmelter);
     break;
   case ACTION_BUILD_SAWMILL:
-    interface->build_building(Building::TypeSawmill);
+    build_building(Building::TypeSawmill);
     break;
   case ACTION_BUILD_BAKER:
-    interface->build_building(Building::TypeBaker);
+    build_building(Building::TypeBaker);
     break;
   case ACTION_BUILD_GOLDSMELTER:
-    interface->build_building(Building::TypeGoldSmelter);
+    build_building(Building::TypeGoldSmelter);
     break;
   case ACTION_BUILD_FORTRESS:
-    interface->build_building(Building::TypeFortress);
+    build_building(Building::TypeFortress);
     break;
   case ACTION_BUILD_TOWER:
-    interface->build_building(Building::TypeTower);
+    build_building(Building::TypeTower);
     break;
   case ACTION_BUILD_TOOLMAKER:
-    interface->build_building(Building::TypeToolMaker);
+    build_building(Building::TypeToolMaker);
     break;
   case ACTION_BUILD_FARM:
-    interface->build_building(Building::TypeFarm);
+    build_building(Building::TypeFarm);
     break;
   case ACTION_BUILD_PIGFARM:
-    interface->build_building(Building::TypePigFarm);
+    build_building(Building::TypePigFarm);
     break;
   case ACTION_BLD_FLIP_PAGE:
     set_box((box + 1 <= TypeAdv2Bld) ? (Type)(box + 1) : TypeBasicBldFlip);
@@ -3009,39 +3026,31 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
   case ACTION_CLOSE_BOX:
   case ACTION_CLOSE_SETT_BOX:
   case ACTION_CLOSE_GROUND_ANALYSIS:
-    interface->close_popup();
+    interface->close_dialog();
     break;
   case ACTION_SETT_8_SET_ASPECT_ALL:
-    interface->set_current_stat_8_mode((0 << 2) |
-                                    (interface->get_current_stat_8_mode() & 3));
+    current_stat_8_mode = ((0 << 2) | (current_stat_8_mode & 3));
     break;
   case ACTION_SETT_8_SET_ASPECT_LAND:
-    interface->set_current_stat_8_mode((1 << 2) |
-                                    (interface->get_current_stat_8_mode() & 3));
+    current_stat_8_mode = ((1 << 2) | (current_stat_8_mode & 3));
     break;
   case ACTION_SETT_8_SET_ASPECT_BUILDINGS:
-    interface->set_current_stat_8_mode((2 << 2) |
-                                    (interface->get_current_stat_8_mode() & 3));
+    current_stat_8_mode = ((2 << 2) | (current_stat_8_mode & 3));
     break;
   case ACTION_SETT_8_SET_ASPECT_MILITARY:
-    interface->set_current_stat_8_mode((3 << 2) |
-                                    (interface->get_current_stat_8_mode() & 3));
+    current_stat_8_mode = ((3 << 2) | (current_stat_8_mode & 3));
     break;
   case ACTION_SETT_8_SET_SCALE_30_MIN:
-    interface->set_current_stat_8_mode(
-                              (interface->get_current_stat_8_mode() & 0xc) | 0);
+    current_stat_8_mode = ((current_stat_8_mode & 0xc) | 0);
     break;
   case ACTION_SETT_8_SET_SCALE_60_MIN:
-    interface->set_current_stat_8_mode(
-                              (interface->get_current_stat_8_mode() & 0xc) | 1);
+    current_stat_8_mode = ((current_stat_8_mode & 0xc) | 1);
     break;
   case ACTION_SETT_8_SET_SCALE_600_MIN:
-    interface->set_current_stat_8_mode(
-                              (interface->get_current_stat_8_mode() & 0xc) | 2);
+    current_stat_8_mode = ((current_stat_8_mode & 0xc) | 2);
     break;
   case ACTION_SETT_8_SET_SCALE_3000_MIN:
-    interface->set_current_stat_8_mode(
-                              (interface->get_current_stat_8_mode() & 0xc) | 3);
+    current_stat_8_mode = ((current_stat_8_mode & 0xc) | 3);
     break;
   case ACTION_STAT_7_SELECT_FISH:
   case ACTION_STAT_7_SELECT_PIG:
@@ -3069,28 +3078,34 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
   case ACTION_STAT_7_SELECT_PINCER:
   case ACTION_STAT_7_SELECT_SWORD:
   case ACTION_STAT_7_SELECT_SHIELD:
-    interface->set_current_stat_7_item(action - ACTION_STAT_7_SELECT_FISH + 1);
+    current_stat_7_item = (action - ACTION_STAT_7_SELECT_FISH + 1);
     break;
-  case ACTION_ATTACKING_KNIGHTS_DEC:
+  case ACTION_ATTACKING_KNIGHTS_DEC: {
+    Player *player = player_controller->get_player();
     player->knights_attacking = std::max(player->knights_attacking-1, 0);
     break;
-  case ACTION_ATTACKING_KNIGHTS_INC:
+  }
+  case ACTION_ATTACKING_KNIGHTS_INC: {
+    Player *player = player_controller->get_player();
     player->knights_attacking = std::min(player->knights_attacking + 1,
                                 std::min(player->total_attacking_knights, 100));
     break;
-  case ACTION_START_ATTACK:
+  }
+  case ACTION_START_ATTACK: {
+    Player *player = player_controller->get_player();
     if (player->knights_attacking > 0) {
       if (player->attacking_building_count > 0) {
         play_sound(Audio::TypeSfxAccepted);
         player->start_attack();
       }
-      interface->close_popup();
+      interface->close_dialog();
     } else {
       play_sound(Audio::TypeSfxNotAccepted);
     }
     break;
+  }
   case ACTION_CLOSE_ATTACK_BOX:
-    interface->close_popup();
+    interface->close_dialog();
     break;
     /* TODO */
   case ACTION_SHOW_SETT_1:
@@ -3114,162 +3129,240 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
   case ACTION_SHOW_SETT_SELECT:
     set_box(TypeSettSelect);
     break;
-  case ACTION_SETT_1_ADJUST_STONEMINE:
-    interface->open_popup(TypeSett1);
+  case ACTION_SETT_1_ADJUST_STONEMINE: {
+    interface->open_dialog(TypeSett1);
+    Player *player = player_controller->get_player();
     player->set_food_stonemine(gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_1_ADJUST_COALMINE:
-    interface->open_popup(TypeSett1);
+  }
+  case ACTION_SETT_1_ADJUST_COALMINE: {
+    interface->open_dialog(TypeSett1);
+    Player *player = player_controller->get_player();
     player->set_food_coalmine(gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_1_ADJUST_IRONMINE:
-    interface->open_popup(TypeSett1);
+  }
+  case ACTION_SETT_1_ADJUST_IRONMINE: {
+    interface->open_dialog(TypeSett1);
+    Player *player = player_controller->get_player();
     player->set_food_ironmine(gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_1_ADJUST_GOLDMINE:
-    interface->open_popup(TypeSett1);
+  }
+  case ACTION_SETT_1_ADJUST_GOLDMINE: {
+    interface->open_dialog(TypeSett1);
+    Player *player = player_controller->get_player();
     player->set_food_goldmine(gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_2_ADJUST_CONSTRUCTION:
-    interface->open_popup(TypeSett2);
+  }
+  case ACTION_SETT_2_ADJUST_CONSTRUCTION: {
+    interface->open_dialog(TypeSett2);
+    Player *player = player_controller->get_player();
     player->set_planks_construction(gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_2_ADJUST_BOATBUILDER:
-    interface->open_popup(TypeSett2);
+  }
+  case ACTION_SETT_2_ADJUST_BOATBUILDER: {
+    interface->open_dialog(TypeSett2);
+    Player *player = player_controller->get_player();
     player->set_planks_boatbuilder(gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_2_ADJUST_TOOLMAKER_PLANKS:
-    interface->open_popup(TypeSett2);
+  }
+  case ACTION_SETT_2_ADJUST_TOOLMAKER_PLANKS: {
+    interface->open_dialog(TypeSett2);
+    Player *player = player_controller->get_player();
     player->set_planks_toolmaker(gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_2_ADJUST_TOOLMAKER_STEEL:
-    interface->open_popup(TypeSett2);
+  }
+  case ACTION_SETT_2_ADJUST_TOOLMAKER_STEEL: {
+    interface->open_dialog(TypeSett2);
+    Player *player = player_controller->get_player();
     player->set_steel_toolmaker(gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_2_ADJUST_WEAPONSMITH:
-    interface->open_popup(TypeSett2);
+  }
+  case ACTION_SETT_2_ADJUST_WEAPONSMITH: {
+    interface->open_dialog(TypeSett2);
+    Player *player = player_controller->get_player();
     player->set_steel_weaponsmith(gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_3_ADJUST_STEELSMELTER:
-    interface->open_popup(TypeSett3);
+  }
+  case ACTION_SETT_3_ADJUST_STEELSMELTER: {
+    interface->open_dialog(TypeSett3);
+    Player *player = player_controller->get_player();
     player->set_coal_steelsmelter(gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_3_ADJUST_GOLDSMELTER:
-    interface->open_popup(TypeSett3);
+  }
+  case ACTION_SETT_3_ADJUST_GOLDSMELTER: {
+    interface->open_dialog(TypeSett3);
+    Player *player = player_controller->get_player();
     player->set_coal_goldsmelter(gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_3_ADJUST_WEAPONSMITH:
-    interface->open_popup(TypeSett3);
+  }
+  case ACTION_SETT_3_ADJUST_WEAPONSMITH: {
+    interface->open_dialog(TypeSett3);
+    Player *player = player_controller->get_player();
     player->set_coal_weaponsmith(gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_3_ADJUST_PIGFARM:
-    interface->open_popup(TypeSett3);
+  }
+  case ACTION_SETT_3_ADJUST_PIGFARM: {
+    interface->open_dialog(TypeSett3);
+    Player *player = player_controller->get_player();
     player->set_wheat_pigfarm(gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_3_ADJUST_MILL:
-    interface->open_popup(TypeSett3);
+  }
+  case ACTION_SETT_3_ADJUST_MILL: {
+    interface->open_dialog(TypeSett3);
+    Player *player = player_controller->get_player();
     player->set_wheat_mill(gui_get_slider_click_value(x_));
     break;
-  case ACTION_KNIGHT_LEVEL_CLOSEST_MIN_DEC:
+  }
+  case ACTION_KNIGHT_LEVEL_CLOSEST_MIN_DEC: {
+    Player *player = player_controller->get_player();
     player->change_knight_occupation(3, 0, -1);
-    interface->open_popup(TypeKnightLevel);
+    interface->open_dialog(TypeKnightLevel);
     break;
-  case ACTION_KNIGHT_LEVEL_CLOSEST_MIN_INC:
+  }
+  case ACTION_KNIGHT_LEVEL_CLOSEST_MIN_INC: {
+    Player *player = player_controller->get_player();
     player->change_knight_occupation(3, 0, 1);
-    interface->open_popup(TypeKnightLevel);
+    interface->open_dialog(TypeKnightLevel);
     break;
-  case ACTION_KNIGHT_LEVEL_CLOSEST_MAX_DEC:
+  }
+  case ACTION_KNIGHT_LEVEL_CLOSEST_MAX_DEC: {
+    Player *player = player_controller->get_player();
     player->change_knight_occupation(3, 1, -1);
-    interface->open_popup(TypeKnightLevel);
+    interface->open_dialog(TypeKnightLevel);
     break;
-  case ACTION_KNIGHT_LEVEL_CLOSEST_MAX_INC:
+  }
+  case ACTION_KNIGHT_LEVEL_CLOSEST_MAX_INC: {
+    Player *player = player_controller->get_player();
     player->change_knight_occupation(3, 1, 1);
-    interface->open_popup(TypeKnightLevel);
+    interface->open_dialog(TypeKnightLevel);
     break;
-  case ACTION_KNIGHT_LEVEL_CLOSE_MIN_DEC:
+  }
+  case ACTION_KNIGHT_LEVEL_CLOSE_MIN_DEC: {
+    Player *player = player_controller->get_player();
     player->change_knight_occupation(2, 0, -1);
-    interface->open_popup(TypeKnightLevel);
+    interface->open_dialog(TypeKnightLevel);
     break;
-  case ACTION_KNIGHT_LEVEL_CLOSE_MIN_INC:
+  }
+  case ACTION_KNIGHT_LEVEL_CLOSE_MIN_INC: {
+    Player *player = player_controller->get_player();
     player->change_knight_occupation(2, 0, 1);
-    interface->open_popup(TypeKnightLevel);
+    interface->open_dialog(TypeKnightLevel);
     break;
-  case ACTION_KNIGHT_LEVEL_CLOSE_MAX_DEC:
+  }
+  case ACTION_KNIGHT_LEVEL_CLOSE_MAX_DEC: {
+    Player *player = player_controller->get_player();
     player->change_knight_occupation(2, 1, -1);
-    interface->open_popup(TypeKnightLevel);
+    interface->open_dialog(TypeKnightLevel);
     break;
-  case ACTION_KNIGHT_LEVEL_CLOSE_MAX_INC:
+  }
+  case ACTION_KNIGHT_LEVEL_CLOSE_MAX_INC: {
+    Player *player = player_controller->get_player();
     player->change_knight_occupation(2, 1, 1);
-    interface->open_popup(TypeKnightLevel);
+    interface->open_dialog(TypeKnightLevel);
     break;
-  case ACTION_KNIGHT_LEVEL_FAR_MIN_DEC:
+  }
+  case ACTION_KNIGHT_LEVEL_FAR_MIN_DEC: {
+    Player *player = player_controller->get_player();
     player->change_knight_occupation(1, 0, -1);
-    interface->open_popup(TypeKnightLevel);
+    interface->open_dialog(TypeKnightLevel);
     break;
-  case ACTION_KNIGHT_LEVEL_FAR_MIN_INC:
+  }
+  case ACTION_KNIGHT_LEVEL_FAR_MIN_INC: {
+    Player *player = player_controller->get_player();
     player->change_knight_occupation(1, 0, 1);
-    interface->open_popup(TypeKnightLevel);
+    interface->open_dialog(TypeKnightLevel);
     break;
-  case ACTION_KNIGHT_LEVEL_FAR_MAX_DEC:
+  }
+  case ACTION_KNIGHT_LEVEL_FAR_MAX_DEC: {
+    Player *player = player_controller->get_player();
     player->change_knight_occupation(1, 1, -1);
-    interface->open_popup(TypeKnightLevel);
+    interface->open_dialog(TypeKnightLevel);
     break;
-  case ACTION_KNIGHT_LEVEL_FAR_MAX_INC:
+  }
+  case ACTION_KNIGHT_LEVEL_FAR_MAX_INC: {
+    Player *player = player_controller->get_player();
     player->change_knight_occupation(1, 1, 1);
-    interface->open_popup(TypeKnightLevel);
+    interface->open_dialog(TypeKnightLevel);
     break;
-  case ACTION_KNIGHT_LEVEL_FARTHEST_MIN_DEC:
+  }
+  case ACTION_KNIGHT_LEVEL_FARTHEST_MIN_DEC: {
+    Player *player = player_controller->get_player();
     player->change_knight_occupation(0, 0, -1);
-    interface->open_popup(TypeKnightLevel);
+    interface->open_dialog(TypeKnightLevel);
     break;
-  case ACTION_KNIGHT_LEVEL_FARTHEST_MIN_INC:
+  }
+  case ACTION_KNIGHT_LEVEL_FARTHEST_MIN_INC: {
+    Player *player = player_controller->get_player();
     player->change_knight_occupation(0, 0, 1);
-    interface->open_popup(TypeKnightLevel);
+    interface->open_dialog(TypeKnightLevel);
     break;
-  case ACTION_KNIGHT_LEVEL_FARTHEST_MAX_DEC:
+  }
+  case ACTION_KNIGHT_LEVEL_FARTHEST_MAX_DEC: {
+    Player *player = player_controller->get_player();
     player->change_knight_occupation(0, 1, -1);
-    interface->open_popup(TypeKnightLevel);
+    interface->open_dialog(TypeKnightLevel);
     break;
-  case ACTION_KNIGHT_LEVEL_FARTHEST_MAX_INC:
+  }
+  case ACTION_KNIGHT_LEVEL_FARTHEST_MAX_INC: {
+    Player *player = player_controller->get_player();
     player->change_knight_occupation(0, 1, 1);
-    interface->open_popup(TypeKnightLevel);
+    interface->open_dialog(TypeKnightLevel);
     break;
-  case ACTION_SETT_4_ADJUST_SHOVEL:
-    interface->open_popup(TypeSett4);
+  }
+  case ACTION_SETT_4_ADJUST_SHOVEL: {
+    interface->open_dialog(TypeSett4);
+    Player *player = player_controller->get_player();
     player->set_tool_prio(0, gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_4_ADJUST_HAMMER:
-    interface->open_popup(TypeSett4);
+  }
+  case ACTION_SETT_4_ADJUST_HAMMER: {
+    interface->open_dialog(TypeSett4);
+    Player *player = player_controller->get_player();
     player->set_tool_prio(1, gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_4_ADJUST_AXE:
-    interface->open_popup(TypeSett4);
+  }
+  case ACTION_SETT_4_ADJUST_AXE: {
+    interface->open_dialog(TypeSett4);
+    Player *player = player_controller->get_player();
     player->set_tool_prio(5, gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_4_ADJUST_SAW:
-    interface->open_popup(TypeSett4);
+  }
+  case ACTION_SETT_4_ADJUST_SAW: {
+    interface->open_dialog(TypeSett4);
+    Player *player = player_controller->get_player();
     player->set_tool_prio(6, gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_4_ADJUST_SCYTHE:
-    interface->open_popup(TypeSett4);
+  }
+  case ACTION_SETT_4_ADJUST_SCYTHE: {
+    interface->open_dialog(TypeSett4);
+    Player *player = player_controller->get_player();
     player->set_tool_prio(4, gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_4_ADJUST_PICK:
-    interface->open_popup(TypeSett4);
+  }
+  case ACTION_SETT_4_ADJUST_PICK: {
+    interface->open_dialog(TypeSett4);
+    Player *player = player_controller->get_player();
     player->set_tool_prio(7, gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_4_ADJUST_PINCER:
-    interface->open_popup(TypeSett4);
+  }
+  case ACTION_SETT_4_ADJUST_PINCER: {
+    interface->open_dialog(TypeSett4);
+    Player *player = player_controller->get_player();
     player->set_tool_prio(8, gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_4_ADJUST_CLEAVER:
-    interface->open_popup(TypeSett4);
+  }
+  case ACTION_SETT_4_ADJUST_CLEAVER: {
+    interface->open_dialog(TypeSett4);
+    Player *player = player_controller->get_player();
     player->set_tool_prio(3, gui_get_slider_click_value(x_));
     break;
-  case ACTION_SETT_4_ADJUST_ROD:
-    interface->open_popup(TypeSett4);
+  }
+  case ACTION_SETT_4_ADJUST_ROD: {
+    interface->open_dialog(TypeSett4);
+    Player *player = player_controller->get_player();
     player->set_tool_prio(2, gui_get_slider_click_value(x_));
     break;
+  }
   case ACTION_SETT_5_6_ITEM_1:
   case ACTION_SETT_5_6_ITEM_2:
   case ACTION_SETT_5_6_ITEM_3:
@@ -3319,51 +3412,59 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
 //    }
     break;
   case ACTION_QUIT_CANCEL:
-    interface->close_popup();
+    in_quit_confirm = false;
+    interface->close_dialog();
     break;
   case ACTION_NO_SAVE_QUIT_CONFIRM:
     play_sound(Audio::TypeSfxAhhh);
     EventLoop::get_instance().quit();
     break;
   case ACTION_SHOW_QUIT:
-    interface->open_popup(TypeQuitConfirm);
+    set_box(TypeQuitConfirm);
     break;
   case ActionShowOptions:
-    interface->open_popup(TypeOptions);
+    set_box(TypeOptions);
     break;
     /* TODO */
-  case ACTION_SETT_8_CYCLE:
+  case ACTION_SETT_8_CYCLE: {
+    Player *player = player_controller->get_player();
     player->cycle_knights();
     play_sound(Audio::TypeSfxAccepted);
     break;
+  }
   case ACTION_CLOSE_OPTIONS:
-    interface->close_popup();
+    interface->close_dialog();
     break;
   case ACTION_OPTIONS_MESSAGE_COUNT_1:
-    if (interface->get_config(3)) {
-      interface->switch_config(3);
-      interface->set_config(4);
-    } else if (interface->get_config(4)) {
-      interface->switch_config(4);
-      interface->set_config(5);
-    } else if (interface->get_config(5)) {
-      interface->switch_config(5);
+    if (player_controller->get_config(3)) {
+      player_controller->switch_config(3);
+      player_controller->set_config(4);
+    } else if (player_controller->get_config(4)) {
+      player_controller->switch_config(4);
+      player_controller->set_config(5);
+    } else if (player_controller->get_config(5)) {
+      player_controller->switch_config(5);
     } else {
-      interface->set_config(3);
-      interface->set_config(4);
-      interface->set_config(5);
+      player_controller->set_config(3);
+      player_controller->set_config(4);
+      player_controller->set_config(5);
     }
     break;
-  case ACTION_DEFAULT_SETT_1:
-    interface->open_popup(TypeSett1);
+  case ACTION_DEFAULT_SETT_1: {
+    set_box(TypeSett1);
+    Player *player = player_controller->get_player();
     player->reset_food_priority();
     break;
-  case ACTION_DEFAULT_SETT_2:
-    interface->open_popup(TypeSett2);
+  }
+  case ACTION_DEFAULT_SETT_2: {
+    set_box(TypeSett2);
+    Player *player = player_controller->get_player();
     player->reset_planks_priority();
     player->reset_steel_priority();
     break;
-  case ACTION_DEFAULT_SETT_5_6:
+  }
+  case ACTION_DEFAULT_SETT_5_6: {
+    Player *player = player_controller->get_player();
     switch (box) {
       case TypeSett5:
         player->reset_flag_priority();
@@ -3376,8 +3477,9 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
         break;
     }
     break;
+  }
   case ACTION_BUILD_STOCK:
-    interface->build_building(Building::TypeStock);
+    build_building(Building::TypeStock);
     break;
   case ACTION_SHOW_CASTLE_SERF:
     set_box(TypeCastleSerf);
@@ -3407,9 +3509,11 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
   case ACTION_SHOW_SETT_6:
     set_box(TypeSett6);
     break;
-  case ACTION_SETT_8_ADJUST_RATE:
+  case ACTION_SETT_8_ADJUST_RATE: {
+    Player *player = player_controller->get_player();
     player->set_serf_to_knight_rate(gui_get_slider_click_value(x_));
     break;
+  }
   case ACTION_SETT_8_TRAIN_1:
     sett_8_train(1);
     break;
@@ -3422,37 +3526,51 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
   case ACTION_SETT_8_TRAIN_100:
     sett_8_train(100);
     break;
-  case ACTION_DEFAULT_SETT_3:
-    interface->open_popup(TypeSett3);
+  case ACTION_DEFAULT_SETT_3: {
+    interface->open_dialog(TypeSett3);
+    Player *player = player_controller->get_player();
     player->reset_coal_priority();
     player->reset_wheat_priority();
     break;
-  case ACTION_SETT_8_SET_COMBAT_MODE_WEAK:
+  }
+  case ACTION_SETT_8_SET_COMBAT_MODE_WEAK: {
+    Player *player = player_controller->get_player();
     player->drop_send_strongest();
     play_sound(Audio::TypeSfxAccepted);
     break;
-  case ACTION_SETT_8_SET_COMBAT_MODE_STRONG:
+  }
+  case ACTION_SETT_8_SET_COMBAT_MODE_STRONG: {
+    Player *player = player_controller->get_player();
     player->set_send_strongest();
     play_sound(Audio::TypeSfxAccepted);
     break;
-  case ACTION_ATTACKING_SELECT_ALL_1:
+  }
+  case ACTION_ATTACKING_SELECT_ALL_1: {
+    Player *player = player_controller->get_player();
     player->knights_attacking = player->attacking_knights[0];
     break;
-  case ACTION_ATTACKING_SELECT_ALL_2:
-    player->knights_attacking = player->attacking_knights[0]
-                                + player->attacking_knights[1];
+  }
+  case ACTION_ATTACKING_SELECT_ALL_2: {
+    Player *player = player_controller->get_player();
+    player->knights_attacking = player->attacking_knights[0] +
+                                player->attacking_knights[1];
     break;
-  case ACTION_ATTACKING_SELECT_ALL_3:
-    player->knights_attacking = player->attacking_knights[0]
-                                + player->attacking_knights[1]
-                                + player->attacking_knights[2];
+  }
+  case ACTION_ATTACKING_SELECT_ALL_3: {
+    Player *player = player_controller->get_player();
+    player->knights_attacking = player->attacking_knights[0] +
+                                player->attacking_knights[1] +
+                                player->attacking_knights[2];
     break;
-  case ACTION_ATTACKING_SELECT_ALL_4:
-    player->knights_attacking = player->attacking_knights[0]
-                                + player->attacking_knights[1]
-                                + player->attacking_knights[2]
-                                + player->attacking_knights[3];
+  }
+  case ACTION_ATTACKING_SELECT_ALL_4: {
+    Player *player = player_controller->get_player();
+    player->knights_attacking = player->attacking_knights[0] +
+                                player->attacking_knights[1] +
+                                player->attacking_knights[2] +
+                                player->attacking_knights[3];
     break;
+  }
   case ACTION_MINIMAP_BLD_1:
   case ACTION_MINIMAP_BLD_2:
   case ACTION_MINIMAP_BLD_3:
@@ -3493,10 +3611,12 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
   case ACTION_MINIMAP_BLD_EXIT:
     set_box(TypeMap);
     break;
-  case ACTION_DEFAULT_SETT_4:
-    interface->open_popup(TypeSett4);
+  case ACTION_DEFAULT_SETT_4: {
+    interface->open_dialog(TypeSett4);
+    Player *player = player_controller->get_player();
     player->reset_tool_priority();
     break;
+  }
   case ACTION_SHOW_PLAYER_FACES:
     set_box(TypePlayerFaces);
     break;
@@ -3506,12 +3626,16 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
   }
     break;
     /* TODO */
-  case ACTION_SETT_8_CASTLE_DEF_DEC:
+  case ACTION_SETT_8_CASTLE_DEF_DEC: {
+    Player *player = player_controller->get_player();
     player->decrease_castle_knights_wanted();
     break;
-  case ACTION_SETT_8_CASTLE_DEF_INC:
+  }
+  case ACTION_SETT_8_CASTLE_DEF_INC: {
+    Player *player = player_controller->get_player();
     player->increase_castle_knights_wanted();
     break;
+  }
   case ACTION_OPTIONS_MUSIC: {
     Audio &audio = Audio::get_instance();
     Audio::PPlayer player = audio.get_music_player();
@@ -3554,8 +3678,8 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
     break;
   }
   case ACTION_DEMOLISH:
-    interface->demolish_object();
-    interface->close_popup();
+    player_controller->demolish_object();
+    interface->close_dialog();
     break;
   case ACTION_SHOW_SAVE:
     file_list->set_displayed(true);
@@ -3578,7 +3702,7 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
     std::string file_path = file_list->get_folder_path() + "/" + file_name;
     if (GameStore::get_instance().save(file_path,
                                        interface->get_game().get())) {
-      interface->close_popup();
+      player_controller->dialog_close();
     }
     break;
   }
@@ -3617,7 +3741,7 @@ PopupBox::handle_box_close_clk(int cx, int cy) {
 
 void
 PopupBox::handle_box_options_clk(int cx, int cy) {
-  const int clkmap[] = {
+  const int clkmap1[] = {
     ACTION_OPTIONS_MUSIC, 106, 10, 16, 16,
     ACTION_OPTIONS_SFX, 106, 30, 16, 16,
     ACTION_OPTIONS_VOLUME_MINUS, 90, 50, 16, 16,
@@ -3627,6 +3751,24 @@ PopupBox::handle_box_options_clk(int cx, int cy) {
     ACTION_CLOSE_OPTIONS, 112, 126, 16, 16,
     -1
   };
+
+  const int clkmap2[] = {
+    ACTION_OPTIONS_MUSIC, 106, 10, 16, 16,
+    ACTION_OPTIONS_SFX, 106, 30, 16, 16,
+    ACTION_OPTIONS_VOLUME_MINUS, 90, 50, 16, 16,
+    ACTION_OPTIONS_VOLUME_PLUS, 106, 50, 16, 16,
+    ACTION_OPTIONS_FULLSCREEN, 106, 70, 16, 16,
+    ACTION_CLOSE_OPTIONS, 112, 126, 16, 16,
+    -1
+  };
+
+  int *clkmap = nullptr;
+  if (player_controller != nullptr) {
+    clkmap = (int*)clkmap1;
+  } else {
+    clkmap = (int*)clkmap2;
+  }
+
   handle_clickmap(cx, cy, clkmap);
 }
 
@@ -4350,10 +4492,12 @@ void PopupBox::hide() {
 void
 PopupBox::set_box(Type box_) {
   box = box_;
-  if (box == TypeMap) {
-    minimap->set_displayed(true);
-  } else {
-    minimap->set_displayed(false);
+  if (minimap) {
+    if (box == TypeMap) {
+      minimap->set_displayed(true);
+    } else {
+      minimap->set_displayed(false);
+    }
   }
   set_redraw();
 }

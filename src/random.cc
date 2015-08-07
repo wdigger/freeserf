@@ -108,3 +108,9 @@ operator^=(Random& left, const Random& right) {  // NOLINT
 
   return left;
 }
+
+uint16_t
+Random::rnd() {
+  Random r;
+  return r.random();
+}

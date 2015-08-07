@@ -38,6 +38,12 @@ typedef struct Character {
 
 class PlayerInfo {
  public:
+  typedef struct Color {
+    unsigned char red;
+    unsigned char green;
+    unsigned char blue;
+  } Color;
+
   typedef struct Pos {
     int col;
     int row;
@@ -56,14 +62,14 @@ class PlayerInfo {
   unsigned int supplies;
   unsigned int reproduction;
   unsigned int face;
-  Player::Color color;
+  Color color;
   std::string name;
   std::string characterization;
   Pos castle_pos;
 
  public:
   explicit PlayerInfo(Random *random_base);
-  PlayerInfo(size_t character, const Player::Color &_color,
+  PlayerInfo(size_t character, const Color &_color,
              unsigned int _intelligence, unsigned int _supplies,
              unsigned int _reproduction);
 
@@ -74,13 +80,13 @@ class PlayerInfo {
     reproduction = _reproduction; }
   void set_castle_pos(Pos _castle_pos);
   void set_character(size_t character);
-  void set_color(const Player::Color &_color) { color = _color; }
+  void set_color(const Color &_color) { color = _color; }
 
   unsigned int get_intelligence() const { return intelligence; }
   unsigned int get_supplies() const { return supplies; }
   unsigned int get_reproduction() const { return reproduction; }
   unsigned int get_face() const { return face; }
-  Player::Color get_color() const { return color; }
+  Color get_color() const { return color; }
   Pos get_castle_pos() const { return castle_pos; }
 
   bool has_castle() const;
@@ -121,7 +127,7 @@ class GameInfo {
   PPlayerInfo get_player(size_t player) const { return players[player]; }
 
   void add_player(const PPlayerInfo &player);
-  void add_player(size_t character, const Player::Color &_color,
+  void add_player(size_t character, const PlayerInfo::Color &_color,
                   unsigned int _intelligence, unsigned int _supplies,
                   unsigned int _reproduction);
   void remove_player(unsigned int index);

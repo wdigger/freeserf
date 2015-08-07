@@ -4245,25 +4245,25 @@ Serf::handle_serf_sampling_geo_spot_state() {
 
         /* Create notification for found resource. */
         if (show_notification) {
-          Message::Type mtype;
-          switch (map->get_res_type(pos)) {
+          Player::Event::Type type;
+          switch (game->get_map()->get_res_type(pos)) {
             case Map::MineralsCoal:
-              mtype = Message::TypeFoundCoal;
+              type = Player::Event::TypeFoundCoal;
               break;
             case Map::MineralsIron:
-              mtype = Message::TypeFoundIron;
+              type = Player::Event::TypeFoundIron;
               break;
             case Map::MineralsGold:
-              mtype = Message::TypeFoundGold;
+              type = Player::Event::TypeFoundGold;
               break;
             case Map::MineralsStone:
-              mtype = Message::TypeFoundStone;
+              type = Player::Event::TypeFoundStone;
               break;
             default:
               NOT_REACHED();
           }
-          game->get_player(get_owner())->add_notification(mtype, pos,
-                                                    map->get_res_type(pos) - 1);
+          game->get_player(get_owner())->fire_event(type, pos,
+                                        game->get_map()->get_res_type(pos) - 1);
         }
 
         counter += 64;
@@ -4297,8 +4297,8 @@ Serf::handle_serf_knight_engaging_building_state() {
           building->get_owner() != get_owner() &&
           building->has_knight()) {
         if (building->is_under_attack()) {
-          game->get_player(building->get_owner())->add_notification(
-                                                 Message::TypeUnderAttack,
+          game->get_player(building->get_owner())->fire_event(
+                                                 Player::Event::TypeUnderAttack,
                                                        building->get_position(),
                                                                    get_owner());
         }

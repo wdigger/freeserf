@@ -22,17 +22,11 @@
 #include "src/viewport.h"
 
 #include <algorithm>
-#include <memory>
-#include <utility>
 #include <sstream>
+#include <utility>
 
-#include "src/misc.h"
 #include "src/game.h"
-#include "src/log.h"
-#include "src/debug.h"
-#include "src/data.h"
 #include "src/audio.h"
-#include "src/gfx.h"
 #include "src/interface.h"
 #include "src/popup.h"
 #include "src/pathfinder.h"
@@ -46,6 +40,38 @@
 /* Number of cols,rows in each landscape tile */
 #define MAP_TILE_COLS  16
 #define MAP_TILE_ROWS  16
+
+Viewport::Viewport(PGame _game) {
+  game = _game;
+  map = game->get_map();
+  player_controller = nullptr;
+  layers = LayerAll;
+
+  last_tick = 0;
+
+  Data &data = Data::get_instance();
+  data_source = data.get_data_source();
+
+  /* Listen for updates to the map height */
+  map->add_change_handler(this);
+
+  map_cursor_sprites[0] = 32;
+  map_cursor_sprites[1] = 33;
+  map_cursor_sprites[2] = 33;
+  map_cursor_sprites[3] = 33;
+  map_cursor_sprites[4] = 33;
+  map_cursor_sprites[5] = 33;
+  map_cursor_sprites[6] = 33;
+}
+
+Viewport::~Viewport() {
+  map->del_change_handler(this);
+
+  if (player_controller != NULL) {
+    player_controller->del_handler(this);
+    player_controller = NULL;
+  }
+}
 
 static const uint8_t tri_spr[] = {
   32, 32, 32, 32, 32, 32, 32, 32,
@@ -265,8 +291,18 @@ Viewport::draw_down_tile_col(MapPos pos, int x_base, int y_base,
 }
 
 void
-Viewport::layout() {
-  landscape_tiles.clear();
+Viewport::set_player_controller(PPlayerController _player_controller) {
+  if (player_controller) {
+    player_controller->del_handler(this);
+  }
+
+  player_controller = _player_controller;
+  if (!player_controller) {
+    return;
+  }
+
+  player_controller->add_handler(this);
+  move_to_map_pos(player_controller->get_cursor_pos());
 }
 
 void
@@ -601,8 +637,8 @@ Viewport::draw_paths_and_borders() {
 
   /* If we're in road construction mode, also draw
      the temporarily placed roads. */
-  if (interface->is_building_road()) {
-    Road road = interface->get_building_road();
+  if ((player_controller != NULL) && player_controller->is_building_road()) {
+    Road road = player_controller->get_road();
     MapPos pos = road.get_source();
     for (Direction dir : road.get_dirs()) {
       MapPos draw_pos = pos;
@@ -699,7 +735,7 @@ Viewport::draw_ocupation_flag(Building *building, int lx, int ly, float mul) {
   if (building->has_knight()) {
     draw_game_sprite(lx, ly -
                      static_cast<int>(mul * building->get_knight_count()),
-                     182 + ((interface->get_game()->get_tick() >> 3) & 3) +
+                     182 + ((game->get_tick() >> 3) & 3) +
                      4 * static_cast<int>(building->get_threat_level()));
   }
 }
@@ -766,7 +802,7 @@ Viewport::draw_unharmed_building(Building *building, int lx, int ly) {
       if (building->is_playing_sfx()) { /* Draw elevator down */
         draw_game_sprite(lx-6, ly-39, 153);
         MapPos pos = building->get_position();
-        if ((((interface->get_game()->get_tick() +
+        if ((((game->get_tick() +
                reinterpret_cast<uint8_t*>(&pos)[1]) >> 3) & 7) == 0
             && random.random() < 40000) {
           play_sound(Audio::TypeSfxElevator);
@@ -802,8 +838,7 @@ Viewport::draw_unharmed_building(Building *building, int lx, int ly) {
 
         for (int p = 1; p <= pigs_count; p++) {
           if (pigs_count >= pigs_layout[p * 4]) {
-            int i = (pigs_layout[p * 4 + 1]
-                     + (interface->get_game()->get_tick() >> 3)) & 0xfe;
+            int i = (pigs_layout[p * 4 + 1] + (game->get_tick() >> 3)) & 0xfe;
             draw_game_sprite(lx + pigfarm_anim[i + 1] + pigs_layout[p * 4 + 2],
                              ly + pigs_layout[p * 4 + 3], pigfarm_anim[i]);
           }
@@ -812,14 +847,14 @@ Viewport::draw_unharmed_building(Building *building, int lx, int ly) {
       break;
     case Building::TypeMill:
       if (building->is_active()) {
-        if ((interface->get_game()->get_tick() >> 4) & 3) {
+        if ((game->get_tick() >> 4) & 3) {
           building->stop_playing_sfx();
         } else if (!building->is_playing_sfx()) {
           building->start_playing_sfx();
           play_sound(Audio::TypeSfxMillGrinding);
         }
         draw_shadow_and_building_sprite(lx, ly, map_building_sprite[type] +
-                                ((interface->get_game()->get_tick() >> 4) & 3));
+                                        ((game->get_tick() >> 4) & 3));
       } else {
         draw_shadow_and_building_sprite(lx, ly, map_building_sprite[type]);
       }
@@ -827,14 +862,13 @@ Viewport::draw_unharmed_building(Building *building, int lx, int ly) {
     case Building::TypeBaker:
       draw_shadow_and_building_sprite(lx, ly, map_building_sprite[type]);
       if (building->is_active()) {
-        draw_game_sprite(lx + 5, ly-21,
-                         154 + ((interface->get_game()->get_tick() >> 3) & 7));
+        draw_game_sprite(lx + 5, ly-21, 154 + ((game->get_tick() >> 3) & 7));
       }
       break;
     case Building::TypeSteelSmelter:
       draw_shadow_and_building_sprite(lx, ly, map_building_sprite[type]);
       if (building->is_active()) {
-        int i = (interface->get_game()->get_tick() >> 3) & 7;
+        int i = (game->get_tick() >> 3) & 7;
         if (i == 0 || (i == 7 && !building->is_playing_sfx())) {
           building->start_playing_sfx();
           play_sound(Audio::TypeSfxGoldBoils);
@@ -848,8 +882,7 @@ Viewport::draw_unharmed_building(Building *building, int lx, int ly) {
     case Building::TypeWeaponSmith:
       draw_shadow_and_building_sprite(lx, ly, map_building_sprite[type]);
       if (building->is_active()) {
-        draw_game_sprite(lx-16, ly-21,
-                         128 + ((interface->get_game()->get_tick() >> 3) & 7));
+        draw_game_sprite(lx-16, ly-21, 128 + ((game->get_tick() >> 3) & 7));
       }
       break;
     case Building::TypeTower:
@@ -861,14 +894,14 @@ Viewport::draw_unharmed_building(Building *building, int lx, int ly) {
       draw_ocupation_flag(building, lx - 12, ly - 21, 0.5f);
       if (building->has_knight()) {
         draw_game_sprite(lx+22, ly - 34 - (building->get_knight_count()+1)/2,
-                    182 + (((interface->get_game()->get_tick() >> 3) + 2) & 3) +
-                         4 * static_cast<int>(building->get_threat_level()));
+                         182 + (((game->get_tick() >> 3) + 2) & 3) +
+                           4 * static_cast<int>(building->get_threat_level()));
       }
       break;
     case Building::TypeGoldSmelter:
       draw_shadow_and_building_sprite(lx, ly, map_building_sprite[type]);
       if (building->is_active()) {
-        int i = (interface->get_game()->get_tick() >> 3) & 7;
+        int i = (game->get_tick() >> 3) & 7;
         if (i == 0 || (i == 7 && !building->is_playing_sfx())) {
           building->start_playing_sfx();
           play_sound(Audio::TypeSfxGoldBoils);
@@ -1113,8 +1146,8 @@ Viewport::draw_burning_building(Building *building, int lx, int ly) {
     building->stop_playing_sfx();
   }
 
-  uint16_t delta = interface->get_game()->get_tick() - building->get_tick();
-  building->set_tick(interface->get_game()->get_tick());
+  uint16_t delta = game->get_tick() - building->get_tick();
+  building->set_tick(game->get_tick());
 
   if (building->get_burning_counter() >= delta) {
     building->decrease_burning_counter(delta);  // TODO(jonls): this is also
@@ -1142,7 +1175,7 @@ Viewport::draw_burning_building(Building *building, int lx, int ly) {
 
 void
 Viewport::draw_building(MapPos pos, int lx, int ly) {
-  Building *building = interface->get_game()->get_building_at_pos(pos);
+  Building *building = game->get_building_at_pos(pos);
 
   if (building->is_burning()) {
     draw_burning_building(building, lx, ly);
@@ -1153,7 +1186,7 @@ Viewport::draw_building(MapPos pos, int lx, int ly) {
 
 void
 Viewport::draw_water_waves(MapPos pos, int lx, int ly) {
-  int sprite = (((pos ^ 5) + (interface->get_game()->get_tick() >> 3)) & 0xf);
+  int sprite = (((pos ^ 5) + (game->get_tick() >> 3)) & 0xf);
 
   if (map->type_down(pos) <= Map::TerrainWater3 &&
       map->type_up(pos) <= Map::TerrainWater3) {
@@ -1181,9 +1214,14 @@ Viewport::draw_water_waves_row(MapPos pos, int y_base, int cols,
   }
 }
 
+Color
+Viewport::get_player_color(unsigned int index) const {
+  return Color(0xff, 0xff, 0xff, 0xff);
+}
+
 void
 Viewport::draw_flag_and_res(MapPos pos, int lx, int ly) {
-  Flag *flag = interface->get_game()->get_flag_at_pos(pos);
+  Flag *flag = game->get_flag_at_pos(pos);
 
   int res_pos[] = {  6, -4,
                     10, -2,
@@ -1202,10 +1240,9 @@ Viewport::draw_flag_and_res(MapPos pos, int lx, int ly) {
   }
 
   int pl_num = flag->get_owner();
-  Color player_color = interface->get_player_color(pl_num);
-  int spr = 0x80 + ((interface->get_game()->get_tick() >> 3) & 3);
+  int spr = 0x80 + ((game->get_tick() >> 3) & 3);
 
-  draw_shadow_and_building_sprite(lx, ly, spr, player_color);
+  draw_shadow_and_building_sprite(lx, ly, spr, get_player_color(pl_num));
 
   for (unsigned int i = 3; i < 8; i++) {
     if (flag->get_resource_at_slot(i) != Resource::TypeNone) {
@@ -1237,7 +1274,7 @@ Viewport::draw_map_objects_row(MapPos pos, int y_base, int cols, int x_base) {
         /* Adding sprite number to animation ensures
            that the tree animation won't be synchronized
            for all trees on the map. */
-        int tree_anim = (interface->get_game()->get_tick() + sprite) >> 4;
+        int tree_anim = (game->get_tick() + sprite) >> 4;
         if (sprite < 16) {
           sprite = (sprite & ~7) + (tree_anim & 7);
         } else {
@@ -1884,7 +1921,7 @@ Viewport::draw_active_serf(Serf *serf, MapPos pos, int x_base, int y_base) {
   int body = serf_get_body(serf);
 
   if (body > -1) {
-    Color color = interface->get_player_color(serf->get_owner());
+    Color color = get_player_color(serf->get_owner());
     draw_row_serf(lx, ly, true, color, body);
     if (layers & Layer::LayerGrid) {
       frame->draw_number(lx, ly, serf->get_index(), Color(0, 0, 128));
@@ -1902,7 +1939,7 @@ Viewport::draw_active_serf(Serf *serf, MapPos pos, int x_base, int y_base) {
       serf->get_state() == Serf::StateKnightAttackingDefeatFree) {
     int index = serf->get_attacking_def_index();
     if (index != 0) {
-      Serf *def_serf = interface->get_game()->get_serf(index);
+      Serf *def_serf = game->get_serf(index);
 
       Data::Animation animation =
                            data_source->get_animation(def_serf->get_animation(),
@@ -1913,7 +1950,7 @@ Viewport::draw_active_serf(Serf *serf, MapPos pos, int x_base, int y_base) {
       int body = serf_get_body(def_serf);
 
       if (body > -1) {
-        Color color = interface->get_player_color(def_serf->get_owner());
+        Color color = get_player_color(def_serf->get_owner());
         draw_row_serf(lx, ly, true, color, body);
       }
     }
@@ -1925,7 +1962,7 @@ Viewport::draw_active_serf(Serf *serf, MapPos pos, int x_base, int y_base) {
       animation.sprite >= 0x80 && animation.sprite < 0xc0) {
     int index = serf->get_attacking_def_index();
     if (index != 0) {
-      Serf *def_serf = interface->get_game()->get_serf(index);
+      Serf *def_serf = game->get_serf(index);
 
       if (serf->get_animation() >= 146 && serf->get_animation() < 156) {
         if ((serf->get_attacking_field_D() == 0 ||
@@ -2000,7 +2037,7 @@ Viewport::draw_serf_row(MapPos pos, int y_base, int cols, int x_base) {
 
     /* Active serf */
     if (map->has_serf(pos)) {
-      Serf *serf = interface->get_game()->get_serf_at_pos(pos);
+      Serf *serf = game->get_serf_at_pos(pos);
 
       if (serf->get_state() != Serf::StateMining ||
           (serf->get_mining_substate() != 3 &&
@@ -2022,11 +2059,10 @@ Viewport::draw_serf_row(MapPos pos, int y_base, int cols, int x_base) {
         lx = x_base + arr_3[2* map->paths(pos)];
         ly = y_base - 4 * map->get_height(pos) +
             arr_3[2 * map->paths(pos) + 1];
-        body = arr_2[((interface->get_game()->get_tick() +
-                       arr_1[pos & 0xf]) >> 3) & 0x7f];
+        body = arr_2[((game->get_tick() + arr_1[pos & 0xf]) >> 3) & 0x7f];
       }
 
-      Color color = interface->get_player_color(map->get_owner(pos));
+      Color color = get_player_color(map->get_owner(pos));
       draw_row_serf(lx, ly, true, color, body);
     }
   }
@@ -2040,7 +2076,7 @@ Viewport::draw_serf_row_behind(MapPos pos, int y_base, int cols, int x_base) {
        i++, x_base += MAP_TILE_WIDTH, pos = map->move_right(pos)) {
     /* Active serf */
     if (map->has_serf(pos)) {
-      Serf *serf = interface->get_game()->get_serf_at_pos(pos);
+      Serf *serf = game->get_serf_at_pos(pos);
 
       if (serf->get_state() == Serf::StateMining &&
           (serf->get_mining_substate() == 3 ||
@@ -2128,8 +2164,6 @@ Viewport::draw_map_cursor_possible_build() {
   int y_off = 0;
   MapPos base_pos = get_offset(&x_off, &y_off);
 
-  PGame game = interface->get_game();
-
   for (int x_base = x_off; x_base < width + MAP_TILE_WIDTH;
        x_base += MAP_TILE_WIDTH) {
     MapPos pos = base_pos;
@@ -2149,20 +2183,21 @@ Viewport::draw_map_cursor_possible_build() {
 
       /* Draw possible building */
       int sprite = -1;
-      if (game->can_build_castle(pos, interface->get_player())) {
-        sprite = 50;
-      } else if (game->can_player_build(pos, interface->get_player()) &&
-                 Map::map_space_from_obj[map->get_obj(pos)] == Map::SpaceOpen &&
-                 (game->can_build_flag(map->move_down_right(pos),
-                                       interface->get_player()) ||
-                 map->has_flag(map->move_down_right(pos)))) {
-        if (game->can_build_mine(pos)) {
-          sprite = 48;
-        } else if (game->can_build_large(pos)) {
+      switch (player_controller->build_possibility_at(pos)) {
+        case PlayerController::BuildPossibilityCastle:
           sprite = 50;
-        } else if (game->can_build_small(pos)) {
+          break;
+        case PlayerController::BuildPossibilityMine:
+          sprite = 48;
+          break;
+        case PlayerController::BuildPossibilityLarge:
+          sprite = 50;
+          break;
+        case PlayerController::BuildPossibilitySmall:
           sprite = 49;
-        }
+          break;
+        default:
+          break;
       }
 
       if (sprite >= 0) {
@@ -2185,11 +2220,15 @@ Viewport::draw_map_cursor_possible_build() {
 
 void
 Viewport::draw_map_cursor() {
+  if (player_controller == NULL) {
+    return;
+  }
+
   if (layers & LayerBuilds) {
     draw_map_cursor_possible_build();
   }
 
-  MapPos pos = interface->get_map_cursor_pos();
+  MapPos pos = player_controller->get_cursor_pos();
 
 /*
   int x = map->pos_col(pos);
@@ -2199,11 +2238,11 @@ Viewport::draw_map_cursor() {
   frame->draw_string(0, 0, s.str(), 75, 0);
 */
 
-  draw_map_cursor_sprite(pos, interface->get_map_cursor_sprite(0));
+  draw_map_cursor_sprite(pos, map_cursor_sprites[0]);
 
   for (Direction d : cycle_directions_cw()) {
     draw_map_cursor_sprite(map->move(pos, d),
-                           interface->get_map_cursor_sprite(1+d));
+                           map_cursor_sprites[1+d]);
   }
 }
 
@@ -2293,13 +2332,17 @@ Viewport::internal_draw() {
 
 bool
 Viewport::handle_click_left(int lx, int ly) {
+  if (player_controller == nullptr) {
+    return false;
+  }
+
   set_redraw();
 
   MapPos clk_pos = map_pos_from_screen_pix(lx, ly);
 
-  if (interface->is_building_road()) {
-    int dx = -map->dist_x(interface->get_map_cursor_pos(), clk_pos) + 1;
-    int dy = -map->dist_y(interface->get_map_cursor_pos(), clk_pos) + 1;
+  if (player_controller->is_building_road()) {
+    int dx = -map->dist_x(player_controller->get_cursor_pos(), clk_pos) + 1;
+    int dy = -map->dist_y(player_controller->get_cursor_pos(), clk_pos) + 1;
     Direction dir = DirectionNone;
 
     if (dx == 0) {
@@ -2330,11 +2373,11 @@ Viewport::handle_click_left(int lx, int ly) {
       return false;
     }
 
-    if (interface->build_road_is_valid_dir(dir)) {
-      Road road = interface->get_building_road();
+    if (player_controller->get_road().is_valid_extension(map.get(), dir)) {
+      Road road = player_controller->get_road();
       if (road.is_undo(dir)) {
         /* Delete existing path */
-        int r = interface->remove_road_segment();
+        int r = player_controller->remove_road_segment();
         if (r < 0) {
           play_sound(Audio::TypeSfxNotAccepted);
         } else {
@@ -2342,7 +2385,7 @@ Viewport::handle_click_left(int lx, int ly) {
         }
       } else {
         /* Build new road segment */
-        int r = interface->build_road_segment(dir);
+        int r = player_controller->build_road_segment(dir);
         if (r < 0) {
           play_sound(Audio::TypeSfxNotAccepted);
         } else if (r == 0) {
@@ -2353,7 +2396,7 @@ Viewport::handle_click_left(int lx, int ly) {
       }
     }
   } else {
-    interface->update_map_cursor_pos(clk_pos);
+    player_controller->set_cursor_pos(clk_pos);
     play_sound(Audio::TypeSfxClick);
   }
 
@@ -2362,21 +2405,22 @@ Viewport::handle_click_left(int lx, int ly) {
 
 bool
 Viewport::handle_dbl_click(int lx, int ly, Event::Button button) {
-  if (button != Event::ButtonLeft) return 0;
+  if ((player_controller == nullptr) || (button != Event::ButtonLeft)) {
+    return false;
+  }
 
   set_redraw();
 
-  Player *player = interface->get_player();
+  Player *player = player_controller->get_player();
 
   MapPos clk_pos = map_pos_from_screen_pix(lx, ly);
 
-  if (interface->is_building_road()) {
-    if (clk_pos != interface->get_map_cursor_pos()) {
-      MapPos pos = interface->get_building_road().get_end(map.get());
-      Road road = pathfinder_map(map.get(), pos, clk_pos,
-                                 &interface->get_building_road());
+  if (player_controller->is_building_road()) {
+    if (clk_pos != player_controller->get_cursor_pos()) {
+      MapPos pos = player_controller->get_road().get_end(map.get());
+      Road road = pathfinder_map(map.get(), pos, clk_pos);
       if (road.get_length() != 0) {
-        int r = interface->extend_road(road);
+        int r = player_controller->extend_road(road);
         if (r < 0) {
           play_sound(Audio::TypeSfxNotAccepted);
         } else if (r == 1) {
@@ -2388,11 +2432,10 @@ Viewport::handle_dbl_click(int lx, int ly, Event::Button button) {
         play_sound(Audio::TypeSfxNotAccepted);
       }
     } else {
-      bool r = interface->get_game()->build_flag(
-                                                interface->get_map_cursor_pos(),
-                                                 player);
+      bool r = game->build_flag(player_controller->get_cursor_pos(),
+                                player);
       if (r) {
-        interface->build_road();
+        player_controller->build_road();
       } else {
         play_sound(Audio::TypeSfxNotAccepted);
       }
@@ -2405,40 +2448,42 @@ Viewport::handle_dbl_click(int lx, int ly, Event::Button button) {
 
     if (map->get_obj(clk_pos) == Map::ObjectFlag) {
       if (map->get_owner(clk_pos) == player->get_index()) {
-        interface->open_popup(PopupBox::TypeTransportInfo);
+        player_controller->dialog_open(PopupBox::TypeTransportInfo);
       }
 
       player->temp_index = map->get_obj_index(clk_pos);
     } else { /* Building */
-      Building *building = interface->get_game()->get_building_at_pos(clk_pos);
+      Building *building = game->get_building_at_pos(clk_pos);
       if ((building == nullptr) || building->is_burning()) {
         return false;
       }
       if (map->get_owner(clk_pos) == player->get_index()) {
+        Building *building = game->get_building_at_pos(clk_pos);
         if (!building->is_done()) {
-          interface->open_popup(PopupBox::TypeOrderedBld);
+          player_controller->dialog_open(PopupBox::TypeOrderedBld);
         } else if (building->get_type() == Building::TypeCastle) {
-          interface->open_popup(PopupBox::TypeCastleRes);
+          player_controller->dialog_open(PopupBox::TypeCastleRes);
         } else if (building->get_type() == Building::TypeStock) {
           if (!building->is_active()) return 0;
-          interface->open_popup(PopupBox::TypeCastleRes);
+          player_controller->dialog_open(PopupBox::TypeCastleRes);
         } else if (building->get_type() == Building::TypeHut ||
                    building->get_type() == Building::TypeTower ||
                    building->get_type() == Building::TypeFortress) {
-          interface->open_popup(PopupBox::TypeDefenders);
+          player_controller->dialog_open(PopupBox::TypeDefenders);
         } else if (building->get_type() == Building::TypeStoneMine ||
                    building->get_type() == Building::TypeCoalMine ||
                    building->get_type() == Building::TypeIronMine ||
                    building->get_type() == Building::TypeGoldMine) {
-          interface->open_popup(PopupBox::TypeMineOutput);
+          player_controller->dialog_open(PopupBox::TypeMineOutput);
         } else {
-          interface->open_popup(PopupBox::TypeBldStock);
+          player_controller->dialog_open(PopupBox::TypeBldStock);
         }
 
-        player->temp_index = map->get_obj_index(clk_pos);
+        player_controller->set_temp_index(map->get_obj_index(clk_pos));
       } else { /* Foreign building */
         /* TODO handle coop mode*/
-        player->building_attacked = building->get_index();
+        player_controller->get_player()->building_attacked =
+                                                          building->get_index();
 
         if (building->is_done() &&
             building->is_military()) {
@@ -2455,8 +2500,9 @@ Viewport::handle_dbl_click(int lx, int ly, Event::Button button) {
           for (int i = 257; i >= 0; i--) {
             MapPos pos = map->pos_add_spirally(building->get_position(),
                                                        7+257-i);
-            if (map->has_owner(pos)
-                && map->get_owner(pos) == player->get_index()) {
+            if (map->has_owner(pos) &&
+                map->get_owner(pos) ==
+                                 player_controller->get_player()->get_index()) {
               found = 1;
               break;
             }
@@ -2479,16 +2525,17 @@ Viewport::handle_dbl_click(int lx, int ly, Event::Button button) {
             default: NOT_REACHED(); break;
           }
 
-          int knights =
-                 player->knights_available_for_attack(building->get_position());
-          player->knights_attacking = std::min(knights, max_knights);
-          interface->open_popup(PopupBox::TypeStartAttack);
+          int knights = player_controller->get_player()->
+                         knights_available_for_attack(building->get_position());
+          player_controller->get_player()->knights_attacking =
+                                                 std::min(knights, max_knights);
+          player_controller->dialog_open(PopupBox::TypeStartAttack);
         }
       }
     }
   }
 
-  return false;
+  return true;
 }
 
 bool
@@ -2500,24 +2547,6 @@ Viewport::handle_drag(int lx, int ly) {
   return true;
 }
 
-Viewport::Viewport(Interface *_interface, PMap _map)
-  : interface(_interface)
-  , map(_map) {
-  map->add_change_handler(this);
-  layers = LayerAll;
-
-  offset_x = 0;
-  offset_y = 0;
-
-  last_tick = 0;
-
-  data_source = Data::get_instance().get_data_source();
-}
-
-Viewport::~Viewport() {
-  map->del_change_handler(this);
-}
-
 void
 Viewport::on_height_changed(MapPos pos) {
   redraw_map_pos(pos);
@@ -2525,8 +2554,9 @@ Viewport::on_height_changed(MapPos pos) {
 
 void
 Viewport::on_object_changed(MapPos pos) {
-  if (interface->get_map_cursor_pos() == pos) {
-    interface->update_map_cursor_pos(pos);
+  if ((player_controller != NULL) &&
+      (player_controller->get_cursor_pos() == pos)) {
+    player_controller->set_cursor_pos(pos);
   }
 }
 
@@ -2669,12 +2699,12 @@ Viewport::move_to_map_pos(MapPos pos) {
   int mx, my;
   map_pix_from_map_coord(pos, map->get_height(pos), &mx, &my);
 
-  int map_width = map->get_cols()*MAP_TILE_WIDTH;
-  int map_height = map->get_rows()*MAP_TILE_HEIGHT;
-
   /* Center screen. */
   mx -= width/2;
   my -= height/2;
+
+  int map_width = map->get_cols()*MAP_TILE_WIDTH;
+  int map_height = map->get_rows()*MAP_TILE_HEIGHT;
 
   if (my < 0) {
     mx -= (map->get_rows()*MAP_TILE_WIDTH)/2;
@@ -2692,11 +2722,11 @@ Viewport::move_to_map_pos(MapPos pos) {
 
 void
 Viewport::move_by_pixels(int lx, int ly) {
-  int lwidth = map->get_cols() * MAP_TILE_WIDTH;
-  int lheight = map->get_rows() * MAP_TILE_HEIGHT;
-
   offset_x += lx;
   offset_y += ly;
+
+  int lwidth = map->get_cols()*MAP_TILE_WIDTH;
+  int lheight = map->get_rows()*MAP_TILE_HEIGHT;
 
   if (offset_y < 0) {
     offset_y += lheight;
@@ -2716,11 +2746,161 @@ Viewport::move_by_pixels(int lx, int ly) {
 /* Called periodically when the game progresses. */
 void
 Viewport::update() {
-  int tick_xor = interface->get_game()->get_tick() ^ last_tick;
-  last_tick = interface->get_game()->get_tick();
+  animation_tick = game->get_tick();
+  int tick_xor = animation_tick ^ last_tick;
+  last_tick = animation_tick;
 
   /* Viewport animation does not care about low bits in anim */
   if (tick_xor >= 1 << 3) {
     set_redraw();
   }
+}
+
+void
+Viewport::switch_layer(Layer layer) {
+  layers ^= layer;
+  set_redraw();
+}
+
+void
+Viewport::set_layers(unsigned int _layers) {
+  if (layers == _layers) {
+    return;
+  }
+
+  layers = _layers;
+  set_redraw();
+}
+
+void
+Viewport::move_offset(int dx, int dy) {
+  offset_x += dx;
+  offset_y += dy;
+  set_redraw();
+}
+
+int cursor_sprites[] = {
+  32, 33,  // CAN_BUILD_NONE = 0
+  47, 33,  // CAN_BUILD_FLAG = 1
+  48, 47,  // CAN_BUILD_MINE = 2
+  49, 47,  // CAN_BUILD_SMALL = 3
+  50, 47,  // CAN_BUILD_LARGE = 4
+  50, 47,  // CAN_BUILD_CASTLE = 5
+};
+
+/* Set the appropriate sprites for the panel buttons and the map cursor. */
+void
+Viewport::update_cursor() {
+  if (player_controller->is_building_road()) {
+    for (Direction d : cycle_directions_cw()) {
+      switch (player_controller->get_pave_possibility(d)) {
+        case PlayerController::PavePossibilityNone:
+          map_cursor_sprites[d+1] = 44;
+          break;
+        case PlayerController::PavePossibilityUndo:
+          map_cursor_sprites[d+1] = 45;
+          break;
+        case PlayerController::PavePossibilityDo:
+          map_cursor_sprites[d+1] = 39 +
+          player_controller->get_road_elevation(d);
+          break;
+        default:
+          break;
+      }
+    }
+  } else {
+    PlayerController::BuildPossibility bp =
+                                     player_controller->get_build_possibility();
+    switch (player_controller->get_cursor_type()) {
+      case PlayerController::CursorTypeNone:
+        map_cursor_sprites[0] = 32;
+        map_cursor_sprites[2] = 33;
+        break;
+      case PlayerController::CursorTypeFlag:
+        map_cursor_sprites[0] = 51;
+        map_cursor_sprites[2] = 33;
+        break;
+      case PlayerController::CursorTypeRemovableFlag:
+        map_cursor_sprites[0] = 51;
+        map_cursor_sprites[2] = 33;
+        break;
+      case PlayerController::CursorTypeBuilding:
+        map_cursor_sprites[0] = 32;
+        map_cursor_sprites[2] = 33;
+        break;
+      case PlayerController::CursorTypePath:
+        map_cursor_sprites[0] = 52;
+        map_cursor_sprites[2] = 33;
+        if (bp != PlayerController::BuildPossibilityNone) {
+          map_cursor_sprites[0] = 47;
+        }
+        break;
+      case PlayerController::CursorTypeClearByFlag:
+        if (bp < PlayerController::BuildPossibilityMine) {
+          map_cursor_sprites[0] = 32;
+          map_cursor_sprites[2] = 33;
+        } else {
+          map_cursor_sprites[0] = 46 +
+                                  player_controller->get_build_possibility();
+          map_cursor_sprites[2] = 33;
+        }
+        break;
+      case PlayerController::CursorTypeClearByPath:
+        if (bp != PlayerController::BuildPossibilityNone) {
+          map_cursor_sprites[0] = 46 + bp;
+          if (bp == PlayerController::BuildPossibilityFlag) {
+            map_cursor_sprites[2] = 33;
+          } else {
+            map_cursor_sprites[2] = 47;
+          }
+        } else {
+          map_cursor_sprites[0] = 32;
+          map_cursor_sprites[2] = 33;
+        }
+        break;
+      case PlayerController::CursorTypeClear:
+        map_cursor_sprites[0] = cursor_sprites[bp * 2];
+        map_cursor_sprites[2] = cursor_sprites[bp * 2 + 1];
+        break;
+      default:
+        NOT_REACHED();
+        break;
+    }
+  }
+}
+
+void
+Viewport::road_building_state_changed(bool building_road) {
+  if (!building_road) {
+    map_cursor_sprites[1] = 33;
+    map_cursor_sprites[2] = 33;
+    map_cursor_sprites[3] = 33;
+    map_cursor_sprites[4] = 33;
+    map_cursor_sprites[5] = 33;
+    map_cursor_sprites[6] = 33;
+  }
+  update_cursor();
+  set_redraw();
+}
+
+void
+Viewport::cursor_position_changed(MapPos pos, bool scroll) {
+  if (scroll) {
+    move_to_map_pos(pos);
+  }
+
+  set_redraw();
+}
+
+void
+Viewport::cursor_type_changed(PlayerController::CursorType type) {
+  update_cursor();
+  set_redraw();
+}
+
+void
+Viewport::build_possibility_changed(
+                               PlayerController::BuildPossibility possibility) {
+  update_cursor();
+  set_redraw();
 }

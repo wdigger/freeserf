@@ -22,6 +22,7 @@
 #include "src/player.h"
 
 #include <algorithm>
+#include <memory>
 
 #include "src/game.h"
 #include "src/log.h"
@@ -57,8 +58,6 @@ Player::Player(Game* game, unsigned int index)
   , resource_count_history{}
   , attacking_knights{} {
   build = 0;
-  color = { 0 };
-  face = -1;
   flags = 0;
   castle_inventory = 0;
   reproduction_counter = 0;
@@ -181,74 +180,29 @@ Player::init(unsigned int _intelligence, unsigned int _supplies,
 
   initial_supplies = _supplies;
   reproduction_reset = (60 - (size_t)_reproduction) * 50;
-  ai_intelligence = (1300 * (size_t)_intelligence) + 13535;
+  ai_intelligence = (1300 * _intelligence) + 13535;
   reproduction_counter = static_cast<int>(reproduction_reset);
 }
 
 void
-Player::init_view(Color _color, unsigned int _face) {
-  face = _face;
+Player::add_handler(Player::Handler *handler) {
+  handlers.push_back(handler);
+}
 
-  if (face < 12) { /* AI player */
-    flags |= BIT(7); /* Set AI bit */
-    /* TODO ... */
-    /*game.max_next_index = 49;*/
+void
+Player::del_handler(Player::Handler *handler) {
+  handlers.remove(handler);
+}
+
+// Enqueue a new notification message for player
+void
+Player::fire_event(Player::Event::Type type, MapPos pos, unsigned int data) {
+  PEvent event = std::make_shared<Event>(index, type, game->get_tick(), pos,
+                                         data);
+  events.push_back(event);
+  for (Handler *handler : handlers) {
+    handler->on_event(event);
   }
-
-  if (is_ai()) init_ai_values(face);
-
-  color = _color;
-}
-
-/* Initialize AI parameters. */
-void
-Player::init_ai_values(size_t face_) {
-  const int ai_values_0[] = { 13, 10, 16, 9, 10, 8, 6, 10, 12, 5, 8 };
-  const int ai_values_1[] = { 10000, 13000, 16000, 16000, 18000, 20000,
-                              19000, 18000, 30000, 23000, 26000 };
-  const int ai_values_2[] = { 10000, 35000, 20000, 27000, 37000, 25000,
-                              40000, 30000, 50000, 35000, 40000 };
-  const int ai_values_3[] = { 0, 36, 0, 31, 8, 480, 3, 16, 0, 193, 39 };
-  const int ai_values_4[] = { 0, 30000, 5000, 40000, 50000, 20000, 45000,
-                              35000, 65000, 25000, 30000 };
-  const int ai_values_5[] = { 60000, 61000, 60000, 65400, 63000, 62000,
-                              65000, 63000, 64000, 64000, 64000 };
-
-  ai_value_0 = ai_values_0[face_ - 1];
-  ai_value_1 = ai_values_1[face_ - 1];
-  ai_value_2 = ai_values_2[face_ - 1];
-  ai_value_3 = ai_values_3[face_ - 1];
-  ai_value_4 = ai_values_4[face_ - 1];
-  ai_value_5 = ai_values_5[face_ - 1];
-}
-
-/* Enqueue a new notification message for player. */
-void
-Player::add_notification(Message::Type type, MapPos pos, unsigned int data) {
-  flags |= BIT(3); /* Message in queue. */
-  Message new_message;
-  new_message.type = type;
-  new_message.pos = pos;
-  new_message.data = data;
-  messages.push(new_message);
-}
-
-bool
-Player::has_notification() {
-  return (messages.size() > 0);
-}
-
-Message
-Player::pop_notification() {
-  Message message = messages.front();
-  messages.pop();
-  return message;
-}
-
-Message
-Player::peek_notification() {
-  Message message = messages.front();
-  return message;
 }
 
 void
@@ -640,10 +594,9 @@ void
 Player::building_captured(Building *building_) {
   Player *def_player = game->get_player(building_->get_owner());
 
-  def_player->add_notification(Message::TypeLoseFight,
-                               building_->get_position(), index);
-  add_notification(Message::TypeWinFight, building_->get_position(),
-                   index);
+  def_player->fire_event(Event::TypeLoseFight,
+                         building_->get_position(), index);
+  fire_event(Event::TypeWinFight, building_->get_position(), index);
 
   if (building_->get_type() == Building::TypeCastle) {
     castle_score += 1;
@@ -920,20 +873,11 @@ Player::update() {
       reproduction_counter += static_cast<int>(reproduction_reset);
     }
   }
+}
 
-  /* Update timers */
-  PosTimers::iterator it = timers.begin();
-  while (it != timers.end()) {
-    it->timeout -= delta;
-    if (it->timeout < 0) {
-      /* Timer has expired. */
-      /* TODO box (+ pos) timer */
-      add_notification(Message::TypeCallToLocation, it->pos, 0);
-      it = timers.erase(it);
-    } else {
-      ++it;
-    }
-  }
+unsigned int
+Player::get_castle_flag() const {
+  return game->get_building(building)->get_flag_index();
 }
 
 void
@@ -1090,13 +1034,6 @@ Player::get_food_for_building(unsigned int bld_type) const {
 
 SaveReaderBinary&
 operator >> (SaveReaderBinary &reader, Player &player)  {
-  const Player::Color default_player_colors[] = {
-    {0x00, 0xe3, 0xe3},
-    {0xcf, 0x63, 0x63},
-    {0xdf, 0x7f, 0xef},
-    {0xef, 0xef, 0x8f}
-  };
-
   uint16_t v16;
   for (int j = 0; j < 9; j++) {
     reader >> v16;  // 0
@@ -1125,7 +1062,7 @@ operator >> (SaveReaderBinary &reader, Player &player)  {
 
   reader >> v16;  // 128
   player.index = v16;
-  player.color = default_player_colors[player.index];
+//  player.color = default_player_colors[player.index];
   reader >> v8;  // 130
   player.flags = v8;
   reader >> v8;  // 131
@@ -1261,11 +1198,11 @@ SaveReaderText&
 operator >> (SaveReaderText &reader, Player &player) {
   reader.value("flags") >> player.flags;
   reader.value("build") >> player.build;
-  unsigned int val;
-  reader.value("color")[0] >> val; player.color.red = val;
-  reader.value("color")[1] >> val; player.color.green = val;
-  reader.value("color")[2] >> val; player.color.blue = val;
-  reader.value("face") >> player.face;
+//  unsigned int val;
+//  reader.value("color")[0] >> val; player.color.red = val;
+//  reader.value("color")[1] >> val; player.color.green = val;
+//  reader.value("color")[2] >> val; player.color.blue = val;
+//  reader.value("face") >> player.face;
   for (int i = 0; i < 9; i++) {
     reader.value("tool_prio")[i] >> player.tool_prio[i];
   }
@@ -1327,10 +1264,10 @@ SaveWriterText&
 operator << (SaveWriterText &writer, Player &player) {
   writer.value("flags") << player.flags;
   writer.value("build") << player.build;
-  writer.value("color") << player.color.red;
-  writer.value("color") << player.color.green;
-  writer.value("color") << player.color.blue;
-  writer.value("face") << player.face;
+//  writer.value("color") << player.color.red;
+//  writer.value("color") << player.color.green;
+//  writer.value("color") << player.color.blue;
+//  writer.value("face") << player.face;
 
   for (int i = 0; i < 9; i++) {
     writer.value("tool_prio") << player.tool_prio[i];
@@ -1403,4 +1340,18 @@ operator << (SaveWriterText &writer, Player &player) {
   writer.value("castle_knights_wanted") << player.castle_knights_wanted;
 
   return writer;
+}
+
+// Player::Event
+
+size_t Player::Event::next_id = 0;
+
+Player::Event::Event(unsigned int _index, Type _type, unsigned int _tick,
+                     MapPos _pos, unsigned int _data)
+  : index(_index)
+  , type(_type)
+  , tick(_tick)
+  , pos(_pos)
+  , data(_data) {
+  id = next_id++;
 }

@@ -175,7 +175,7 @@ Building::increase_mining(int res) {
       /* TODO Burn building. */
     }
 
-    player->add_notification(Message::TypeMineEmpty, pos, type - TypeStoneMine);
+    player->fire_event(Player::Event::TypeMineEmpty, pos, type - TypeStoneMine);
   }
 
   progress = (progress << 1) & 0xffff;
@@ -212,8 +212,8 @@ Building::set_first_knight(unsigned int serf) {
         break;
     }
 
-    game->get_player(owner)->add_notification(Message::TypeKnightOccupied, pos,
-                                              mil_type);
+    game->get_player(owner)->fire_event(Player::Event::TypeKnightOccupied, pos,
+                                        mil_type);
 
     Flag *f = game->get_flag_at_pos(game->get_map()->move_down_right(pos));
     f->clear_flags();
@@ -730,8 +730,8 @@ Building::update() {
           stock[1].available = 0xff;
           active = true;
 
-          game->get_player(get_owner())->add_notification(
-                                 Message::TypeNewStock, pos, 0);
+          game->get_player(get_owner())->fire_event(Player::Event::TypeNewStock,
+                                                    pos);
         } else {
           if (!serf_request_failed && !holder && !serf_requested) {
             send_serf_to_building(Serf::TypeTransporter,

@@ -22,8 +22,9 @@
 #ifndef SRC_PLAYER_H_
 #define SRC_PLAYER_H_
 
-#include <queue>
+#include <list>
 #include <vector>
+#include <memory>
 
 #include "src/map.h"
 #include "src/serf.h"
@@ -36,40 +37,6 @@ class SaveReaderBinary;
 class SaveReaderText;
 class SaveWriterText;
 
-class Message {
- public:
-  typedef enum Type {
-    TypeNone = 0,
-    TypeUnderAttack = 1,
-    TypeLoseFight = 2,
-    TypeWinFight = 3,
-    TypeMineEmpty = 4,
-    TypeCallToLocation = 5,
-    TypeKnightOccupied = 6,
-    TypeNewStock = 7,
-    TypeLostLand = 8,
-    TypeLostBuildings = 9,
-    TypeEmergencyActive = 10,
-    TypeEmergencyNeutral = 11,
-    TypeFoundGold = 12,
-    TypeFoundIron = 13,
-    TypeFoundCoal = 14,
-    TypeFoundStone = 15,
-    TypeCallToMenu = 16,
-    Type30MSinceSave = 17,
-    Type1HSinceSave = 18,
-    TypeCallToStock = 19
-  } Type;
-
- public:
-  Message() : type(TypeNone), pos(0), data(0) {}
-
-  Type type;
-  MapPos pos;
-  unsigned int data;
-};
-typedef std::queue<Message> Messages;
-
 class PosTimer {
  public:
   int timeout;
@@ -80,21 +47,60 @@ typedef std::vector<PosTimer> PosTimers;
 /* Player object. Holds the game state of a player. */
 class Player : public GameObject {
  public:
-  typedef struct Color {
-    unsigned char red;
-    unsigned char green;
-    unsigned char blue;
-  } Color;
+  class Event {
+   public:
+    typedef enum Type {
+      TypeNone = 0,
+      TypeUnderAttack = 1,
+      TypeLoseFight = 2,
+      TypeWinFight = 3,
+      TypeMineEmpty = 4,
+      TypeKnightOccupied = 5,
+      TypeNewStock = 6,
+      TypeLostLand = 7,
+      TypeLostBuildings = 8,
+      TypeEmergencyActive = 9,
+      TypeEmergencyNeutral = 10,
+      TypeFoundGold = 11,
+      TypeFoundIron = 12,
+      TypeFoundCoal = 13,
+      TypeFoundStone = 14
+    } Type;
+
+   protected:
+    size_t id;
+    static size_t next_id;
+    unsigned int index;
+    Type type;
+    unsigned int tick;
+    MapPos pos;
+    unsigned int data;
+
+   public:
+    Event(unsigned int _index, Type _type, unsigned int _tick, MapPos _pos,
+          unsigned int _data = 0);
+  };
+  typedef std::shared_ptr<Event> PEvent;
+  typedef std::list<PEvent> Events;
+
+ public:
+  class Handler {
+   public:
+    virtual ~Handler() {}
+    virtual void on_event(const PEvent event) = 0;
+  };
 
  protected:
+  typedef std::list<Handler*> Handlers;
+
+  Handlers handlers;
+
   int tool_prio[9];
   int resource_count[26];
   int flag_prio[26];
   int serf_count[27];
   int knight_occupation[4];
 
-  Color color; /* ADDED */
-  size_t face;
   int flags;
   int build;
   int completed_building_count[24];
@@ -102,7 +108,7 @@ class Player : public GameObject {
   int inventory_prio[26];
   int attacking_buildings[64];
 
-  Messages messages;
+  Events events;
   PosTimers timers;
 
   int building;
@@ -177,10 +183,9 @@ class Player : public GameObject {
 
   void init(unsigned int intelligence, unsigned int supplies,
             unsigned int reproduction);
-  void init_view(Color color, unsigned int face);
 
-  Color get_color() const { return color; }
-  size_t get_face() const { return face; }
+  void add_handler(Handler *handler);
+  void del_handler(Handler *handler);
 
   /* Whether player has built the initial castle. */
   bool has_castle() const { return (flags & 1); }
@@ -190,9 +195,6 @@ class Player : public GameObject {
   void set_send_strongest() { flags |= BIT(1); }
   /* Whether cycling of knights is in progress. */
   bool cycling_knight() const { return ((flags >> 2) & 1); }
-  /* Whether a message is queued for this player. */
-  bool has_message() const { return ((flags >> 3) & 1); }
-  void drop_message() { flags &= ~BIT(3); }
   /* Whether the knight level of military buildings is temporarily
    reduced bacause of cycling of the knights. */
   bool reduced_knight_level() const { return ((flags >> 4) & 1); }
@@ -213,10 +215,8 @@ class Player : public GameObject {
   unsigned int get_serf_count(int type) const { return serf_count[type]; }
   int get_flag_prio(int res) const { return flag_prio[res]; }
 
-  void add_notification(Message::Type type, MapPos pos, unsigned int data);
-  bool has_notification();
-  Message pop_notification();
-  Message peek_notification();
+  void fire_event(Event::Type type, MapPos pos, unsigned int data = 0);
+  Events get_events_after(PEvent event);
 
   void add_timer(int timeout, MapPos pos);
 
@@ -276,6 +276,8 @@ class Player : public GameObject {
   int *get_inventory_prio() { return inventory_prio; }
 
   int get_total_military_score() const { return total_military_score; }
+
+  unsigned int get_castle_flag() const;
 
   void update();
   void update_stats(int res);
@@ -345,9 +347,7 @@ class Player : public GameObject {
  protected:
   void create_initial_castle_serfs(Building *castle);
   bool spawn_serf(Serf **serf, Inventory **inventory, bool want_knight);
-
   void init_ai_values(size_t face);
-
   int available_knights_at_pos(MapPos pos, int index, int dist);
 };
 

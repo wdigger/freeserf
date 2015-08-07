@@ -346,7 +346,7 @@ class TimerSDL : public Timer {
   static Uint32 callback(Uint32 interval, void *param) {
     TimerSDL *timer = reinterpret_cast<TimerSDL*>(param);
     if (timer->handler != nullptr) {
-      timer->handler->on_timer_fired(timer->id);
+      timer->handler->on_timer_fired(timer, timer->id);
     }
     return interval;
   }

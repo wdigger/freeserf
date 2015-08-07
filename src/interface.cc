@@ -24,12 +24,9 @@
 #include <iostream>
 #include <fstream>
 #include <utility>
+#include <memory>
 
-#include "src/misc.h"
-#include "src/debug.h"
-#include "src/data.h"
 #include "src/audio.h"
-#include "src/freeserf_endian.h"
 #include "src/freeserf.h"
 #include "src/popup.h"
 #include "src/game-init.h"
@@ -42,188 +39,129 @@
 #define AUTOSAVE_INTERVAL  (10*60*TICKS_PER_SEC)
 
 Interface::Interface()
-  : building_road_valid_dir(0)
-  , sfx_queue{0}
+  : sfx_queue{0}
   , water_in_view(false)
-  , trees_in_view(false)
-  , return_pos(0) {
+  , trees_in_view(false) {
   displayed = true;
 
-  game = nullptr;
+  player_controller = nullptr;
 
-  map_cursor_pos = 0;
-  map_cursor_type = (CursorType)0;
-  build_possibility = BuildPossibilityNone;
-
-  player = nullptr;
-
-  /* Settings */
-  config = 0x39;
-  msg_flags = 0;
-  return_timeout = 0;
-
-  current_stat_8_mode = 0;
-  current_stat_7_item = 7;
-
-  map_cursor_sprites[0].sprite = 32;
-  map_cursor_sprites[1].sprite = 33;
-  map_cursor_sprites[2].sprite = 33;
-  map_cursor_sprites[3].sprite = 33;
-  map_cursor_sprites[4].sprite = 33;
-  map_cursor_sprites[5].sprite = 33;
-  map_cursor_sprites[6].sprite = 33;
-
+  const_tick = 0;
   last_const_tick = 0;
 
-  viewport = nullptr;
-  panel = nullptr;
-  popup = nullptr;
-  init_box = nullptr;
-  notification_box = nullptr;
-
-  GameManager::get_instance().add_handler(this);
-  set_game(GameManager::get_instance().get_current_game());
+  GameManager &game_manager = GameManager::get_instance();
+  game_manager.add_handler(this);
+  set_game(game_manager.get_current_game());
 }
 
 Interface::~Interface() {
-  GameManager::get_instance().del_handler(this);
   set_game(nullptr);
-
-  delete viewport;
-  delete panel;
-  delete popup;
-  delete init_box;
-  delete notification_box;
 }
 
 Viewport *
 Interface::get_viewport() {
-  return viewport;
+  return viewport.get();
 }
 
 PanelBar *
 Interface::get_panel_bar() {
-  return panel;
+  return panel.get();
 }
 
 PopupBox *
 Interface::get_popup_box() {
-  return popup;
-}
-
-/* Open popup box */
-void
-Interface::open_popup(int box) {
-  if (popup == nullptr) {
-    popup = new PopupBox(this);
-    add_float(popup, 0, 0);
-  }
-  layout();
-  popup->show((PopupBox::Type)box);
-  if (panel != nullptr) {
-    panel->update();
-  }
-}
-
-/* Close the current popup. */
-void
-Interface::close_popup() {
-  if (popup == nullptr) {
-    return;
-  }
-  popup->hide();
-  del_float(popup);
-  delete popup;
-  popup = nullptr;
-  update_map_cursor_pos(map_cursor_pos);
-  if (panel != nullptr) {
-    panel->update();
-  }
+  return popup.get();
 }
 
 /* Open box for starting a new game */
 void
 Interface::open_game_init() {
-  if (init_box == nullptr) {
-    init_box = new GameInitBox(this);
-    add_float(init_box, 0, 0);
-  }
+  /* Game init box */
+  init_box = std::unique_ptr<GameInitBox>(new GameInitBox(this));
   init_box->set_displayed(true);
-  init_box->set_enabled(true);
+  add_float(init_box.get(), 0, 0);
+
   if (panel != nullptr) {
-    panel->set_displayed(false);
+    panel->set_enabled(false);
   }
-  viewport->set_enabled(false);
+
+  if (viewport != nullptr) {
+    viewport->set_enabled(false);
+  }
+
   layout();
 }
 
 void
 Interface::close_game_init() {
   if (init_box != nullptr) {
-    init_box->set_displayed(false);
-    del_float(init_box);
-    delete init_box;
-    init_box = nullptr;
+    del_float(init_box.get());
+    init_box.release();
   }
+
   if (panel != nullptr) {
-    panel->set_displayed(true);
     panel->set_enabled(true);
   }
-  viewport->set_enabled(true);
-  layout();
 
-  update_map_cursor_pos(map_cursor_pos);
+  if (viewport != nullptr) {
+    viewport->set_enabled(true);
+  }
+
+  layout();
 }
 
 /* Open box for next message in the message queue */
 void
 Interface::open_message() {
-  if (!player->has_notification()) {
-    play_sound(Audio::TypeSfxClick);
-    return;
-  } else if (!BIT_TEST(msg_flags, 3)) {
-    msg_flags |= BIT(4);
-    msg_flags |= BIT(3);
-    MapPos pos = viewport->get_current_map_pos();
-    return_pos = pos;
-  }
+//  if (!player_controller->get_player()->has_notification()) {
+//    play_sound(Audio::TypeSfxClick);
+//    return;
+//  } else if (!player_controller->has_msg_flag(3)) {
+//    player_controller->set_msg_flag(4);
+//    player_controller->set_msg_flag(3);
+//    MapPos pos = viewport->get_current_map_pos();
+//    player_controller->set_return_pos(pos);
+//  }
 
-  Message message = player->pop_notification();
+//  message_t message = player->pop_notification();
 
-  if (message.type == Message::TypeCallToMenu) {
+//  if (player->msg_queue[0].type == 16) {
     /* TODO */
-  }
+//  }
 
-  if (notification_box == nullptr) {
-    notification_box = new NotificationBox(this);
-    add_float(notification_box, 0, 0);
-  }
-  notification_box->show(message);
-  layout();
+//  notification_box->show(player->msg_queue[0]);
 
-  if (BIT_TEST(0x8f3fe, message.type)) {
+//  if (BIT_TEST(0x8f3fe, type)) {
     /* Move screen to new position */
-    viewport->move_to_map_pos(message.pos);
-    update_map_cursor_pos(message.pos);
-  }
+//    map_pos_t new_pos = player->msg_queue[0].pos;
 
-  msg_flags |= BIT(1);
-  return_timeout = 60*TICKS_PER_SEC;
+//    viewport->move_to_map_pos(new_pos);
+//  }
+//  notification_box->show(message);
+//  layout();
+
+//  if (BIT_TEST(0x8f3fe, message.type)) {
+    /* Move screen to new position */
+//    viewport->move_to_map_pos(message.pos);
+//    update_map_cursor_pos(message.pos);
+//  }
+//  player->msg_queue[i-1].type = NOTIFICATION_NONE;
+
+  player_controller->set_msg_flag(1);
+  player_controller->set_return_timeout(60*TICKS_PER_SEC);
   play_sound(Audio::TypeSfxClick);
 }
 
 void
 Interface::return_from_message() {
-  if (BIT_TEST(msg_flags, 3)) { /* Return arrow present */
-    msg_flags |= BIT(4);
-    msg_flags &= ~BIT(3);
+  if (player_controller->has_msg_flag(3)) { /* Return arrow present */
+    player_controller->set_msg_flag(4);
+    player_controller->del_msg_flag(3);
 
-    return_timeout = 0;
-    viewport->move_to_map_pos(return_pos);
+    player_controller->set_return_timeout(0);
+    viewport->move_to_map_pos(player_controller->get_return_pos());
 
-    if ((popup != nullptr) && (popup->get_box() == PopupBox::TypeMessage)) {
-      close_popup();
-    }
+    if (popup->get_box() == PopupBox::TypeMessage) close_dialog();
     play_sound(Audio::TypeSfxClick);
   }
 }
@@ -235,469 +173,54 @@ Interface::close_message() {
   }
 
   notification_box->set_displayed(false);
-  del_float(notification_box);
-  delete notification_box;
-  notification_box = nullptr;
+  del_float(notification_box.get());
+  notification_box.release();
   layout();
 }
 
-/* Return the cursor type and various related values of a MapPos. */
 void
-Interface::get_map_cursor_type(const Player *player_, MapPos pos,
-                               BuildPossibility *bld_possibility,
-                               CursorType *cursor_type) {
-  PMap map = game->get_map();
-  if (player_ == nullptr) {
-    *bld_possibility = BuildPossibilityNone;
-    *cursor_type = CursorTypeClear;
-    return;
-  }
-
-  if (game->can_build_castle(pos, player_)) {
-    *bld_possibility = BuildPossibilityCastle;
-  } else if (game->can_player_build(pos, player_) &&
-       Map::map_space_from_obj[map->get_obj(pos)] ==
-         Map::SpaceOpen &&
-       (game->can_build_flag(map->move_down_right(pos), player_) ||
-         map->has_flag(map->move_down_right(pos)))) {
-    if (game->can_build_mine(pos)) {
-      *bld_possibility = BuildPossibilityMine;
-    } else if (game->can_build_large(pos)) {
-      *bld_possibility = BuildPossibilityLarge;
-    } else if (game->can_build_small(pos)) {
-      *bld_possibility = BuildPossibilitySmall;
-    } else if (game->can_build_flag(pos, player_)) {
-      *bld_possibility = BuildPossibilityFlag;
-    } else {
-      *bld_possibility = BuildPossibilityNone;
-    }
-  } else if (game->can_build_flag(pos, player_)) {
-    *bld_possibility = BuildPossibilityFlag;
-  } else {
-    *bld_possibility = BuildPossibilityNone;
-  }
-
-  if (map->get_obj(pos) == Map::ObjectFlag &&
-    map->get_owner(pos) == player_->get_index()) {
-    if (game->can_demolish_flag(pos, player_)) {
-      *cursor_type = CursorTypeRemovableFlag;
-    } else {
-      *cursor_type = CursorTypeFlag;
-    }
-  } else if (!map->has_building(pos) &&
-             !map->has_flag(pos)) {
-    int paths = map->paths(pos);
-    if (paths == 0) {
-      if (map->get_obj(map->move_down_right(pos)) ==
-          Map::ObjectFlag) {
-        *cursor_type = CursorTypeClearByFlag;
-      } else if (map->paths(map->move_down_right(pos)) == 0) {
-        *cursor_type = CursorTypeClear;
-      } else {
-        *cursor_type = CursorTypeClearByPath;
-      }
-    } else if (map->get_owner(pos) == player_->get_index()) {
-      *cursor_type = CursorTypePath;
-    } else {
-      *cursor_type = CursorTypeNone;
-    }
-  } else if ((map->get_obj(pos) == Map::ObjectSmallBuilding ||
-              map->get_obj(pos) == Map::ObjectLargeBuilding) &&
-             map->get_owner(pos) == player_->get_index()) {
-    Building *bld = game->get_building_at_pos(pos);
-    if (!bld->is_burning()) {
-      *cursor_type = CursorTypeBuilding;
-    } else {
-      *cursor_type = CursorTypeNone;
-    }
-  } else {
-    *cursor_type = CursorTypeNone;
-  }
-}
-
-/* Update the interface_t object with the information returned
-   in get_map_cursor_type(). */
-void
-Interface::determine_map_cursor_type() {
-  get_map_cursor_type(player, map_cursor_pos, &build_possibility,
-                      &map_cursor_type);
-}
-
-/* Update the interface_t object with the information returned
-   in get_map_cursor_type(). This is sets the appropriate values
-   when the player interface is in road construction mode. */
-void
-Interface::determine_map_cursor_type_road() {
-  PMap map = game->get_map();
-  MapPos pos = map_cursor_pos;
-  int h = map->get_height(pos);
-  int valid_dir = 0;
-
-  for (Direction d : cycle_directions_cw()) {
-    int sprite = 0;
-
-    if (building_road.is_undo(d)) {
-      sprite = 45; /* undo */
-      valid_dir |= BIT(d);
-    } else if (map->is_road_segment_valid(pos, d)) {
-      if (building_road.is_valid_extension(map.get(), d)) {
-        int h_diff = map->get_height(map->move(pos, d)) - h;
-        sprite = 39 + h_diff; /* height indicators */
-        valid_dir |= BIT(d);
-      } else {
-        sprite = 44;
-      }
-    } else {
-      sprite = 44; /* striped */
-    }
-    map_cursor_sprites[d+1].sprite = sprite;
-  }
-
-  building_road_valid_dir = valid_dir;
-}
-
-/* Set the appropriate sprites for the panel buttons and the map cursor. */
-void
-Interface::update_interface() {
-  if (!building_road.is_valid()) {
-    switch (map_cursor_type) {
-    case CursorTypeNone:
-      map_cursor_sprites[0].sprite = 32;
-      map_cursor_sprites[2].sprite = 33;
-      break;
-    case CursorTypeFlag:
-      map_cursor_sprites[0].sprite = 51;
-      map_cursor_sprites[2].sprite = 33;
-      break;
-    case CursorTypeRemovableFlag:
-      map_cursor_sprites[0].sprite = 51;
-      map_cursor_sprites[2].sprite = 33;
-      break;
-    case CursorTypeBuilding:
-      map_cursor_sprites[0].sprite = 32;
-      map_cursor_sprites[2].sprite = 33;
-      break;
-    case CursorTypePath:
-      map_cursor_sprites[0].sprite = 52;
-      map_cursor_sprites[2].sprite = 33;
-      if (build_possibility != BuildPossibilityNone) {
-        map_cursor_sprites[0].sprite = 47;
-      }
-      break;
-    case CursorTypeClearByFlag:
-      if (build_possibility < BuildPossibilityMine) {
-        map_cursor_sprites[0].sprite = 32;
-        map_cursor_sprites[2].sprite = 33;
-      } else {
-        map_cursor_sprites[0].sprite = 46 + build_possibility;
-        map_cursor_sprites[2].sprite = 33;
-      }
-      break;
-    case CursorTypeClearByPath:
-      if (build_possibility != BuildPossibilityNone) {
-        map_cursor_sprites[0].sprite = 46 + build_possibility;
-        if (build_possibility == BuildPossibilityFlag) {
-          map_cursor_sprites[2].sprite = 33;
-        } else {
-          map_cursor_sprites[2].sprite = 47;
-        }
-      } else {
-        map_cursor_sprites[0].sprite = 32;
-        map_cursor_sprites[2].sprite = 33;
-      }
-      break;
-    case CursorTypeClear:
-      if (build_possibility) {
-        if (build_possibility == BuildPossibilityCastle) {
-          map_cursor_sprites[0].sprite = 50;
-        } else {
-          map_cursor_sprites[0].sprite = 46 + build_possibility;
-        }
-        if (build_possibility == BuildPossibilityFlag) {
-          map_cursor_sprites[2].sprite = 33;
-        } else {
-          map_cursor_sprites[2].sprite = 47;
-        }
-      } else {
-        map_cursor_sprites[0].sprite = 32;
-        map_cursor_sprites[2].sprite = 33;
-      }
-      break;
-    default:
-      NOT_REACHED();
-      break;
-    }
-  }
-
+Interface::set_player(Player *_player) {
   if (panel != nullptr) {
-    panel->update();
-  }
-}
-
-void
-Interface::set_game(PGame new_game) {
-  if (viewport != nullptr) {
-    del_float(viewport);
-    delete viewport;
-    viewport = nullptr;
+    del_float(panel.get());
+    panel.release();
   }
 
-  game = std::move(new_game);
+  player_controller = nullptr;
 
-  if (game) {
-    viewport = new Viewport(this, game->get_map());
-    viewport->set_displayed(true);
-    add_float(viewport, 0, 0);
-  }
-
-  layout();
-
-  set_player(0);
-}
-
-void
-Interface::set_player(unsigned int player_index) {
-  if (panel != nullptr) {
-    del_float(panel);
-    delete panel;
-    panel = nullptr;
-  }
-
-  if (!game) {
-    player = nullptr;
+  if (_player == nullptr) {
     return;
   }
 
-  if ((player != nullptr) && (player_index == player->get_index())) {
-    return;
-  }
+  player_controller = std::make_shared<PlayerController>(_player);
+  player_controller->add_handler(this);
 
-  player = game->get_player(player_index);
-
-  /* Move viewport to initial position */
+  // Move viewport to initial position
   MapPos init_pos = game->get_map()->pos(0, 0);
-
-  if (player != NULL) {
-    panel = new PanelBar(this);
-    panel->set_displayed(true);
-    add_float(panel, 0, 0);
-    layout();
-
-    for (Building *building : game->get_player_buildings(player)) {
-      if (building->get_type() == Building::TypeCastle) {
-        init_pos = building->get_position();
-      }
-    }
+  unsigned int castle_flag = _player->get_castle_flag();
+  if (castle_flag != 0) {
+    Flag *flag = game->get_flag(castle_flag);
+    init_pos = game->get_map()->move_up_left(flag->get_position());
   }
 
-  update_map_cursor_pos(init_pos);
-  viewport->move_to_map_pos(map_cursor_pos);
+  viewport->set_player_controller(player_controller);
+  player_controller->set_cursor_pos(init_pos);
+
+  // Panel bar
+  panel = std::unique_ptr<PanelBar>(new PanelBar(player_controller));
+  panel->set_displayed(true);
+  add_float(panel.get(), 0, 0);
+
+  layout();
 }
 
 Color
-Interface::get_player_color(unsigned int player_index) {
-  Player::Color player_color = game->get_player(player_index)->get_color();
-  Color color(player_color.red, player_color.green, player_color.blue);
-  return color;
+Interface::get_player_color(unsigned int index) {
+  return Color(0, 0, 0, 0);
 }
 
-void
-Interface::update_map_cursor_pos(MapPos pos) {
-  map_cursor_pos = pos;
-  if (building_road.is_valid()) {
-    determine_map_cursor_type_road();
-  } else {
-    determine_map_cursor_type();
-  }
-  update_interface();
-}
-
-/* Start road construction mode for player interface. */
-void
-Interface::build_road_begin() {
-  determine_map_cursor_type();
-
-  if (map_cursor_type != CursorTypeFlag &&
-      map_cursor_type != CursorTypeRemovableFlag) {
-    update_interface();
-    return;
-  }
-
-  building_road.invalidate();
-  building_road.start(map_cursor_pos);
-  update_map_cursor_pos(map_cursor_pos);
-
-  panel->update();
-}
-
-/* End road construction mode for player interface. */
-void
-Interface::build_road_end() {
-  map_cursor_sprites[1].sprite = 33;
-  map_cursor_sprites[2].sprite = 33;
-  map_cursor_sprites[3].sprite = 33;
-  map_cursor_sprites[4].sprite = 33;
-  map_cursor_sprites[5].sprite = 33;
-  map_cursor_sprites[6].sprite = 33;
-
-  building_road.invalidate();
-  update_map_cursor_pos(map_cursor_pos);
-
-  panel->update();
-}
-
-/* Build a single road segment. Return -1 on fail, 0 on successful
-   construction, and 1 if this segment completed the path. */
-int
-Interface::build_road_segment(Direction dir) {
-  if (!building_road.is_extendable()) {
-    /* Max length reached */
-    return -1;
-  }
-
-  building_road.extend(dir);
-
-  MapPos dest;
-  int r = game->can_build_road(building_road, player, &dest, NULL);
-  if (r <= 0) {
-    /* Invalid construction, undo. */
-    return remove_road_segment();
-  }
-
-  if (game->get_map()->get_obj(dest) == Map::ObjectFlag) {
-    /* Existing flag at destination, try to connect. */
-    if (!game->build_road(building_road, player)) {
-      build_road_end();
-      return -1;
-    } else {
-      build_road_end();
-      update_map_cursor_pos(dest);
-      return 1;
-    }
-  } else if (game->get_map()->paths(dest) == 0) {
-    /* No existing paths at destination, build segment. */
-    update_map_cursor_pos(dest);
-
-    /* TODO Pathway scrolling */
-  } else {
-    /* TODO fast split path and connect on double click */
-    return -1;
-  }
-
+unsigned int
+Interface::get_player_face(unsigned int index) {
   return 0;
-}
-
-int
-Interface::remove_road_segment() {
-  MapPos dest = building_road.get_source();
-  int res = 0;
-  building_road.undo();
-  if (building_road.get_length() == 0 ||
-      game->can_build_road(building_road, player, &dest, NULL) == 0) {
-    /* Road construction is no longer valid, abort. */
-    build_road_end();
-    res = -1;
-  }
-
-  update_map_cursor_pos(dest);
-
-  /* TODO Pathway scrolling */
-
-  return res;
-}
-
-/* Extend currently constructed road with an array of directions. */
-int
-Interface::extend_road(const Road &road) {
-  Road old_road = building_road;
-  for (const Direction dir : road.get_dirs()) {
-    int r = build_road_segment(dir);
-    if (r < 0) {
-      building_road = old_road;
-      return -1;
-    } else if (r == 1) {
-      building_road.invalidate();
-      return 1;
-    }
-  }
-
-  return 0;
-}
-
-void
-Interface::demolish_object() {
-  determine_map_cursor_type();
-
-  if (map_cursor_type == CursorTypeRemovableFlag) {
-    play_sound(Audio::TypeSfxClick);
-    game->demolish_flag(map_cursor_pos, player);
-  } else if (map_cursor_type == CursorTypeBuilding) {
-    Building *building = game->get_building_at_pos(map_cursor_pos);
-
-    if (building->is_done() &&
-        (building->get_type() == Building::TypeHut ||
-         building->get_type() == Building::TypeTower ||
-         building->get_type() == Building::TypeFortress)) {
-      /* TODO */
-    }
-
-    play_sound(Audio::TypeSfxAhhh);
-    game->demolish_building(map_cursor_pos, player);
-  } else {
-    play_sound(Audio::TypeSfxNotAccepted);
-    update_interface();
-  }
-}
-
-/* Build new flag. */
-void
-Interface::build_flag() {
-  if (!game->build_flag(map_cursor_pos, player)) {
-    play_sound(Audio::TypeSfxNotAccepted);
-    return;
-  }
-
-  update_map_cursor_pos(map_cursor_pos);
-}
-
-/* Build a new building. */
-void
-Interface::build_building(Building::Type type) {
-  if (!game->build_building(map_cursor_pos, type, player)) {
-    play_sound(Audio::TypeSfxNotAccepted);
-    return;
-  }
-
-  play_sound(Audio::TypeSfxAccepted);
-  close_popup();
-
-  /* Move cursor to flag. */
-  MapPos flag_pos = game->get_map()->move_down_right(map_cursor_pos);
-  update_map_cursor_pos(flag_pos);
-}
-
-/* Build castle. */
-void
-Interface::build_castle() {
-  if (!game->build_castle(map_cursor_pos, player)) {
-    play_sound(Audio::TypeSfxNotAccepted);
-    return;
-  }
-
-  play_sound(Audio::TypeSfxAccepted);
-  update_map_cursor_pos(map_cursor_pos);
-}
-
-void
-Interface::build_road() {
-  bool r = game->build_road(building_road, player);
-  if (!r) {
-    play_sound(Audio::TypeSfxNotAccepted);
-    game->demolish_flag(map_cursor_pos, player);
-  } else {
-    play_sound(Audio::TypeSfxAccepted);
-    build_road_end();
-  }
 }
 
 void
@@ -712,14 +235,12 @@ Interface::internal_draw() {
 
 void
 Interface::layout() {
-  int panel_x = 0;
-  int panel_y = height;
+  int panel_width = 352;
+  int panel_height = 40;
+  int panel_x = (width - panel_width) / 2;
+  int panel_y = height - panel_height;
 
   if (panel != nullptr) {
-    int panel_width = 352;
-    int panel_height = 40;
-    panel_x = (width - panel_width) / 2;
-    panel_y = height - panel_height;
     panel->move_to(panel_x, panel_y);
     panel->set_size(panel_width, panel_height);
   }
@@ -734,12 +255,12 @@ Interface::layout() {
   }
 
   if (init_box != nullptr) {
-    int init_box_width = 360;
-    int init_box_height = 256;
+    int init_box_width;
+    int init_box_height;
+    init_box->get_size(&init_box_width, &init_box_height);
     int init_box_x = (width - init_box_width) / 2;
     int init_box_y = (height - init_box_height) / 2;
     init_box->move_to(init_box_x, init_box_y);
-    init_box->set_size(init_box_width, init_box_height);
   }
 
   if (notification_box != nullptr) {
@@ -758,62 +279,52 @@ Interface::layout() {
   set_redraw();
 }
 
-/* Called periodically when the game progresses. */
 void
-Interface::update() {
-  if (!game) {
+Interface::set_game(PGame _game) {
+  game = _game;
+  set_player(nullptr);
+
+  if (viewport != nullptr) {
+    del_float(viewport.get());
+    viewport.release();
+  }
+
+  if (popup != nullptr) {
+    del_float(popup.get());
+    popup.release();
+  }
+
+  if (game == nullptr) {
     return;
   }
 
-  game->update();
+  /* Viewport */
+  viewport = std::unique_ptr<Viewport>(new Viewport(game));
+  viewport->set_displayed(true);
+  add_float(viewport.get(), 0, 0);
 
-  int tick_diff = game->get_const_tick() - last_const_tick;
-  last_const_tick = game->get_const_tick();
+  layout();
+}
 
-  /* Clear return arrow after a timeout */
-  if (return_timeout < tick_diff) {
-    msg_flags |= BIT(4);
-    msg_flags &= ~BIT(3);
-    return_timeout = 0;
-  } else {
-    return_timeout -= tick_diff;
+/* Called periodically when the game progresses. */
+void
+Interface::update() {
+  /* Increment tick counters */
+  const_tick += 1;
+  last_const_tick = const_tick;
+
+  if (viewport != nullptr) {
+    viewport->update();
   }
 
-  const int msg_category[] = {
-    -1, 5, 5, 5, 4, 0, 4, 3, 4, 5,
-    5, 5, 4, 4, 4, 4, 0, 0, 0, 0
-  };
-
-  /* Handle newly enqueued messages */
-  if ((player != nullptr) && player->has_message()) {
-    player->drop_message();
-    while (player->has_notification()) {
-      Message message = player->peek_notification();
-      if (BIT_TEST(config, msg_category[message.type])) {
-        play_sound(Audio::TypeSfxMessage);
-        msg_flags |= BIT(0);
-        break;
-      }
-      player->pop_notification();
-    }
-  }
-
-  if ((player != nullptr) && BIT_TEST(msg_flags, 1)) {
-    msg_flags &= ~BIT(1);
-    while (1) {
-      if (!player->has_notification()) {
-        msg_flags &= ~BIT(0);
-        break;
-      }
-
-      Message message = player->peek_notification();
-      if (BIT_TEST(config, msg_category[message.type])) break;
-      player->pop_notification();
-    }
-  }
-
-  viewport->update();
   set_redraw();
+
+  /* Autosave periodically */
+//  if ((const_tick % AUTOSAVE_INTERVAL) == 0 &&
+//      game->game_speed > 0) {
+//    int r = save_game(1, game);
+//    if (r < 0) LOGW("main", "Autosave failed.");
+//  }
 }
 
 bool
@@ -831,10 +342,10 @@ Interface::handle_key_pressed(char key, int modifier) {
     case 27: {
       if ((notification_box != nullptr) && notification_box->is_displayed()) {
         close_message();
-      } else if ((popup != nullptr) && popup->is_displayed()) {
-        close_popup();
-      } else if (building_road.is_valid()) {
-        build_road_end();
+      } else if (get_popup_box()->is_displayed()) {
+        close_dialog();
+      } else if (player_controller->is_building_road()) {
+        player_controller->build_road_end();
       }
       break;
     }
@@ -887,9 +398,10 @@ Interface::handle_key_pressed(char key, int modifier) {
       break;
     }
     case 'j': {
+      Player *player = player_controller->get_player();
       unsigned int index = game->get_next_player(player)->get_index();
-      set_player(index);
-      Log::Debug["main"] << "Switched to player #" << index;
+      set_player(game->get_player(index));
+      Log::Debug["main"] << "Switched to player " << index << ".";
       break;
     }
     case 'z':
@@ -904,7 +416,7 @@ Interface::handle_key_pressed(char key, int modifier) {
       break;
     case 'c':
       if (modifier & 1) {
-        open_popup(PopupBox::TypeQuitConfirm);
+        open_dialog(PopupBox::TypeQuitConfirm);
       }
       break;
 
@@ -922,6 +434,9 @@ Interface::handle_event(const Event *event) {
       set_size(event->dx, event->dy);
       break;
     case Event::TypeUpdate:
+      if (game) {
+        game->update();
+      }
       update();
       break;
     case Event::TypeDraw:
@@ -937,11 +452,40 @@ Interface::handle_event(const Event *event) {
 }
 
 void
-Interface::on_new_game(PGame new_game) {
-  set_game(new_game);
+Interface::on_new_game(PGame game) {
+  set_game(game);
+  set_player(game->get_player(0));
 }
 
 void
 Interface::on_end_game(PGame /*game*/) {
   set_game(nullptr);
+}
+
+// Open popup box
+void
+Interface::open_dialog(int id) {
+  if (popup == nullptr) {
+    popup = std::unique_ptr<PopupBox>(new PopupBox(this, game,
+                                                   player_controller));
+    add_float(popup.get(), 0, 0);
+  }
+
+  popup->show((PopupBox::Type)id);
+//  if (id == BOX_MAP) {
+//    /* Synchronize minimap window with viewport. */
+//    map_pos_t pos = viewport->get_current_map_pos();
+//    popup->get_minimap()->move_to_map_pos(pos);
+//  }
+//  popup->set_displayed(1);
+  layout();
+}
+
+// Close the current popup
+void
+Interface::close_dialog() {
+  if (popup != nullptr) {
+    del_float(popup.get());
+    popup.release();
+  }
 }

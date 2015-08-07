@@ -23,12 +23,18 @@
 #define SRC_MINIMAP_H_
 
 #include <vector>
+#include <memory>
 
 #include "src/gui.h"
 #include "src/map.h"
-#include "src/game.h"
+
+class Game;
+typedef std::shared_ptr<Game> PGame;
+class PlayerController;
+typedef std::shared_ptr<PlayerController> PPlayerController;
 
 class Interface;
+class PlayerController;
 
 class Minimap : public GuiObject {
  protected:
@@ -85,9 +91,7 @@ class MinimapGame : public Minimap {
   } OwnershipMode;
 
  protected:
-  Interface *interface;
-
-  PGame game;
+  PPlayerController player_controller;
 
   int advanced;
   bool draw_roads;
@@ -95,7 +99,7 @@ class MinimapGame : public Minimap {
   OwnershipMode ownership_mode;
 
  public:
-  MinimapGame(Interface *interface, PGame game);
+  explicit MinimapGame(PPlayerController player_controller);
 
   int get_advanced() const { return advanced; }
   void set_advanced(int advanced) { this->advanced = advanced; }

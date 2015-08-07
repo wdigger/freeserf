@@ -23,10 +23,11 @@
 #define SRC_PANEL_H_
 
 #include "src/gui.h"
+#include "src/player_controller.h"
 
-class Interface;
-
-class PanelBar : public GuiObject, public Timer::Handler {
+class PanelBar : public GuiObject
+               , public PlayerController::Handler
+               , public Timer::Handler {
  protected:
   typedef enum Button {
     ButtonBuildInactive = 0,
@@ -56,14 +57,17 @@ class PanelBar : public GuiObject, public Timer::Handler {
     ButtonBuildRoadStarred
   } Button;
 
-  Interface *interface;
+  PPlayerController player_controller;
+
   int panel_btns[5];
   Timer *blink_timer;
   bool blink_trigger;
 
  public:
-  explicit PanelBar(Interface *interface);
+  explicit PanelBar(PPlayerController player_controller);
   virtual ~PanelBar();
+
+  void activate_button(int button);
 
   void update();
 
@@ -78,9 +82,21 @@ class PanelBar : public GuiObject, public Timer::Handler {
   virtual void internal_draw();
   virtual bool handle_click_left(int x, int y);
   virtual bool handle_key_pressed(char key, int modifier);
+  void handle_panel_button_click(int button);
+
+ public:
+  virtual void road_building_state_changed(bool building_road);
+  virtual void cursor_position_changed(MapPos pos, bool scroll);
+  virtual void cursor_type_changed(PlayerController::CursorType type);
+  virtual void build_possibility_changed(
+                                PlayerController::BuildPossibility possibility);
+  virtual void open_dialog(int id);
+  virtual void close_dialog();
+  virtual void present_notification(
+                                 PlayerController::Notification notification) {}
 
   // timer_handler_t
-  virtual void on_timer_fired(unsigned int id);
+  virtual void on_timer_fired(Timer *timer, unsigned int id);
 };
 
 #endif  // SRC_PANEL_H_

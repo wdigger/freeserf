@@ -170,8 +170,9 @@ MinimapGame::draw_minimap_ownership(int density) {
     for (unsigned int col = 0; col < map->get_cols(); col += density) {
       MapPos pos = map->pos(col, row);
       if (map->has_owner(pos)) {
-        Color color = interface->get_player_color(map->get_owner(pos));
-        draw_minimap_point(col, row, color, scale);
+        PlayerInfo::Color color = player_controller->get_color();
+        Color c(color.red, color.green, color.blue);
+        draw_minimap_point(col, row, c, scale);
       }
     }
   }
@@ -209,14 +210,16 @@ MinimapGame::draw_minimap_buildings() {
       int pos = map->pos(col, row);
       int obj = map->get_obj(pos);
       if (obj > Map::ObjectFlag && obj <= Map::ObjectCastle) {
-        Color color = interface->get_player_color(map->get_owner(pos));
+        PlayerInfo::Color color = player_controller->get_color();
+        Color c(color.red, color.green, color.blue);
         if (advanced > 0) {
-          Building *bld = interface->get_game()->get_building_at_pos(pos);
+          Game *game = player_controller->get_player()->get_game();
+          Building *bld = game->get_building_at_pos(pos);
           if (bld->get_type() == building_remap[advanced]) {
-            draw_minimap_point(col, row, color, scale);
+            draw_minimap_point(col, row, c, scale);
           }
         } else {
-          draw_minimap_point(col, row, color, scale);
+          draw_minimap_point(col, row, c, scale);
         }
       }
     }
@@ -229,8 +232,9 @@ MinimapGame::draw_minimap_traffic() {
     for (unsigned int col = 0; col < map->get_cols(); col++) {
       int pos = map->pos(col, row);
       if (map->get_idle_serf(pos)) {
-        Color color = interface->get_player_color(map->get_owner(pos));
-        draw_minimap_point(col, row, color, scale);
+        PlayerInfo::Color color = player_controller->get_color();
+        Color c(color.red, color.green, color.blue);
+        draw_minimap_point(col, row, c, scale);
       }
     }
   }
@@ -414,10 +418,9 @@ Minimap::move_by_pixels(int dx, int dy) {
   set_redraw();
 }
 
-MinimapGame::MinimapGame(Interface *_interface, PGame _game)
-  : Minimap(_game->get_map())
-  , interface(_interface)
-  , game(_game)
+MinimapGame::MinimapGame(PPlayerController _player_controller)
+  : Minimap(_player_controller->get_player()->get_game()->get_map())
+  , player_controller(_player_controller)
   , advanced(-1)
   , draw_roads(false)
   , draw_buildings(true)
@@ -480,10 +483,7 @@ MinimapGame::internal_draw() {
 bool
 MinimapGame::handle_click_left(int cx, int cy) {
   MapPos pos = map_pos_from_screen_pix(cx, cy);
-  interface->get_viewport()->move_to_map_pos(pos);
-
-  interface->update_map_cursor_pos(pos);
-  interface->close_popup();
-
+  player_controller->set_cursor_pos(pos, true);
+  player_controller->dialog_close();
   return true;
 }

@@ -1,7 +1,7 @@
 /*
  * interface.h - Top-level GUI interface
  *
- * Copyright (C) 2013  Jon Lund Steffensen <jonlst@gmail.com>
+ * Copyright (C) 2013-2017  Jon Lund Steffensen <jonlst@gmail.com>
  *
  * This file is part of freeserf.
  *
@@ -22,13 +22,12 @@
 #ifndef SRC_INTERFACE_H_
 #define SRC_INTERFACE_H_
 
-#include "src/misc.h"
-#include "src/random.h"
-#include "src/map.h"
-#include "src/player.h"
-#include "src/building.h"
+#include <list>
+#include <memory>
+
 #include "src/gui.h"
 #include "src/game-manager.h"
+#include "src/player_controller.h"
 
 static const unsigned int map_building_sprite[] = {
   0, 0xa7, 0xa8, 0xae, 0xa9,
@@ -43,28 +42,9 @@ class PopupBox;
 class GameInitBox;
 class NotificationBox;
 
-class Interface : public GuiObject, public GameManager::Handler {
- public:
-  typedef enum CursorType {
-    CursorTypeNone = 0,
-    CursorTypeFlag,
-    CursorTypeRemovableFlag,
-    CursorTypeBuilding,
-    CursorTypePath,
-    CursorTypeClearByFlag,
-    CursorTypeClearByPath,
-    CursorTypeClear
-  } CursorType;
-
-  typedef enum BuildPossibility {
-    BuildPossibilityNone = 0,
-    BuildPossibilityFlag,
-    BuildPossibilityMine,
-    BuildPossibilitySmall,
-    BuildPossibilityLarge,
-    BuildPossibilityCastle,
-  } BuildPossibility;
-
+class Interface : public GuiObject,
+                  public GameManager::Handler,
+                  public PlayerController::Handler {
  protected:
   typedef struct SpriteLoc {
     int sprite;
@@ -74,39 +54,24 @@ class Interface : public GuiObject, public GameManager::Handler {
  protected:
   PGame game;
 
-  Random random;
+  typedef std::list<PPlayerController> PlayerControllers;
+  PPlayerController player_controller;
+  PlayerControllers player_controllers;
 
-  Viewport *viewport;
-  PanelBar *panel;
-  PopupBox *popup;
-  GameInitBox *init_box;
-  NotificationBox *notification_box;
+  std::unique_ptr<Viewport> viewport;
+  std::unique_ptr<PanelBar> panel;
+  std::unique_ptr<PopupBox> popup;
+  std::unique_ptr<GameInitBox> init_box;
+  std::unique_ptr<NotificationBox> notification_box;
 
-  MapPos map_cursor_pos;
-  CursorType map_cursor_type;
-  BuildPossibility build_possibility;
-
+  /* Increased by one no matter the game speed. */
+  unsigned int const_tick;
   unsigned int last_const_tick;
-
-  Road building_road;
-  int building_road_valid_dir;
 
   int sfx_queue[4];
 
-  Player *player;
-  int config;
-  int msg_flags;
-
-  SpriteLoc map_cursor_sprites[7];
-
-  int current_stat_8_mode;
-  int current_stat_7_item;
-
   int water_in_view;
   int trees_in_view;
-
-  int return_timeout;
-  int return_pos;
 
  public:
   Interface();
@@ -115,36 +80,10 @@ class Interface : public GuiObject, public GameManager::Handler {
   PGame get_game() { return game; }
   void set_game(PGame game);
 
-  Color get_player_color(unsigned int player_index);
-
   Viewport *get_viewport();
   PanelBar *get_panel_bar();
   PopupBox *get_popup_box();
-  NotificationBox *get_notification_box() { return notification_box; }
-
-  bool get_config(int i) const { return (BIT_TEST(config, i) != 0); }
-  void set_config(int i) { config |= BIT(i); }
-  void switch_config(int i) { BIT_INVERT(config, i); }
-
-  MapPos get_map_cursor_pos() const { return map_cursor_pos; }
-  CursorType get_map_cursor_type() const { return map_cursor_type; }
-  int get_map_cursor_sprite(int i) const {
-    return map_cursor_sprites[i].sprite; }
-
-  Random *get_random() { return &random; }
-
-  bool get_msg_flag(int i) const { return (BIT_TEST(msg_flags, i) != 0); }
-  void set_msg_flag(int i) { msg_flags |= BIT(i); }
-
-  int get_current_stat_8_mode() const { return current_stat_8_mode; }
-  void set_current_stat_8_mode(int mode) { current_stat_8_mode = mode; }
-  int get_current_stat_7_item() const { return current_stat_7_item; }
-  void set_current_stat_7_item(int item) { current_stat_7_item = item; }
-
-  BuildPossibility get_build_possibility() const { return build_possibility; }
-
-  void open_popup(int box);
-  void close_popup();
+  NotificationBox *get_notification_box() { return notification_box.get(); }
 
   void open_game_init();
   void close_game_init();
@@ -153,49 +92,43 @@ class Interface : public GuiObject, public GameManager::Handler {
   void return_from_message();
   void close_message();
 
-  Player *get_player() const { return player; }
-  void set_player(unsigned int player);
-  void update_map_cursor_pos(MapPos pos);
-
-  bool is_building_road() const { return building_road.is_valid(); }
-  const Road &get_building_road() const { return building_road; }
-  void build_road_begin();
-  void build_road_end();
-  void build_road_reset() { build_road_end(); build_road_begin(); }
-  int build_road_segment(Direction dir);
-  int remove_road_segment();
-  int extend_road(const Road &road);
-  bool build_road_is_valid_dir(Direction dir) {
-    return (BIT_TEST(building_road_valid_dir, dir) != 0); }
-
-  void demolish_object();
-
-  void build_flag();
-  void build_building(Building::Type type);
-  void build_castle();
-  void build_road();
+  void set_player(Player *player);
+  Color get_player_color(unsigned int index);
+  unsigned int get_player_face(unsigned int index);
 
   void update();
 
   virtual bool handle_event(const Event *event);
 
- protected:
-  void get_map_cursor_type(const Player *player, MapPos pos,
-                           BuildPossibility *bld_possibility,
-                           CursorType *cursor_type);
-  void determine_map_cursor_type();
-  void determine_map_cursor_type_road();
-  void update_interface();
-  static void update_map_height(MapPos pos, void *data);
+  unsigned int get_const_tick() const { return const_tick; }
 
+  int get_config() const;
+
+ protected:
   virtual void internal_draw();
   virtual void layout();
   virtual bool handle_key_pressed(char key, int modifier);
+
+  void determine_map_cursor_type();
+  void determine_map_cursor_type_road();
+
+  static void update_map_height(MapPos pos, void *data);
 
   // GameManager::Handler implementation
  public:
   virtual void on_new_game(PGame game);
   virtual void on_end_game(PGame game);
+
+ public:
+  virtual void road_building_state_changed(bool building_road) {}
+  virtual void cursor_position_changed(MapPos pos, bool scroll) {}
+  virtual void cursor_type_changed(PlayerController::CursorType type) {}
+  virtual void build_possibility_changed(
+                              PlayerController::BuildPossibility possibility) {}
+  virtual void open_dialog(int id);
+  virtual void close_dialog();
+  virtual void present_notification(
+                                 PlayerController::Notification notification) {}
 };
 
 #endif  // SRC_INTERFACE_H_

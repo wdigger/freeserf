@@ -973,6 +973,10 @@ Road::has_pos(Map *map, MapPos pos) const {
 
 bool
 Road::is_valid_extension(Map *map, Direction dir) const {
+  if (begin == bad_map_pos) {
+    return false;
+  }
+
   if (is_undo(dir)) {
     return false;
   }
@@ -1004,6 +1008,21 @@ Road::extend(Direction dir) {
   }
 
   dirs.push_back(dir);
+
+  return true;
+}
+
+bool
+Road::extend(const Road &road) {
+  if (begin == bad_map_pos) {
+    return false;
+  }
+
+  for (Direction dir : road.get_dirs()) {
+    if (!extend(dir)) {
+      return false;
+    }
+  }
 
   return true;
 }
