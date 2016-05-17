@@ -137,8 +137,7 @@ class SaveReaderTextSection : public SaveReaderText {
     if (pos != std::string::npos) {
       std::string value = name.substr(pos + 1, name.length() - pos - 1);
       name = name.substr(0, pos);
-      std::stringstream ss;
-      ss << value;
+      std::stringstream ss(value);
       ss >> number;
     }
 

@@ -170,6 +170,7 @@ class PopupBox : public GuiObject {
   void draw_box_background(BackgroundPattern sprite);
   void draw_box_row(int sprite, int y);
   void draw_green_string(int x, int y, const std::string &str);
+  void draw_centered_green_string(int y, const std::string &str);
   void draw_green_number(int x, int y, int n);
   void draw_green_large_number(int x, int y, int n);
   void draw_additional_number(int x, int y, int n);

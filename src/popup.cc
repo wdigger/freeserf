@@ -367,8 +367,27 @@ PopupBox::draw_box_row(int sprite, int iy) {
 
 /* Draw a green string in a popup frame. */
 void
-PopupBox::draw_green_string(int sx, int sy, const std::string &str) {
-  frame->draw_string(8 * sx + 8, sy + 9, str, Color::green);
+PopupBox::draw_green_string(int x, int y, const std::string &str) {
+  unsigned int height = 0;
+  frame->get_text_size(str, nullptr, &height);
+  Rect rect;
+  rect.x = (8 * x) + 8;
+  rect.y = y + 9;
+  rect.width = width - 16 - (8 * x);
+  rect.height = height - 16;
+  frame->draw_string(rect, str, Color::green);
+}
+
+void
+PopupBox::draw_centered_green_string(int y, const std::string &str) {
+  unsigned int height = 0;
+  frame->get_text_size(str, nullptr, &height);
+  Rect rect;
+  rect.x = (8 * x) + 8;
+  rect.y = y + 9;
+  rect.width = width - 16 - (8 * x);
+  rect.height = height - 16;
+  frame->draw_string(rect, str, Color::green);
 }
 
 /* Draw a green number in a popup frame.
@@ -1859,20 +1878,19 @@ void
 PopupBox::draw_quit_confirm_box() {
   draw_box_background(PatternDiagonalGreen);
 
-  draw_green_string(0, 10, "   Do you want");
-  draw_green_string(0, 20, "     to quit");
-  draw_green_string(0, 30, "   this game?");
-  draw_green_string(0, 45, "  Yes       No");
+  Rect rect(8, 19, width - 16, 30);
+  frame->draw_string(rect, "Do you want\nto quit\nthis game?", Color::green,
+                     Frame::TextAlignmentCenter);
+  draw_green_string(2, 45, "Yes       No");
 }
 
 void
 PopupBox::draw_no_save_quit_confirm_box() {
-  draw_green_string(0, 70, "The game has not");
-  draw_green_string(0, 80, "   been saved");
-  draw_green_string(0, 90, "   recently.");
-  draw_green_string(0, 100, "    Are you");
-  draw_green_string(0, 110, "     sure?");
-  draw_green_string(0, 125, "  Yes       No");
+  Rect rect(8, 19, width - 16, 40);
+  frame->draw_string(rect,
+                     "The game has not\nbeen saved\nrecently.\nAre you\nsure?",
+                     Color::green, Frame::TextAlignmentCenter);
+  draw_green_string(2, 125, "Yes       No");
 }
 
 void
@@ -1880,8 +1898,8 @@ PopupBox::draw_options_box() {
   draw_box_background(PatternDiagonalGreen);
 
   draw_green_string(1, 14, "Music");
-  draw_green_string(1, 30, "Sound");
-  draw_green_string(1, 39, "effects");
+  Rect rect(16, 39, width - 32, 20);
+  frame->draw_string(rect, "Sound\neffects", Color::green);
   draw_green_string(1, 54, "Volume");
 
   Audio &audio = Audio::get_instance();
@@ -1903,8 +1921,8 @@ PopupBox::draw_options_box() {
   str << static_cast<int>(volume);
   draw_green_string(8, 54, str.str());
 
-  draw_green_string(1, 70, "Fullscreen");
-  draw_green_string(1, 79, "video");
+  rect = Rect(16, 79, width - 32, 20);
+  frame->draw_string(rect, "Fullscreen\nvideo", Color::green);
 
   draw_popup_icon(13, 70,   /* Fullscreen mode */
                   Graphics::get_instance().is_fullscreen() ? 288 : 220);
@@ -2026,8 +2044,8 @@ PopupBox::draw_mine_output_box() {
   draw_green_string(lx, 38, "%");
   draw_green_number(6, 38, output);
 
-  draw_green_string(1, 14, "MINING");
-  draw_green_string(1, 24, "OUTPUT:");
+  Rect rect(16, 13, width - 32, 20);
+  frame->draw_string(rect, "MINING\nOUTPUT:", Color::green);
 
   /* Exit box */
   draw_popup_icon(14, 128, 0x3c);
@@ -2056,8 +2074,8 @@ PopupBox::draw_ordered_building_box() {
   if (sprite == 0xc0 /*stock*/ || sprite < 0x9e /*tower*/) lx = 4;
   draw_popup_building(lx, 40, sprite);
 
-  draw_green_string(2, 4, "Ordered");
-  draw_green_string(2, 14, "Building");
+  Rect rect(16, 13, width - 32, 20);
+  frame->draw_string(rect, "Ordered\nBuilding:", Color::green);
 
   if (building->has_serf()) {
     if (building->get_progress() == 0) { /* Digger */
@@ -2561,8 +2579,8 @@ PopupBox::draw_building_stock_box() {
   if (bld_sprite == 0xc0 /*stock*/ || bld_sprite < 0x9e /*tower*/) lx = 4;
   draw_popup_building(lx, 30, bld_sprite);
 
-  draw_green_string(1, 4, "Stock of");
-  draw_green_string(1, 14, "this building:");
+  Rect rect(16, 13, width - 32, 20);
+  frame->draw_string(rect, "Stock of\nthis building:", Color::green);
 
   draw_popup_icon(14, 128, 0x3c); /* exit box */
 }
@@ -2584,10 +2602,17 @@ PopupBox::draw_demolish_box() {
   draw_popup_icon(14, 128, 60); /* Exit */
   draw_popup_icon(7, 45, 288); /* Checkbox */
 
-  draw_green_string(0, 10, "    Demolish:");
-  draw_green_string(0, 30, "   Click here");
-  draw_green_string(0, 68, "   if you are");
-  draw_green_string(0, 86, "      sure");
+  Rect rect(8, 19, width - 16, 10);
+  frame->draw_string(rect, "Demolish:", Color::green,
+                     Frame::TextAlignmentCenter);
+
+  rect = Rect(8, 39, width - 16, 10);
+  frame->draw_string(rect, "Click here", Color::green,
+                     Frame::TextAlignmentCenter);
+
+  rect = Rect(8, 77, width - 16, 20);
+  frame->draw_string(rect, "if you are\nsure", Color::green,
+                     Frame::TextAlignmentCenter);
 }
 
 void

@@ -44,15 +44,8 @@ NotificationBox::draw_background(int bwidth, int bheight, int sprite) {
 }
 
 void
-NotificationBox::draw_string(int sx, int sy, const std::string &str) {
-  std::stringstream sin;
-  sin << str;
-  std::string line;
-  int cy = sy;
-  while (std::getline(sin, line)) {
-    frame->draw_string(sx*8, cy, line, Color::green);
-    cy += 10;
-  }
+NotificationBox::draw_string(int x, int y, const std::string &str) {
+  frame->draw_string(x*8, y, str, Color::green);
 }
 
 void

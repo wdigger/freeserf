@@ -58,7 +58,7 @@ TextInput::internal_draw() {
   while (str.length()) {
     std::string substr = str.substr(0, ch_width);
     str.erase(0, ch_width);
-    frame->draw_string(cx, cy, substr, color_text);
+    frame->draw_string(cx, cy, substr.c_str(), color_text);
     cy += 8;
   }
 }

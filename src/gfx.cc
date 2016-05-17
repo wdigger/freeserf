@@ -23,6 +23,7 @@
 
 #include <utility>
 #include <algorithm>
+#include <sstream>
 
 #include "src/log.h"
 #include "src/data.h"
@@ -367,22 +368,33 @@ Frame::draw_char_sprite(int x, int y, unsigned char c, const Color &color,
 
 /* Draw the string str at x, y in the dest frame. */
 void
-Frame::draw_string(int x, int y, const std::string &str, const Color &color,
-                   const Color &shadow) {
-  int cx = x;
-
+Frame::draw_text_line(int x, int y, const std::string &str, const Color &color,
+                      const Color &shadow) {
   for (char c : str) {
-    if (c == '\t') {
-      cx += 8 * 2;
-    } else if (c == '\n') {
-      y += 8;
-      cx = x;
-    } else {
-      draw_char_sprite(cx, y, c, color, shadow);
-      cx += 8;
-    }
+    draw_char_sprite(x, y, c, color, shadow);
+    x += 8;
   }
 }
+
+void
+Frame::draw_text_line(const Rect &rect, const std::string &str,
+                      const Color &color, TextAlignment alignment,
+                      const Color &shadow) {
+  unsigned int x = rect.x;
+
+  if (alignment != TextAlignmentLeft) {
+    unsigned int width;
+    get_text_size(str, &width, NULL);
+    if (alignment == TextAlignmentCenter) {
+      x = rect.x + (rect.width - width)/2;
+    } else {
+      x = (rect.x + rect.width) - width;
+    }
+  }
+
+  draw_text_line(x, rect.y, str, color, shadow);
+}
+
 
 /* Draw the number n at x, y in the dest frame. */
 void
@@ -405,6 +417,54 @@ Frame::draw_number(int x, int y, int value, const Color &color,
   for (int i = digits-1; i >= 0; i--) {
     draw_char_sprite(x+8*i, y, '0'+(value % 10), color, shadow);
     value /= 10;
+  }
+}
+
+void
+Frame::get_text_size(const std::string &text, unsigned int *width,
+                     unsigned int *height) {
+  std::stringstream sin(text);
+  std::string line;
+  unsigned int cy = 0;
+  unsigned int cx = 0;
+  while (std::getline(sin, line)) {
+    cx = 8 * static_cast<unsigned int>(line.length());
+    cy += 10;
+  }
+
+  if (height != NULL) {
+    *height = cy;
+  }
+
+  if (width != NULL) {
+    *width = cx;
+  }
+}
+
+void
+Frame::draw_string(int x, int y, const std::string &str, const Color &color,
+                   const Color &shadow) {
+  std::stringstream sin(str);
+  std::string line;
+  int cy = y;
+  while (std::getline(sin, line)) {
+    draw_text_line(x, cy, line, color, shadow);
+    cy += 10;
+  }
+}
+
+void
+Frame::draw_string(const Rect &rect, const std::string &str,
+                   const Color &color,
+                   TextAlignment alignment,
+                   const Color &shadow) {
+  std::stringstream sin(str);
+  std::string line;
+  Rect r = rect;
+  while (std::getline(sin, line)) {
+    draw_text_line(r, line, color, alignment, shadow);
+    r.y += 10;
+    r.height -= 10;
   }
 }
 

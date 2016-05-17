@@ -2529,8 +2529,7 @@ operator >> (SaveReaderText &reader, Game &game) {
     game.rnd = Random(rnd_str);
   } catch (...) {
     game_reader->value("rnd") >> rnd_str;
-    std::stringstream ss;
-    ss << rnd_str;
+    std::stringstream ss(rnd_str);
     uint16_t r1, r2, r3;
     char c;
     ss >> r1 >> c >> r2 >> c >> r3;

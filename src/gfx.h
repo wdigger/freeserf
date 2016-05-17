@@ -78,6 +78,22 @@ class Color {
   inline bool operator!=(const Color &c) const { return !((*this) == c); }
 };
 
+class Rect {
+ public:
+  int x;
+  int y;
+  unsigned int width;
+  unsigned int height;
+  
+  Rect() { x = 0; y = 0; width = 0; height = 0; }
+  Rect(int x, int y, unsigned int width, unsigned int height) {
+    this->x = x;
+    this->y = y;
+    this->width = width;
+    this->height = height;
+  }
+};
+
 class Image {
  protected:
   int delta_x;
@@ -116,6 +132,13 @@ class Image {
 /* Frame. Keeps track of a specific rectangular area of a surface.
    Multiple frames can refer to the same surface. */
 class Frame {
+ public:
+  typedef enum {
+    TextAlignmentLeft,
+    TextAlignmentCenter,
+    TextAlignmentRight,
+  } TextAlignment;
+
  protected:
   Video *video;
   Video::Frame *video_frame;
@@ -154,8 +177,19 @@ class Frame {
   /* Text functions */
   void draw_string(int x, int y, const std::string &str, const Color &color,
                    const Color &shadow = Color::transparent);
+  void draw_string(const Rect &rect, const std::string &str, const Color &color,
+                   TextAlignment alignment = TextAlignmentLeft,
+                   const Color &shadow = Color::transparent);
   void draw_number(int x, int y, int value, const Color &color,
                    const Color &shadow = Color::transparent);
+  void get_text_size(const std::string &text, unsigned int *width,
+                     unsigned int *height);
+  void draw_text_line(int x, int y, const std::string &str, const Color &color,
+                      const Color &shadow = Color::transparent);
+  void draw_text_line(const Rect &rect, const std::string &str,
+                      const Color &color,
+                      TextAlignment alignment = TextAlignmentLeft,
+                      const Color &shadow = Color::transparent);
 
   /* Frame functions */
   void draw_frame(int dx, int dy, int sx, int sy, Frame *src, int w, int h);
