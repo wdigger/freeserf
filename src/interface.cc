@@ -496,8 +496,8 @@ Interface::set_player(unsigned int player_index) {
 
 Color
 Interface::get_player_color(unsigned int player_index) {
-  Player::Color player_color = game->get_player(player_index)->get_color();
-  Color color(player_color.red, player_color.green, player_color.blue);
+  PlayerColor player_color = game->get_player(player_index)->get_color();
+  Color color(player_color.red(), player_color.green(), player_color.blue());
   return color;
 }
 

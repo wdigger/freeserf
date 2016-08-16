@@ -32,6 +32,7 @@ add_definitions(-DPACKAGE_BUGREPORT="https://github.com/freeserf/freeserf/issues
 include(CppLint)
 enable_check_style()
 
+add_subdirectory(proto)
 add_subdirectory(src)
 
 option(ENABLE_TESTS "Enable compilation of tests" ON)

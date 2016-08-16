@@ -29,6 +29,7 @@
 #include "src/random.h"
 #include "src/player.h"
 #include "src/game.h"
+#include "proto/mission.pb.h"
 
 typedef struct Character {
   unsigned int face;
@@ -36,7 +37,7 @@ typedef struct Character {
   const char *characterization;
 } Character;
 
-class PlayerInfo {
+class PlayerInfo : public PlayerInfoProto {
  public:
   typedef struct Pos {
     int col;
@@ -66,10 +67,12 @@ class PlayerInfo {
   PlayerInfo(size_t character, const Player::Color &_color,
              unsigned int _intelligence, unsigned int _supplies,
              unsigned int _reproduction);
+  PlayerInfo(const PlayerInfoProto &player_info);
 
   void set_intelligence(unsigned int _intelligence) {
-    intelligence = _intelligence; }
-  void set_supplies(unsigned int _supplies) { supplies = _supplies; }
+    PlayerInfoProto::set_intelligence(_intelligence); }
+  void set_supplies(unsigned int _supplies) {
+    PlayerInfoProto::set_supplies(_supplies); }
   void set_reproduction(unsigned int _reproduction) {
     reproduction = _reproduction; }
   void set_castle_pos(Pos _castle_pos);
@@ -84,6 +87,8 @@ class PlayerInfo {
   Pos get_castle_pos() const { return castle_pos; }
 
   bool has_castle() const;
+
+  const PlayerInfoProto &proto() const { return *this; }
 };
 
 typedef std::shared_ptr<PlayerInfo> PPlayerInfo;
@@ -92,7 +97,7 @@ typedef std::vector<PPlayerInfo> PlayerInfos;
 class GameInfo;
 typedef std::shared_ptr<GameInfo> PGameInfo;
 
-class GameInfo {
+class GameInfo : public GameInfoProto {
  public:
   typedef struct Mission {
     const std::string name;
@@ -113,12 +118,14 @@ class GameInfo {
  public:
   explicit GameInfo(const Random &random_base);
 
-  unsigned int get_map_size() const { return map_size; }
-  void set_map_size(unsigned int size) { map_size = size; }
-  Random get_random_base() const { return random_base; }
+  unsigned int get_map_size() const { return GameInfoProto::map_size(); }
+  void set_map_size(size_t size) { GameInfoProto::set_map_size(int(size)); }
+  Random get_random_base() const { return Random(rnd()); }
   void set_random_base(const Random &base);
-  size_t get_player_count() const { return players.size(); }
-  PPlayerInfo get_player(size_t player) const { return players[player]; }
+  size_t get_player_count() const { return player_size(); }
+  PlayerInfo get_player(size_t index) const {
+    return PlayerInfo(player(int(index)));
+  }
 
   void add_player(const PPlayerInfo &player);
   void add_player(size_t character, const Player::Color &_color,
@@ -133,7 +140,7 @@ class GameInfo {
   static const Character *get_character(size_t character);
   static size_t get_character_count();
 
-  PGame instantiate();
+  Game *instantiate();
 };
 
 #endif  // SRC_MISSION_H_

@@ -24,21 +24,19 @@
 
 #include <string>
 
-class Random {
- protected:
-  uint16_t state[3];
+#include "proto/random.pb.h"
 
+class Random : protected RandomProto {
  public:
   Random();
+  explicit Random(const RandomProto &proto) { CopyFrom(proto); }
   explicit Random(const uint16_t &value);
   Random(const Random &random_state);
   explicit Random(const std::string &string);
   Random(uint16_t base_0, uint16_t base_1, uint16_t base_2);
 
   Random &operator =(const Random &that) {
-    state[0] = that.state[0];
-    state[1] = that.state[1];
-    state[2] = that.state[2];
+    RandomProto::operator=(that);
     return *this;
   }
 
@@ -46,6 +44,8 @@ class Random {
 
   operator std::string() const;
   friend Random& operator^=(Random& left, const Random& right);
+
+  const RandomProto &proto() const { return *this; }
 };
 
 #endif  // SRC_RANDOM_H_

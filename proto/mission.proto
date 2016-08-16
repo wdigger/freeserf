@@ -1,5 +1,5 @@
 /*
- * event_loop-net.h - User and system events handling
+ * mission -
  *
  * Copyright (C) 2017  Wicked_Digger <wicked_digger@mail.ru>
  *
@@ -19,39 +19,33 @@
  * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SRC_EVENT_LOOP_NET_H_
-#define SRC_EVENT_LOOP_NET_H_
+import "random.proto";
 
-#include <list>
-#include <SDL_net.h>
+message PosInfo {
+  required int32 col = 1;
+  required int32 row = 2;
+}
 
-#include "src/event_loop.h"
+message PlayerColor {
+  required uint32 red = 1;
+  required uint32 green = 2;
+  required uint32 blue = 3;
+}
 
-class NetConnection {
- protected:
-  TCPsocket socket;
+message PlayerInfoProto {
+  required uint32 face = 1;
+  required string name = 2;
+  required PlayerColor color =3;
+  optional string characterization = 4;
+  required uint32 intelligence = 5;
+  required uint32 supplies = 6;
+  required uint32 reproduction = 7;
+  optional PosInfo castle_pos = 8;
+}
 
- public:
-  explicit NetConnection(const TCPsocket &socket);
-  virtual ~NetConnection();
-
-  const TCPsocket &get_socket() const;
-  bool process();
-  void close();
-};
-
-typedef std::list<NetConnection*> NetConnections;
-
-class EventLoopNet : public EventLoop {
- protected:
-  NetConnections connections;
-
- public:
-  EventLoopNet();
-
-  virtual void quit();
-  virtual void run();
-  virtual void deferred_call(DeferredCallee *deferred_callee, void *data);
-};
-
-#endif  // SRC_EVENT_LOOP_NET_H_
+message GameInfoProto {
+  required uint32 map_size = 1;
+  required string name = 2;
+  required RandomProto rnd = 3;
+  repeated PlayerInfoProto player = 4;
+}

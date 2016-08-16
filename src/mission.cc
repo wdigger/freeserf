@@ -60,7 +60,7 @@ Character characters[] = {
     "Your partner."}
 };
 
-Player::Color def_color[] = {
+Player::Color def_color[4] = {
   {0x00, 0xe3, 0xe3},
   {0xcf, 0x63, 0x63},
   {0xdf, 0x7f, 0xef},
@@ -377,9 +377,9 @@ GameInfo::Mission missions[] = {
   }
 };
 
-GameInfo::GameInfo(const Random &_random_base)
-  : map_size(3)
-  , name(_random_base) {
+GameInfo::GameInfo(const Random &_random_base) {
+  set_map_size(3);
+  set_name(_random_base);
   set_random_base(_random_base);
 }
 
@@ -403,26 +403,28 @@ GameInfo::GameInfo(const GameInfo::Mission *mission_preset) {
 void
 GameInfo::set_random_base(const Random &base) {
   Random random = base;
-  random_base = base;
+  mutable_rnd()->CopyFrom(base);
 
   players.clear();
 
   // Player 0
-  players.push_back(std::make_shared<PlayerInfo>(&random));
+  add_player(PlayerInfo(&random));
+  mutable_player(0)->set_character(12);
   players[0]->set_character(12);
   players[0]->set_intelligence(40);
+  players[0]->set_color(def_color[0]);
 
   // Player 1
-  players.push_back(std::make_shared<PlayerInfo>(&random));
+  add_player(PlayerInfo(&random));
 
   uint32_t val = random.random();
   if ((val & 7) != 0) {
     // Player 2
-    players.push_back(std::make_shared<PlayerInfo>(&random));
+    add_player(PlayerInfo(&random));
     uint32_t val = random.random();
     if ((val & 3) == 0) {
       // Player 3
-      players.push_back(std::make_shared<PlayerInfo>(&random));
+      add_player(PlayerInfo(&random));
     }
   }
 
@@ -435,16 +437,16 @@ GameInfo::set_random_base(const Random &base) {
 }
 
 void
-GameInfo::add_player(const PPlayerInfo &player) {
-  players.push_back(player);
+GameInfo::add_player(const PlayerInfo &player) {
+  PlayerInfoProto *player_info_proto = GameInfoProto::add_player();
+  player_info_proto->CopyFrom(player.proto());
 }
 
 void
 GameInfo::add_player(size_t character, const Player::Color &_color,
                      unsigned int _intelligence, unsigned int _supplies,
                      unsigned int _reproduction) {
-  PPlayerInfo player(new PlayerInfo(character, _color, _intelligence, _supplies,
-                                    _reproduction));
+  PlayerInfo player(character, _color, _intelligence, _supplies, _reproduction);
   add_player(player);
 }
 
@@ -458,7 +460,7 @@ GameInfo::remove_player(unsigned int index) {
 
 void
 GameInfo::remove_all_players() {
-  players.clear();
+  GameInfoProto::clear_player();
 }
 
 PGameInfo
@@ -527,7 +529,6 @@ PlayerInfo::PlayerInfo(Random *random_base)
   set_intelligence(((random_base->random() * 41) >> 16) & 0xFF);
   set_supplies(((random_base->random() * 41) >> 16) & 0xFF);
   set_reproduction(((random_base->random() * 41) >> 16) & 0xFF);
-  set_castle_pos({-1, -1});
 }
 
 PlayerInfo::PlayerInfo(size_t character, const Player::Color &_color,
@@ -544,7 +545,6 @@ PlayerInfo::PlayerInfo(size_t character, const Player::Color &_color,
   set_supplies(_supplies);
   set_reproduction(_reproduction);
   set_color(_color);
-  set_castle_pos({-1, -1});
 }
 
 void
@@ -554,12 +554,25 @@ PlayerInfo::set_castle_pos(PlayerInfo::Pos _castle_pos) {
 
 void
 PlayerInfo::set_character(size_t character) {
-  face = characters[character].face;
-  name = characters[character].name;
-  characterization = characters[character].characterization;
+  set_face(characters[character].face);
+  set_name(characters[character].name);
+  set_characterization(characters[character].characterization);
 }
 
 bool
 PlayerInfo::has_castle() const {
-  return (castle_pos.col >= 0);
+  return PlayerInfoProto::has_castle_pos();
+}
+
+PosPreset
+PlayerInfo::get_castle_pos() const {
+  PosPreset res = {-1, -1};
+
+  if (has_castle()) {
+    PosInfo pos_info = PlayerInfoProto::castle_pos();
+    res.col = pos_info.col();
+    res.row = pos_info.row();
+  }
+
+  return res;
 }

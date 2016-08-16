@@ -262,7 +262,7 @@ GameInitBox::draw_player_box(unsigned int player, int bx, int by) {
 
   unsigned int face = 0;
   if (player < mission->get_player_count()) {
-    face = mission->get_player(player)->get_face();
+    face = mission->get_player(player).get_face();
   }
 
   draw_box_icon(bx, by, get_player_face_sprite(face));
@@ -275,17 +275,18 @@ GameInitBox::draw_player_box(unsigned int player, int bx, int by) {
   if (player < mission->get_player_count()) {
     bx *= 8;
 
-    PPlayerInfo pi = mission->get_player(player);
-    unsigned int supplies = pi->get_supplies();
-    frame->fill_rect(bx + 64, by + 76 - supplies, 4, supplies,
+    PlayerInfo player_info = mission->get_player(player);
+
+    unsigned int supplies = player_info.get_supplies();
+    frame->fill_rect(x + 64, y + 76 - supplies, 4, supplies,
                      Color(0x00, 0x93, 0x87));
 
-    unsigned int intelligence = pi->get_intelligence();
-    frame->fill_rect(bx + 70, by + 76 - intelligence, 4, intelligence,
+    unsigned int intelligence = player_info.get_intelligence();
+    frame->fill_rect(x + 70, y + 76 - intelligence, 4, intelligence,
                      Color(0x6b, 0xab, 0x3b));
 
-    unsigned int reproduction = pi->get_reproduction();
-    frame->fill_rect(bx + 76, by + 76 - reproduction, 4, reproduction,
+    unsigned int reproduction = player_info.get_reproduction();
+    frame->fill_rect(x + 76, y + 76 - reproduction, 4, reproduction,
                      Color(0xa7, 0x27, 0x27));
   }
 }
@@ -530,13 +531,13 @@ GameInitBox::handle_player_click(unsigned int player_index, int cx, int cy) {
       unsigned int value = clamp(0, 68 - cy, 40);
       if (cx > 0 && cx < 6) {
         /* Supplies */
-        player->set_supplies(value);
-      } else if (cx > 6 && cx < 12) {
+        player.set_supplies(value);
+      } else if (x > 6 && x < 12) {
         /* Intelligence */
-        player->set_intelligence(value);
-      } else if (cx > 12 && cx < 18) {
+        player.set_intelligence(value);
+      } else if (x > 12 && x < 18) {
         /* Reproduction */
-        player->set_reproduction(value);
+        player.set_reproduction(value);
       }
     }
   }

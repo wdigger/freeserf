@@ -1125,7 +1125,9 @@ operator >> (SaveReaderBinary &reader, Player &player)  {
 
   reader >> v16;  // 128
   player.index = v16;
-  player.color = default_player_colors[player.index];
+  player.color.set_red(default_player_colors[player.index].red);
+  player.color.set_green(default_player_colors[player.index].green);
+  player.color.set_blue(default_player_colors[player.index].blue);
   reader >> v8;  // 130
   player.flags = v8;
   reader >> v8;  // 131
@@ -1262,9 +1264,9 @@ operator >> (SaveReaderText &reader, Player &player) {
   reader.value("flags") >> player.flags;
   reader.value("build") >> player.build;
   unsigned int val;
-  reader.value("color")[0] >> val; player.color.red = val;
-  reader.value("color")[1] >> val; player.color.green = val;
-  reader.value("color")[2] >> val; player.color.blue = val;
+  reader.value("color")[0] >> val; player.color.set_red(val);
+  reader.value("color")[1] >> val; player.color.set_green(val);
+  reader.value("color")[2] >> val; player.color.set_blue(val);
   reader.value("face") >> player.face;
   for (int i = 0; i < 9; i++) {
     reader.value("tool_prio")[i] >> player.tool_prio[i];
@@ -1327,9 +1329,9 @@ SaveWriterText&
 operator << (SaveWriterText &writer, Player &player) {
   writer.value("flags") << player.flags;
   writer.value("build") << player.build;
-  writer.value("color") << player.color.red;
-  writer.value("color") << player.color.green;
-  writer.value("color") << player.color.blue;
+  writer.value("color") << player.color.red();
+  writer.value("color") << player.color.green();
+  writer.value("color") << player.color.blue();
   writer.value("face") << player.face;
 
   for (int i = 0; i < 9; i++) {

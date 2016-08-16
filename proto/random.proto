@@ -1,5 +1,5 @@
 /*
- * event_loop-net.h - User and system events handling
+ * random.proto -
  *
  * Copyright (C) 2017  Wicked_Digger <wicked_digger@mail.ru>
  *
@@ -19,39 +19,8 @@
  * along with freeserf.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SRC_EVENT_LOOP_NET_H_
-#define SRC_EVENT_LOOP_NET_H_
-
-#include <list>
-#include <SDL_net.h>
-
-#include "src/event_loop.h"
-
-class NetConnection {
- protected:
-  TCPsocket socket;
-
- public:
-  explicit NetConnection(const TCPsocket &socket);
-  virtual ~NetConnection();
-
-  const TCPsocket &get_socket() const;
-  bool process();
-  void close();
-};
-
-typedef std::list<NetConnection*> NetConnections;
-
-class EventLoopNet : public EventLoop {
- protected:
-  NetConnections connections;
-
- public:
-  EventLoopNet();
-
-  virtual void quit();
-  virtual void run();
-  virtual void deferred_call(DeferredCallee *deferred_callee, void *data);
-};
-
-#endif  // SRC_EVENT_LOOP_NET_H_
+message RandomProto {
+  required uint32 state_0 = 1;
+  required uint32 state_1 = 2;
+  required uint32 state_2 = 3;
+}

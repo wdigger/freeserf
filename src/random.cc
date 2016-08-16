@@ -26,22 +26,22 @@
 
 Random::Random() {
   srand((unsigned int)time(NULL));
-  state[0] = std::rand();
-  state[1] = std::rand();
-  state[2] = std::rand();
+  RandomProto::set_state_0(std::rand());
+  RandomProto::set_state_1(std::rand());
+  RandomProto::set_state_2(std::rand());
   random();
 }
 
 Random::Random(const uint16_t &value) {
-  state[0] = value;
-  state[1] = value;
-  state[2] = value;
+  RandomProto::set_state_0(value);
+  RandomProto::set_state_1(value);
+  RandomProto::set_state_2(value);
 }
 
 Random::Random(const Random &random_state) {
-  state[0] = random_state.state[0];
-  state[1] = random_state.state[1];
-  state[2] = random_state.state[2];
+  RandomProto::set_state_0(random_state.state_0());
+  RandomProto::set_state_1(random_state.state_1());
+  RandomProto::set_state_2(random_state.state_2());
 }
 
 Random::Random(const std::string &string) {
@@ -53,36 +53,35 @@ Random::Random(const std::string &string) {
     tmp |= c;
   }
 
-  state[0] = tmp & 0xFFFF;
+  RandomProto::set_state_0(tmp & 0xFFFF);
   tmp >>= 16;
-  state[1] = tmp & 0xFFFF;
+  RandomProto::set_state_1(tmp & 0xFFFF);
   tmp >>= 16;
-  state[2] = tmp & 0xFFFF;
+  RandomProto::set_state_2(tmp & 0xFFFF);
 }
 
 Random::Random(uint16_t base_0, uint16_t base_1, uint16_t base_2) {
-  state[0] = base_0;
-  state[1] = base_1;
-  state[2] = base_2;
+  RandomProto::set_state_0(base_0);
+  RandomProto::set_state_1(base_1);
+  RandomProto::set_state_2(base_2);
 }
 
 uint16_t
 Random::random() {
-  uint16_t *rnd = state;
-  uint16_t r = (rnd[0] + rnd[1]) ^ rnd[2];
-  rnd[2] += rnd[1];
-  rnd[1] ^= rnd[2];
-  rnd[1] = (rnd[1] >> 1) | (rnd[1] << 15);
-  rnd[2] = (rnd[2] >> 1) | (rnd[2] << 15);
-  rnd[0] = r;
+  uint16_t r = (state_0() + state_1()) ^ state_2();
+  RandomProto::set_state_2(state_2() + state_1());
+  RandomProto::set_state_1(state_1() ^ state_2());
+  RandomProto::set_state_1((state_1() >> 1) | (state_1() << 15));
+  RandomProto::set_state_2((state_2() >> 1) | (state_2() << 15));
+  RandomProto::set_state_0(r);
 
   return r;
 }
 
 Random::operator std::string() const {
-  uint64_t tmp0 = state[0];
-  uint64_t tmp1 = state[1];
-  uint64_t tmp2 = state[2];
+  uint64_t tmp0 = state_0();
+  uint64_t tmp1 = state_1();
+  uint64_t tmp2 = state_2();
 
   std::stringstream ss;
 
@@ -102,9 +101,9 @@ Random::operator std::string() const {
 
 Random&
 operator^=(Random& left, const Random& right) {  // NOLINT
-  left.state[0] ^= right.state[0];
-  left.state[1] ^= right.state[1];
-  left.state[2] ^= right.state[2];
+  left.set_state_0(left.state_0() ^ right.state_0());
+  left.set_state_1(left.state_1() ^ right.state_1());
+  left.set_state_2(left.state_2() ^ right.state_2());
 
   return left;
 }

@@ -1,7 +1,7 @@
 /*
  * event_loop-net.cc - User and system events handling
  *
- * Copyright (C) 2012-2014  Jon Lund Steffensen <jonlst@gmail.com>
+ * Copyright (C) 2017  Wicked_Digger <wicked_digger@mail.ru>
  *
  * This file is part of freeserf.
  *
@@ -89,9 +89,7 @@ EventLoopNet::run() {
     return;
   }
 
-  SDLNet_TCP_AddSocket(socketSet, serverSocket);
-
-  do {
+  while (true) {
     int sockets = SDLNet_CheckSockets(socketSet, TICK_LENGTH);
     if (sockets == -1) {
       printf("SDLNet_CheckSockets: %s\n", SDLNet_GetError());
@@ -103,25 +101,29 @@ EventLoopNet::run() {
       if (SDLNet_SocketReady(serverSocket) != 0) {
         // Connect new client
         TCPsocket clientSocket = SDLNet_TCP_Accept(serverSocket);
-        NetConnection *connection = new NetConnection(clientSocket);
-        connections.push_back(connection);
-        SDLNet_TCP_AddSocket(socketSet, clientSocket);
+        if (clientSocket == nullptr) {
+          printf("SDLNet_TCP_Accept: %s\n", SDLNet_GetError());
+        } else {
+          SDLNet_TCP_AddSocket(socketSet, clientSocket);
+          NetConnection *connection = new NetConnection(clientSocket);
+          connections.push_back(connection);
+        }
       } else {
+        // Precess client message
         NetConnections cons = connections;
-        NetConnections::iterator it = cons.begin();
-        for (; it != cons.end(); ++it) {
-          if (SDLNet_SocketReady((*it)->get_socket()) != 0) {
-            if (!(*it)->process()) {
-              SDLNet_TCP_DelSocket(socketSet, (*it)->get_socket());
-              SDLNet_TCP_Close((*it)->get_socket());
-              connections.remove(*it);
-              delete *it;
+        for (NetConnection *connection : cons) {
+          if (SDLNet_SocketReady(connection->get_socket()) != 0) {
+            if (!connection->process()) {
+              SDLNet_TCP_DelSocket(socketSet, connection->get_socket());
+              SDLNet_TCP_Close(connection->get_socket());
+              connections.remove(connection);
+              delete connection;
             }
           }
         }
       }
     }
-  } while (true);
+  }
 
   SDLNet_FreeSocketSet(socketSet);
   SDLNet_TCP_Close(serverSocket);
@@ -129,8 +131,7 @@ EventLoopNet::run() {
   SDL_Quit();
 }
 
-NetConnection::NetConnection(const TCPsocket &_socket) {
-  socket = _socket;
+NetConnection::NetConnection(const TCPsocket &_socket) : socket(_socket) {
 }
 
 NetConnection::~NetConnection() {
@@ -144,7 +145,7 @@ NetConnection::get_socket() const {
 
 bool
 NetConnection::process() {
-  return false;
+  return true;
 }
 
 void

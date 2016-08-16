@@ -35,6 +35,7 @@
 #include "src/map.h"
 #include "src/random.h"
 #include "src/objects.h"
+#include "src/mission.h"
 
 #define DEFAULT_GAME_SPEED  2
 
@@ -119,9 +120,8 @@ class Game {
   Serf *get_serf_at_pos(MapPos pos);
 
   /* External interface */
-  unsigned int add_player(unsigned int intelligence, unsigned int supplies,
-                          unsigned int reproduction);
-  bool init(unsigned int map_size, const Random &random);
+  unsigned int add_player(PPlayerInfo player_info);
+  bool load_mission_map(PGameInfo game_info);
 
   void update();
   void pause();

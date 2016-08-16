@@ -1,7 +1,7 @@
 /*
  * fsserver.cc - Main program source.
  *
- * Copyright (C) 2016  Wicked_Digger <wicked_digger@mail.ru>
+ * Copyright (C) 2017  Wicked_Digger <wicked_digger@mail.ru>
  *
  * This file is part of freeserf.
  *
@@ -42,7 +42,6 @@
       " -d NUM\t\tSet debug output level\n"                 \
       " -h\t\tShow this help text\n"                        \
       " -l FILE\tLoad saved game\n"                         \
-      " -t GEN\t\tMap generator (0 or 1)\n"                 \
       "\n"                                                  \
       "Please report bugs to <" PACKAGE_BUGREPORT ">\n"
 
@@ -84,7 +83,6 @@ main(int argc, char *argv[]) {
   Log::Info["server"] << "freeserf " << FREESERF_VERSION;
 
   Game *game = new Game();
-  game->init();
 
   /* Either load a save game if specified or
      start a new game. */

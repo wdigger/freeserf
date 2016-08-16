@@ -40,3 +40,7 @@ xcuserdata
 *.unsuccessfulbuild
 *.VC.db
 *.VC.VC.opendb
+
+# protobuf related
+proto/*.pb.h
+proto/*.pb.cc

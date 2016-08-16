@@ -1983,8 +1983,7 @@ Game::set_inventory_serf_mode(Inventory *inventory, int mode) {
 
 // Add new player to the game. Returns the player number.
 unsigned int
-Game::add_player(unsigned int intelligence, unsigned int supplies,
-                 unsigned int reproduction) {
+Game::add_player(const PlayerInfo &player_info) {
   /* Allocate object */
   Player *player = players.allocate();
   if (player == nullptr) {
@@ -2000,15 +1999,28 @@ Game::add_player(unsigned int intelligence, unsigned int supplies,
 }
 
 bool
-Game::init(unsigned int map_size, const Random &random) {
-  init_map_rnd = random;
+Game::load_mission_map(PGameInfo game_info) {
+  init_map_rnd = game_info->get_random_base();
 
-  map.reset(new Map(MapGeometry(map_size)));
-  ClassicMissionMapGenerator generator(*map, init_map_rnd);
-  generator.init();
-  generator.generate();
-  map->init_tiles(generator);
-  gold_total = map->get_gold_deposit();
+  init_map(game_info->get_map_size());
+  {
+    ClassicMissionMapGenerator generator(*map, init_map_rnd);
+    generator.init();
+    generator.generate();
+    init_map_data(generator);
+  }
+
+  /* Initialize player and build initial castle */
+  for (size_t i = 0; i < game_info->get_player_count(); i++) {
+    PlayerInfo player_info = game_info->get_player(i);
+    unsigned int player_index = add_player(player_info);
+
+    PosPreset castle_pos = player_info.get_castle_pos();
+    if (castle_pos.col > -1 && castle_pos.row > -1) {
+      MapPos pos = map->pos(castle_pos.col, castle_pos.row);
+      build_castle(pos, players[player_index]);
+    }
+  }
 
   return true;
 }

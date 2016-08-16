@@ -64,8 +64,12 @@ set(GAME_HEADERS building.h
                  serf.h
                  game-manager.h)
 
+include_directories(${INCLUDE_DIRECTORIES} $<TARGET_PROPERTY:freeserf_proto,INTERFACE_INCLUDE_DIRECTORIES>)
+include_directories(${INCLUDE_DIRECTORIES} $<TARGET_PROPERTY:freeserf_proto,INTERFACE_SYSTEM_INCLUDE_DIRECTORIES>)
+
 add_library(game STATIC ${GAME_SOURCES} ${GAME_HEADERS})
 target_check_style(game)
+target_link_libraries(game freeserf_proto)
 
 # Platform library
 
