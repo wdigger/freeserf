@@ -23,8 +23,6 @@
 
 #include <sstream>
 
-#include <SDL.h>
-
 ExceptionSDL::ExceptionSDL(const std::string &description) throw()
   : ExceptionVideo(description) {
   sdl_error = SDL_GetError();
@@ -52,8 +50,10 @@ VideoSDL::VideoSDL() {
   }
 
   /* Initialize defaults and Video subsystem */
-  if (SDL_VideoInit(NULL) != 0) {
-    throw ExceptionSDL("Unable to initialize SDL video");
+  if (SDL_WasInit(SDL_INIT_VIDEO) != SDL_INIT_VIDEO) {
+    if (SDL_VideoInit(NULL) != 0) {
+      throw ExceptionSDL("Unable to initialize SDL video");
+    }
   }
 
   SDL_version version;
@@ -102,6 +102,13 @@ VideoSDL::VideoSDL() {
   int h = 0;
   SDL_GL_GetDrawableSize(window, &w, &h);
   set_resolution(w, h, fullscreen);
+
+  if (TTF_Init() == -1) {
+    std::string error = "Unable to initialize TTF (";
+    error += TTF_GetError();
+    error += ")";
+    throw ExceptionSDL(error);
+  }
 }
 
 VideoSDL::~VideoSDL() {
@@ -110,7 +117,9 @@ VideoSDL::~VideoSDL() {
     screen = nullptr;
   }
   set_cursor(nullptr, 0, 0);
+  TTF_Quit();
   SDL_VideoQuit();
+  SDL_Quit();
 }
 
 Video &
@@ -215,6 +224,66 @@ void
 VideoSDL::destroy_image(Video::Image *image) {
   SDL_DestroyTexture(image->texture);
   delete image;
+}
+
+Video::Font *
+VideoSDL::create_font(size_t size) {
+  Video::Font *font = new Video::Font();
+  std::string font_file = SDL_GetBasePath();
+  font_file += "Roboto-Bold.ttf";
+  font->font = TTF_OpenFont(font_file.c_str(), static_cast<int>(size));
+  return font;
+}
+
+void
+VideoSDL::destroy_font(Video::Font *font) {
+  TTF_CloseFont(font->font);
+}
+
+void
+VideoSDL::get_text_size(Font *font, const std::string &text,
+                        unsigned int *w, unsigned int *h) {
+  int tw = 0;
+  int th = 0;
+  TTF_SizeUTF8(font->font, text.c_str(), &tw, &th);
+  *w = tw;
+  *h = th;
+}
+
+void
+VideoSDL::draw_text(const std::string &text, Font *font,
+                    unsigned int x, unsigned int y, const Video::Color color,
+                    Frame *dest) {
+  SDL_Color c = {color.r, color.g, color.b, color.a};
+  SDL_Surface *surf = TTF_RenderUTF8_Blended_Wrapped(font->font, text.c_str(),
+                                                     c, 10000);
+
+  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surf);
+  if (texture == NULL) {
+    throw ExceptionSDL("Unable to create SDL texture with text");
+  }
+
+  Uint32 format = 0;
+  int access = 0;
+  int w = 0;
+  int h = 0;
+  SDL_QueryTexture(texture, &format, &access, &w, &h);
+
+  int descent = TTF_FontDescent(font->font);
+  h += descent;
+
+  SDL_Rect dest_rect = { static_cast<int>(x), static_cast<int>(y), w, h };
+  SDL_Rect src_rect = { 0, -descent, w, h };
+
+  SDL_SetRenderTarget(renderer, dest->texture);
+  SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+  int r = SDL_RenderCopy(renderer, texture, &src_rect, &dest_rect);
+  if (r < 0) {
+    throw ExceptionSDL("RenderCopy error");
+  }
+
+  SDL_DestroyTexture(texture);
+  SDL_FreeSurface(surf);
 }
 
 void

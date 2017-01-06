@@ -48,6 +48,7 @@ class Video {
 
   class Frame;
   class Image;
+  class Font;
 
  protected:
   Video() {}
@@ -71,6 +72,15 @@ class Video {
   virtual Image *create_image(void *data, unsigned int width,
                                       unsigned int height) = 0;
   virtual void destroy_image(Image *image) = 0;
+
+  virtual Font *create_font(size_t size) = 0;
+  virtual void destroy_font(Font *font) = 0;
+  virtual void get_text_size(Font *font, const std::string &text,
+                             unsigned int *w, unsigned int *h) = 0;
+  virtual void draw_text(const std::string &text, Font *font,
+                         unsigned int x, unsigned int y,
+                         const Video::Color color, Frame *dest) = 0;
+
 
   virtual void warp_mouse(int x, int y) = 0;
 

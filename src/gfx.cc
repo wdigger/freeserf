@@ -370,10 +370,12 @@ Frame::draw_char_sprite(int x, int y, unsigned char c, const Color &color,
 void
 Frame::draw_text_line(int x, int y, const std::string &str, const Color &color,
                       const Color &shadow) {
-  for (char c : str) {
-    draw_char_sprite(x, y, c, color, shadow);
-    x += 8;
-  }
+  Video::Color c = { color.get_red(),
+    color.get_green(),
+    color.get_blue(),
+    color.get_alpha() };
+
+  video->draw_text(str, font->get_video_font(), x, y, c, video_frame);
 }
 
 void
@@ -492,17 +494,29 @@ Frame::fill_rect(int x, int y, int width, int height, const Color &color) {
    backing surface is created, otherwise the same surface
    as dest is used. */
 Frame::Frame(Video *video_, unsigned int width, unsigned int height) {
-  video = video_;
+  init(video_);
   video_frame = video->create_frame(width, height);
   owner = true;
-  data_source = Data::get_instance().get_data_source();
+  Data &data = Data::get_instance();
+  data_source = data.get_data_source();
+  font = new Font(video, video->create_font(11));
 }
 
 Frame::Frame(Video *video_, Video::Frame *video_frame_) {
-  video = video_;
+  init(video_);
   video_frame = video_frame_;
   owner = false;
-  data_source = Data::get_instance().get_data_source();
+  Data &data = Data::get_instance();
+  data_source = data.get_data_source();
+  font = new Font(video, video->create_font(11));
+}
+
+void
+Frame::init(Video *video_) {
+  video = video_;
+  Data &data = Data::get_instance();
+  data_source = data.get_data_source();
+  font = new Font(video, video->create_font(16));
 }
 
 /* Deinitialize frame and backing surface. */
@@ -511,6 +525,7 @@ Frame::~Frame() {
     video->destroy_frame(video_frame);
   }
   video_frame = nullptr;
+  delete font;
 }
 
 /* Draw source frame from rectangle at sx, sy with given
@@ -532,6 +547,11 @@ Frame::draw_line(int x, int y, int x1, int y1, const Color &color) {
 Frame *
 Graphics::create_frame(unsigned int width, unsigned int height) {
   return new Frame(video, width, height);
+}
+
+Font *
+Graphics::create_font(size_t size) {
+  return new Font(video, size);
 }
 
 /* Enable or disable fullscreen mode */
@@ -580,4 +600,19 @@ Graphics::set_zoom_factor(float factor) {
 void
 Graphics::get_screen_factor(float *fx, float *fy) {
   video->get_screen_factor(fx, fy);
+}
+
+Font::Font(Video *_video, size_t size) {
+  video = _video;
+  video_font = video->create_font(size);
+}
+
+Font::Font(Video *_video, Video::Font *_video_font) {
+  video = _video;
+  video_font = _video_font;
+}
+
+void
+Font::get_text_size(const std::string &text, unsigned int *w, unsigned int *h) {
+  video->get_text_size(video_font, text, w, h);
 }

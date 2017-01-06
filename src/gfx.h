@@ -84,7 +84,7 @@ class Rect {
   int y;
   unsigned int width;
   unsigned int height;
-  
+
   Rect() { x = 0; y = 0; width = 0; height = 0; }
   Rect(int x, int y, unsigned int width, unsigned int height) {
     this->x = x;
@@ -129,6 +129,19 @@ class Image {
   Video::Image *get_video_image() const { return video_image; }
 };
 
+class Font {
+ protected:
+  Video *video;
+  Video::Font *video_font;
+
+ public:
+  Font(Video *video, size_t size);
+  Font(Video *video, Video::Font *video_font);
+
+  void get_text_size(const std::string &text, unsigned int *w, unsigned int *h);
+  Video::Font *get_video_font() const { return video_font; }
+};
+
 /* Frame. Keeps track of a specific rectangular area of a surface.
    Multiple frames can refer to the same surface. */
 class Frame {
@@ -144,6 +157,7 @@ class Frame {
   Video::Frame *video_frame;
   bool owner;
   Data::PSource data_source;
+  Font *font;
 
  public:
   Frame(Video *video, unsigned int width, unsigned int height);
@@ -195,6 +209,7 @@ class Frame {
   void draw_frame(int dx, int dy, int sx, int sy, Frame *src, int w, int h);
 
  protected:
+  void init(Video *video_);
   void draw_char_sprite(int x, int y, unsigned char c, const Color &color,
                         const Color &shadow);
   void draw_sprite(int x, int y, Data::Resource res, unsigned int index,
@@ -215,6 +230,9 @@ class Graphics {
 
   /* Frame functions */
   Frame *create_frame(unsigned int width, unsigned int height);
+
+  /* Font functions */
+  Font *create_font(size_t size);
 
   /* Screen functions */
   Frame *get_screen_frame();

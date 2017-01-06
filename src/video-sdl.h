@@ -26,6 +26,7 @@
 #include <string>
 
 #include <SDL.h>
+#include <SDL_ttf.h>
 
 #include "src/video.h"
 
@@ -33,7 +34,7 @@ class Video::Frame {
  public:
   SDL_Texture *texture;
 
-  Frame() : texture(NULL) {}
+  Frame() : texture(nullptr) {}
 };
 
 class Video::Image {
@@ -42,7 +43,14 @@ class Video::Image {
   unsigned int h;
   SDL_Texture *texture;
 
-  Image() : w(0), h(0), texture(NULL) {}
+  Image() : w(0), h(0), texture(nullptr) {}
+};
+
+class Video::Font {
+ public:
+  TTF_Font *font;
+
+  Font() : font(nullptr) {}
 };
 
 class ExceptionSDL : public ExceptionVideo {
@@ -89,6 +97,14 @@ class VideoSDL : public Video {
   virtual Video::Image *create_image(void *data, unsigned int width,
                                      unsigned int height);
   virtual void destroy_image(Video::Image *image);
+
+  virtual Font *create_font(size_t size);
+  virtual void destroy_font(Font *font);
+  virtual void get_text_size(Font *font, const std::string &text,
+                             unsigned int *w, unsigned int *h);
+  virtual void draw_text(const std::string &text, Font *font,
+                         unsigned int x, unsigned int y,
+                         const Video::Color color, Frame *dest);
 
   virtual void warp_mouse(int x, int y);
 
