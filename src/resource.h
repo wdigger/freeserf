@@ -62,4 +62,24 @@ class Resource {
 
 typedef std::map<Resource::Type, unsigned int> ResourceMap;
 
+class Package {
+ protected:
+  Resource::Type resource;
+  unsigned int dest;
+
+ public:
+  Package() : resource(Resource::TypeNone), dest(0) {}
+  Package(Resource::Type _resource, unsigned int _dest)
+  : resource(_resource), dest(_dest) {}
+
+  Resource::Type get_resource() const { return resource; }
+  unsigned int get_dest() const { return dest; }
+
+  bool is_empty() const { return (resource == Resource::TypeNone); }
+  bool is_lost() const { return (dest == 0); }
+  bool is_routable() const;  // Can be reroute?
+
+  void lost() { dest = 0; }
+};
+
 #endif  // SRC_RESOURCE_H_

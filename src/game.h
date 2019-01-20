@@ -169,7 +169,7 @@ class Game {
   void update_land_ownership(MapPos pos);
   void occupy_enemy_building(Building *building, int player);
 
-  void cancel_transported_resource(Resource::Type type, unsigned int dest);
+  void cancel_transported_resource(Package package);
   void lose_resource(Resource::Type type);
 
   uint16_t random_int();

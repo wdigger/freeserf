@@ -620,7 +620,7 @@ Serf::restore_path_serf_info() {
       Resource::Type res = s.transporting.res;
       s.transporting.res = Resource::TypeNone;
 
-      game->cancel_transported_resource(res, s.transporting.dest);
+      game->cancel_transported_resource(Package(res, s.transporting.dest));
       game->lose_resource(res);
     }
   } else {
@@ -809,7 +809,7 @@ Serf::set_lost_state() {
       Resource::Type res = s.transporting.res;
       int dest = s.walking.dest;
 
-      game->cancel_transported_resource(res, dest);
+      game->cancel_transported_resource(Package(res, dest));
       game->lose_resource(res);
     }
 
@@ -1020,31 +1020,33 @@ void
 Serf::transporter_move_to_flag(Flag *flag) {
   Direction dir = (Direction)s.transporting.dir;
   if (flag->is_scheduled(dir)) {
-    /* Fetch resource from flag */
+    // Fetch resource from flag
     s.transporting.wait_counter = 0;
     int res_index = flag->scheduled_slot(dir);
 
     if (s.transporting.res == Resource::TypeNone) {
-      /* Pick up resource. */
-      flag->pick_up_resource(res_index, &s.transporting.res,
-                             &s.transporting.dest);
+      // Pick up resource
+      Package package = flag->pick_up_resource(res_index);
+      s.transporting.res = package.get_resource();
+      s.transporting.dest = package.get_dest();
     } else {
-      /* Switch resources and destination. */
-      Resource::Type temp_res = s.transporting.res;
-      int temp_dest = s.transporting.dest;
+      // Switch resources and destination
+      Package temp_package(s.transporting.res, s.transporting.dest);
 
-      flag->pick_up_resource(res_index, &s.transporting.res,
-                             &s.transporting.dest);
+      Package package = flag->pick_up_resource(res_index);
+      s.transporting.res = package.get_resource();
+      s.transporting.dest = package.get_dest();
 
-      flag->drop_resource(temp_res, temp_dest);
+      flag->drop_resource(temp_package);
     }
 
-    /* Find next resource to be picked up */
+    // Find next resource to be picked up
     Player *player = game->get_player(get_owner());
     flag->prioritize_pickup((Direction)dir, player);
   } else if (s.transporting.res != Resource::TypeNone) {
-    /* Drop resource at flag */
-    if (flag->drop_resource(s.transporting.res, s.transporting.dest)) {
+    // Drop resource at flag
+    Package package(s.transporting.res, s.transporting.dest);
+    if (flag->drop_resource(package)) {
       s.transporting.res = Resource::TypeNone;
     }
   }
@@ -2215,11 +2217,9 @@ Serf::handle_serf_wait_for_resource_out_state() {
   }
 
   set_state(StateMoveResourceOut);
-  Resource::Type res = Resource::TypeNone;
-  int dest = 0;
-  inventory->get_resource_from_queue(&res, &dest);
-  s.move_resource_out.res = res + 1;
-  s.move_resource_out.res_dest = dest;
+  Package package = inventory->get_resource_from_queue();
+  s.move_resource_out.res = package.get_resource() + 1;
+  s.move_resource_out.res_dest = package.get_dest();
   s.move_resource_out.next_state = StateDropResourceOut;
 
   /* why isn't a state switch enough? */
@@ -2230,8 +2230,9 @@ void
 Serf::handle_serf_drop_resource_out_state() {
   Flag *flag = game->get_flag(game->get_map()->get_obj_index(pos));
 
-  bool res = flag->drop_resource((Resource::Type)(s.move_resource_out.res-1),
-                                 s.move_resource_out.res_dest);
+  Package package((Resource::Type)(s.move_resource_out.res-1),
+                  s.move_resource_out.res_dest);
+  bool res = flag->drop_resource(package);
   if (!res) {
     throw ExceptionFreeserf("Failed to drop resource.");
   }
@@ -2316,8 +2317,8 @@ void
 Serf::drop_resource(Resource::Type res) {
   Flag *flag = game->get_flag(game->get_map()->get_obj_index(pos));
 
-  /* Resource is lost if no free slot is found */
-  bool result = flag->drop_resource(res, 0);
+  // Resource is lost if no free slot is found
+  bool result = flag->drop_resource(Package());
   if (result) {
     Player *player = game->get_player(get_owner());
     player->increase_res_count(res);

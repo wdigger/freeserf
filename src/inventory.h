@@ -47,11 +47,8 @@ class Inventory : public GameObject {
   unsigned int building;
   /* Count of resources */
   ResourceMap resources;
-  /* Resources waiting to be moved out */
-  struct out_queue {
-    Resource::Type type;
-    unsigned int dest;
-  } out_queue[2];
+  // Resources waiting to be moved out
+  Package out_queue[2];
   /* Count of serfs waiting to move out */
   unsigned int serfs_out;
   /* Count of generic serfs */
@@ -97,19 +94,18 @@ class Inventory : public GameObject {
   void pop_resource(Resource::Type resource) { resources[resource]--; }
   void push_resource(Resource::Type resource);
 
-  bool has_resource_in_queue() {
-    return (out_queue[0].type != Resource::TypeNone); }
-  bool is_queue_full() { return (out_queue[1].type != Resource::TypeNone); }
-  void get_resource_from_queue(Resource::Type *res, int *dest);
+  bool has_resource_in_queue() { return !out_queue[0].is_empty(); }
+  bool is_queue_full() { return !out_queue[1].is_empty(); }
+  Package get_resource_from_queue();
   void reset_queue_for_dest(Flag *flag);
 
   bool has_food() { return (resources[Resource::TypeFish] != 0 ||
                             resources[Resource::TypeMeat] != 0 ||
                             resources[Resource::TypeBread] != 0); }
 
-  /* Take resource from inventory and put in out queue.
-   The resource must be present.*/
-  void add_to_queue(Resource::Type type, unsigned int dest);
+  // Take resource from inventory and put in out queue.
+  // The resource must be present.
+  void add_to_queue(Package package);
 
   /* Create initial resources */
   void apply_supplies_preset(unsigned int supplies);

@@ -95,10 +95,8 @@ Flag::Flag(Game *game, unsigned int index)
   , other_end_dir{}
   , bld_flags(0)
   , bld2_flags(0) {
-  for (int j = 0; j < FLAG_MAX_RES_COUNT; j++) {
-    slot[j].type = Resource::TypeNone;
-    slot[j].dest = 0;
-    slot[j].dir = DirectionNone;
+  for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
+    slot[i].dir = DirectionNone;
   }
 }
 
@@ -135,37 +133,31 @@ Flag::del_path(Direction dir) {
   invalidate_resource_path(dir);
 }
 
-bool
-Flag::pick_up_resource(unsigned int from_slot, Resource::Type *res,
-                       unsigned int *dest) {
+Package
+Flag::pick_up_resource(unsigned int from_slot) {
   if (from_slot >= FLAG_MAX_RES_COUNT) {
     throw ExceptionFreeserf("Wrong flag slot index.");
   }
 
-  if (slot[from_slot].type == Resource::TypeNone) {
-    return false;
-  }
-
-  *res = slot[from_slot].type;
-  *dest = slot[from_slot].dest;
-  slot[from_slot].type = Resource::TypeNone;
+  Package temp_package = slot[from_slot].package;
+  slot[from_slot].package = Package();
   slot[from_slot].dir = DirectionNone;
 
   fix_scheduled();
 
-  return true;
+  return temp_package;
 }
 
 bool
-Flag::drop_resource(Resource::Type res, unsigned int dest) {
-  if (res < Resource::TypeNone || res > Resource::GroupFood) {
+Flag::drop_resource(Package package) {
+  if (package.get_resource() < Resource::TypeNone ||
+      package.get_resource() > Resource::GroupFood) {
     throw ExceptionFreeserf("Wrong resource type.");
   }
 
   for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
-    if (slot[i].type == Resource::TypeNone) {
-      slot[i].type = res;
-      slot[i].dest = dest;
+    if (slot[i].package.is_empty()) {
+      slot[i].package = package;
       slot[i].dir = DirectionNone;
       endpoint |= BIT(7);
       return true;
@@ -177,38 +169,36 @@ Flag::drop_resource(Resource::Type res, unsigned int dest) {
 
 bool
 Flag::has_empty_slot() const {
-  int scheduled_slots = 0;
   for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
-    if (slot[i].type != Resource::TypeNone) {
-      scheduled_slots++;
+    if (slot[i].package.is_empty()) {
+      return true;
     }
   }
 
-  return (scheduled_slots != FLAG_MAX_RES_COUNT);
+  return false;
 }
 
 void
 Flag::remove_all_resources() {
   for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
-    if (slot[i].type != Resource::TypeNone) {
-      int res = slot[i].type;
-      unsigned int dest = slot[i].dest;
-      game->cancel_transported_resource((Resource::Type)res, dest);
-      game->lose_resource((Resource::Type)res);
+    if (!slot[i].package.is_empty()) {
+      Package package = slot[i].package;
+      game->cancel_transported_resource(package);
+      game->lose_resource(package.get_resource());
     }
   }
 }
 
 Resource::Type
 Flag::get_resource_at_slot(int slot_) const {
-  return slot[slot_].type;
+  return slot[slot_].package.get_resource();
 }
 
 void
 Flag::fix_scheduled() {
   int scheduled_slots = 0;
   for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
-    if (slot[i].type != Resource::TypeNone) {
+    if (!slot[i].package.is_empty()) {
       scheduled_slots++;
     }
   }
@@ -245,8 +235,8 @@ schedule_unknown_dest_cb(Flag *flag, void *data) {
   return false;
 }
 
-void
-Flag::schedule_slot_to_unknown_dest(int slot_num) {
+bool
+Package::is_routable() const {
   /* Resources which should be routed directly to
    buildings requesting them. Resources not listed
    here will simply be moved to an inventory. */
@@ -280,12 +270,19 @@ Flag::schedule_slot_to_unknown_dest(int slot_num) {
     0,  // RESOURCE_GROUP_FOOD
   };
 
-  Resource::Type res = slot[slot_num].type;
-  if (routable[res]) {
+  return (routable[resource] == 1);
+}
+
+void
+Flag::schedule_slot_to_unknown_dest(int slot_num) {
+  Package package = slot[slot_num].package;
+  if (package.is_routable()) {
     FlagSearch search(game);
     search.add_source(this);
 
-    /* Handle food as one resource group */
+    Resource::Type res = package.get_resource();
+
+    // Handle food as one resource group
     if (res == Resource::TypeMeat ||
         res == Resource::TypeFish ||
         res == Resource::TypeBread) {
@@ -307,7 +304,8 @@ Flag::schedule_slot_to_unknown_dest(int slot_num) {
         throw ExceptionFreeserf("Failed to request resource.");
       }
 
-      slot[slot_num].dest = dest_bld->get_flag_index();
+      slot[slot_num].package = Package(package.get_resource(),
+                                       dest_bld->get_flag_index());
       endpoint |= BIT(7);
       return;
     }
@@ -316,8 +314,8 @@ Flag::schedule_slot_to_unknown_dest(int slot_num) {
   /* Either this resource cannot be routed to a destination
    other than an inventory or such destination could not be
    found. Send to inventory instead. */
-  int r = find_nearest_inventory_for_resource();
-  if (r < 0 || r == static_cast<int>(index)) {
+  int inv = find_nearest_inventory_for_resource();
+  if (inv < 0 || inv == static_cast<int>(index)) {
     /* No path to inventory was found, or
      resource is already at destination.
      In the latter case we need to move it
@@ -338,13 +336,12 @@ Flag::schedule_slot_to_unknown_dest(int slot_num) {
       }
 
       if (!is_scheduled(dir)) {
-        other_end_dir[dir] = BIT(7) |
-          (other_end_dir[dir] & 0x38) | slot_num;
+        other_end_dir[dir] = BIT(7) | (other_end_dir[dir] & 0x38) | slot_num;
       }
       slot[slot_num].dir = dir;
     }
   } else {
-    this->slot[slot_num].dest = r;
+    slot[slot_num].package = Package(package.get_resource(), inv);
     endpoint |= BIT(7);
   }
 }
@@ -418,8 +415,8 @@ Flag::schedule_known_dest_cb_(Flag *src, Flag *dest, int _slot) {
       } else {
         Player *player = game->get_player(this->get_owner());
         int other_dir = src->other_end_dir[this->search_dir];
-        int prio_old = player->get_flag_prio(src->slot[other_dir & 7].type);
-        int prio_new = player->get_flag_prio(src->slot[_slot].type);
+        int prio_old = player->get_flag_prio(src->slot[other_dir & 7].package.get_resource());
+        int prio_new = player->get_flag_prio(src->slot[_slot].package.get_resource());
         if (prio_new > prio_old) {
           /* This item has the highest priority now */
           src->other_end_dir[this->search_dir] =
@@ -497,14 +494,13 @@ Flag::schedule_slot_to_known_dest(int slot_, unsigned int res_waiting[4]) {
   if (sources > 0) {
     ScheduleKnownDestData data;
     data.src = this;
-    data.dest = game->get_flag(this->slot[slot_].dest);
+    data.dest = game->get_flag(slot[slot_].package.get_dest());
     data.slot = slot_;
     bool r = search.execute(schedule_known_dest_cb, false, true, &data);
     if (!r || data.dest == this) {
-      /* Unable to deliver */
-      game->cancel_transported_resource(this->slot[slot_].type,
-                                        this->slot[slot_].dest);
-      this->slot[slot_].dest = 0;
+      // Unable to deliver
+      game->cancel_transported_resource(slot[slot_].package);
+      slot[slot_].package.lost();
       endpoint |= BIT(7);
     }
   } else {
@@ -518,10 +514,10 @@ Flag::prioritize_pickup(Direction dir, Player *player) {
   int res_prio = -1;
 
   for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
-    if (slot[i].type != Resource::TypeNone) {
-      /* Use flag_prio to prioritize resource pickup. */
+    if (!slot[i].package.is_empty()) {
+      // Use flag_prio to prioritize resource pickup
       Direction res_dir = slot[i].dir;
-      Resource::Type res_type = slot[i].type;
+      Resource::Type res_type = slot[i].package.get_resource();
       if (res_dir == dir && player->get_flag_prio(res_type) > res_prio) {
         res_next = i;
         res_prio = player->get_flag_prio(res_type);
@@ -536,7 +532,7 @@ Flag::prioritize_pickup(Direction dir, Player *player) {
 void
 Flag::invalidate_resource_path(Direction dir) {
   for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
-    if (slot[i].type != Resource::TypeNone && slot[i].dir == dir) {
+    if (!slot[i].package.is_empty() && slot[i].dir == dir) {
       slot[i].dir = DirectionNone;
       endpoint |= BIT(7);
     }
@@ -839,11 +835,11 @@ void
 Flag::update() {
   const int max_transporters[] = { 1, 2, 3, 4, 6, 8, 11, 15 };
 
-  /* Count and store in bitfield which directions
-   have strictly more than 0,1,2,3 slots waiting. */
+  // Count and store in bitfield which directions
+  // have strictly more than 0,1,2,3 slots waiting
   unsigned int res_waiting[4] = {0};
   for (int j = 0; j < FLAG_MAX_RES_COUNT; j++) {
-    if (slot[j].type != Resource::TypeNone && slot[j].dir != DirectionNone) {
+    if (!slot[j].package.is_empty() && slot[j].dir != DirectionNone) {
       Direction res_dir = slot[j].dir;
       for (int k = 0; k < 4; k++) {
         if (!BIT_TEST(res_waiting[k], res_dir)) {
@@ -854,24 +850,23 @@ Flag::update() {
     }
   }
 
-  /* Count of total resources waiting at flag */
+  // Count of total resources waiting at flag
   int waiting_count = 0;
 
   if (has_resources()) {
     endpoint &= ~BIT(7);
     for (int slot_ = 0; slot_ < FLAG_MAX_RES_COUNT; slot_++) {
-      if (slot[slot_].type != Resource::TypeNone) {
+      if (!slot[slot_].package.is_empty()) {
         waiting_count += 1;
 
-        /* Only schedule the slot if it has not already
-         been scheduled for fetch. */
+        // Only schedule the slot if it has not already been scheduled for fetch
         int res_dir = slot[slot_].dir;
         if (res_dir < 0) {
-          if (slot[slot_].dest != 0) {
-            /* Destination is known */
+          if (!slot[slot_].package.is_lost()) {
+            // Destination is known
             schedule_slot_to_known_dest(slot_, res_waiting);
           } else {
-            /* Destination is not known */
+            // Destination is not known
             schedule_slot_to_unknown_dest(slot_);
           }
         }
@@ -986,9 +981,9 @@ Flag::call_transporter(Direction dir, bool water) {
 void
 Flag::reset_transport(Flag *other) {
   for (int slot_ = 0; slot_ < FLAG_MAX_RES_COUNT; slot_++) {
-    if (other->slot[slot_].type != Resource::TypeNone &&
-        other->slot[slot_].dest == index) {
-      other->slot[slot_].dest = 0;
+    if (!other->slot[slot_].package.is_empty() &&
+        other->slot[slot_].package.get_dest() == index) {
+      other->slot[slot_].package.lost();
       other->endpoint |= BIT(7);
 
       if (other->slot[slot_].dir != DirectionNone) {
@@ -1003,10 +998,9 @@ Flag::reset_transport(Flag *other) {
 void
 Flag::reset_destination_of_stolen_resources() {
   for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
-    if (slot[i].type != Resource::TypeNone) {
-      Resource::Type res = slot[i].type;
-      game->cancel_transported_resource(res, slot[i].dest);
-      slot[i].dest = 0;
+    if (!slot[i].package.is_empty()) {
+      game->cancel_transported_resource(slot[i].package);
+      slot[i].package.lost();
     }
   }
 }
@@ -1050,14 +1044,16 @@ operator >> (SaveReaderBinary &reader, Flag &flag) {
     flag.length[j] = val8;
   }
 
+  Resource::Type types[8];
+
   for (int j = 0; j < 8; j++) {
     reader >> val8;  // 12+j
-    flag.slot[j].type = (Resource::Type)((val8 & 0x1f)-1);
+    types[j] = (Resource::Type)((val8 & 0x1f)-1);
     flag.slot[j].dir = (Direction)(((val8 >> 5) & 7)-1);
   }
   for (int j = 0; j < 8; j++) {
     reader >> val16;  // 20+j*2
-    flag.slot[j].dest = val16;
+    flag.slot[j].package = Package(types[j], val16);
   }
 
   // base + 36
@@ -1150,9 +1146,12 @@ operator >> (SaveReaderText &reader, Flag &flag) {
   }
 
   for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
-    reader.value("slot.type")[i] >> flag.slot[i].type;
     reader.value("slot.dir")[i] >> flag.slot[i].dir;
-    reader.value("slot.dest")[i] >> flag.slot[i].dest;
+    Resource::Type type;
+    unsigned int dest;
+    reader.value("slot.type")[i] >> type;
+    reader.value("slot.dest")[i] >> dest;
+    flag.slot[i].package = Package(type, dest);
   }
 
   reader.value("bld_flags") >> flag.bld_flags;
@@ -1188,9 +1187,9 @@ operator << (SaveWriterText &writer, Flag &flag) {
   }
 
   for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
-    writer.value("slot.type") << flag.slot[i].type;
+    writer.value("slot.type") << flag.slot[i].package.get_resource();
     writer.value("slot.dir") << flag.slot[i].dir;
-    writer.value("slot.dest") << flag.slot[i].dest;
+    writer.value("slot.dest") << flag.slot[i].package.get_dest();
   }
 
   writer.value("bld_flags") << flag.bld_flags;

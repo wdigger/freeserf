@@ -26,6 +26,7 @@
 
 #include "src/building.h"
 #include "src/objects.h"
+#include "src/resource.h"
 
 typedef struct SerfPathInfo {
   int path_len;
@@ -48,9 +49,8 @@ class Flag : public GameObject {
  protected:
   class ResourceSlot {
    public:
-    Resource::Type type;
+    Package package;
     Direction dir;
-    unsigned int dest;
   };
 
  protected:
@@ -144,9 +144,8 @@ class Flag : public GameObject {
   /* Whether the given direction has a resource pickup scheduled. */
   bool is_scheduled(Direction dir) const {
     return (other_end_dir[dir] >> 7) & 1; }
-  bool pick_up_resource(unsigned int slot, Resource::Type *res,
-                        unsigned int *dest);
-  bool drop_resource(Resource::Type res, unsigned int dest);
+  Package pick_up_resource(unsigned int slot);
+  bool drop_resource(Package package);
   bool has_empty_slot() const;
   void remove_all_resources();
   Resource::Type get_resource_at_slot(int slot) const;

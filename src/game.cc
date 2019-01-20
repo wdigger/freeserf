@@ -242,7 +242,7 @@ Game::update_inventories() {
             }
 
             if (type != Resource::TypeNone) {
-              inventory->add_to_queue(type, 0);
+              inventory->add_to_queue(Package(type, 0));
             }
           }
         }
@@ -279,9 +279,9 @@ Game::update_inventories() {
             throw ExceptionFreeserf("Failed to request resource.");
           }
 
-          /* Put resource in out queue */
+          // Put resource in out queue
           Inventory *src_inv = invs[i];
-          src_inv->add_to_queue(res, dest_bld->get_flag_index());
+          src_inv->add_to_queue(Package(res, dest_bld->get_flag_index()));
         }
       }
     }
@@ -2016,17 +2016,17 @@ Game::init(unsigned int map_size, const Random &random) {
 /* Cancel a resource being transported to destination. This
    ensures that the destination can request a new resource. */
 void
-Game::cancel_transported_resource(Resource::Type res, unsigned int dest) {
-  if (dest == 0) {
+Game::cancel_transported_resource(Package package) {
+  if (package.is_empty()) {
     return;
   }
 
-  Flag *flag = flags[dest];
+  Flag *flag = flags[package.get_dest()];
   if (!flag->has_building()) {
     throw ExceptionFreeserf("Failed to cancel transported resource.");
   }
   Building *building = flag->get_building();
-  building->cancel_transported_resource(res);
+  building->cancel_transported_resource(package.get_resource());
 }
 
 /* Called when a resource is lost forever from the game. This will

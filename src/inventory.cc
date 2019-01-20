@@ -37,19 +37,12 @@ Inventory::Inventory(Game *game, unsigned int index)
   , serfs_out(0)
   , generic_count(0)
   , res_dir(0) {
-  for (int i = 0; i < 2; i++) {
-    out_queue[i].type = Resource::TypeNone;
-    out_queue[i].dest = 0;
-  }
 }
 
 Inventory::~Inventory() {
-  for (int i = 0; i < 2 && out_queue[i].type != Resource::TypeNone; i++) {
-    Resource::Type res = out_queue[i].type;
-    int dest = out_queue[i].dest;
-
-    game->cancel_transported_resource(res, dest);
-    game->lose_resource(res);
+  for (int i = 0; i < 2; i++) {
+    game->cancel_transported_resource(out_queue[i]);
+    game->lose_resource(out_queue[i].get_resource());
   }
 
   game->add_gold_total(-static_cast<int>(resources[Resource::TypeGoldBar]));
@@ -61,22 +54,19 @@ Inventory::push_resource(Resource::Type resource) {
   resources[resource] += (resources[resource] < 50000) ? 1 : 0;
 }
 
-void
-Inventory::get_resource_from_queue(Resource::Type *res, int *dest) {
-  *res = out_queue[0].type;
-  *dest = out_queue[0].dest;
-
-  out_queue[0].type = out_queue[1].type;
-  out_queue[0].dest = out_queue[1].dest;
-
-  out_queue[1].type = Resource::TypeNone;
-  out_queue[1].dest = 0;
+Package
+Inventory::get_resource_from_queue() {
+  Package package = out_queue[0];
+  out_queue[0] = out_queue[1];
+  out_queue[1] = Package();
+  return package;
 }
 
 void
-Inventory::add_to_queue(Resource::Type type, unsigned int dest) {
+Inventory::add_to_queue(Package package) {
+  Resource::Type type = package.get_resource();
   if (type == Resource::GroupFood) {
-    /* Select the food resource with highest amount available */
+    // Select the food resource with highest amount available
     if (resources[Resource::TypeMeat] > resources[Resource::TypeBread]) {
       if (resources[Resource::TypeMeat] > resources[Resource::TypeFish]) {
         type = Resource::TypeMeat;
@@ -88,35 +78,33 @@ Inventory::add_to_queue(Resource::Type type, unsigned int dest) {
     } else {
       type = Resource::TypeFish;
     }
+    package = Package(type, package.get_dest());
   }
+
 
   if (resources[type] == 0) {
     throw ExceptionFreeserf("No resource with type.");
   }
 
   resources[type] -= 1;
-  if (out_queue[0].type == Resource::TypeNone) {
-    out_queue[0].type = type;
-    out_queue[0].dest = dest;
+  if (out_queue[0].is_empty()) {
+    out_queue[0] = package;
   } else {
-    out_queue[1].type = type;
-    out_queue[1].dest = dest;
+    out_queue[1] = package;
   }
 }
 
 void
 Inventory::reset_queue_for_dest(Flag *flag_) {
-  if (out_queue[1].type != Resource::TypeNone &&
-      out_queue[1].dest == flag_->get_index()) {
-    push_resource(out_queue[1].type);
-    out_queue[1].type = Resource::TypeNone;
+  unsigned int dest = flag_->get_index();
+  if (!out_queue[1].is_empty() && out_queue[1].get_dest() == dest) {
+    push_resource(out_queue[1].get_resource());
+    out_queue[1] = Package();
   }
-  if (out_queue[0].type != Resource::TypeNone &&
-      out_queue[0].dest == flag_->get_index()) {
-    push_resource(out_queue[0].type);
-    out_queue[0].type = out_queue[1].type;
-    out_queue[0].dest = out_queue[1].dest;
-    out_queue[1].type = Resource::TypeNone;
+  if (!out_queue[0].is_empty() && out_queue[0].get_dest() == dest) {
+    push_resource(out_queue[0].get_resource());
+    out_queue[0] = out_queue[1];
+    out_queue[1] = Package();
   }
 }
 
@@ -425,14 +413,15 @@ operator >> (SaveReaderBinary &reader, Inventory &inventory) {
     inventory.resources[(Resource::Type)j] = word;
   }
 
+  Resource::Type types[2];
   for (int j = 0; j < 2; j++) {
     reader >> byte;  // 58 + j
-    inventory.out_queue[j].type = (Resource::Type)(byte-1);
+    types[j] = (Resource::Type)(byte-1);
   }
 
   for (int j = 0; j < 2; j++) {
     reader >> word;  // 60 + 2*j
-    inventory.out_queue[j].dest = word;
+    inventory.out_queue[j] = Package(types[j], word);
   }
 
   reader >> word;  // 64
@@ -454,8 +443,11 @@ operator >> (SaveReaderText &reader, Inventory &inventory) {
   reader.value("building") >> inventory.building;
 
   for (int i = 0; i < 2; i++) {
-    reader.value("queue.type")[i] >> inventory.out_queue[i].type;
-    reader.value("queue.dest")[i] >> inventory.out_queue[i].dest;
+    Resource::Type type;
+    reader.value("queue.type")[i] >> type;
+    unsigned int dest;
+    reader.value("queue.dest")[i] >> dest;
+    inventory.out_queue[i] = Package(type, dest);
   }
 
   reader.value("generic_count") >> inventory.generic_count;
@@ -477,8 +469,8 @@ operator << (SaveWriterText &writer, Inventory &inventory) {
   writer.value("building") << inventory.building;
 
   for (int i = 0; i < 2; i++) {
-    writer.value("queue.type") << inventory.out_queue[i].type;
-    writer.value("queue.dest") << inventory.out_queue[i].dest;
+    writer.value("queue.type") << inventory.out_queue[i].get_resource();
+    writer.value("queue.dest") << inventory.out_queue[i].get_dest();
   }
 
   writer.value("generic_count") << inventory.generic_count;
