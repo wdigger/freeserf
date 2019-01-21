@@ -53,9 +53,17 @@ class Flag : public GameObject {
     Direction dir;
   };
 
+  class DirInfo {
+   public:
+    DirInfo() : lenght(0), free_transporters(0), serf_requested(false) {}
+    unsigned int lenght;
+    unsigned int free_transporters;
+    bool serf_requested;
+  };
+
  protected:
   unsigned int owner;
-  MapPos pos; /* ADDITION */
+  MapPos pos;
   int path_con;
   int endpoint;
   ResourceSlot slot[maxResCount];
@@ -63,13 +71,14 @@ class Flag : public GameObject {
   int search_num;
   Direction search_dir;
   int transporter;
-  size_t length[6];
   union other_endpoint {
     Building *b[6];
     Flag *f[6];
     void *v[6];
   } other_endpoint;
   int other_end_dir[6];
+
+  DirInfo dirs[6];
 
   bool inventory;
   bool accepts_serfs;
@@ -120,19 +129,19 @@ class Flag : public GameObject {
   bool serf_request_fail() const { return (transporter >> 7) & 1; }
   void serf_request_clear() { transporter &= ~BIT(7); }
 
-  /* Current number of transporters on path. */
+  // Current number of transporters on path
   unsigned int free_transporter_count(Direction dir) const {
-    return length[dir] & 0xf; }
-  void transporter_to_serve(Direction dir) { length[dir] -= 1; }
-  /* Length category of path determining max number of transporters. */
-  unsigned int length_category(Direction dir) const {
-    return (length[dir] >> 4) & 7; }
-  /* Whether a transporter serf was successfully requested for this path. */
-  bool serf_requested(Direction dir) const { return (length[dir] >> 7) & 1; }
-  void cancel_serf_request(Direction dir) { length[dir] &= ~BIT(7); }
+    return dirs[dir].free_transporters;
+  }
+  void transporter_to_serve(Direction dir) { dirs[dir].free_transporters--; }
+  // Length category of path determining max number of transporters
+  unsigned int length_category(Direction dir) const { return dirs[dir].lenght; }
+  // Whether a transporter serf was successfully requested for this path
+  bool serf_requested(Direction dir) const { return dirs[dir].serf_requested; }
+  void cancel_serf_request(Direction dir) { dirs[dir].serf_requested = false; }
   void complete_serf_request(Direction dir) {
-    length[dir] &= ~BIT(7);
-    length[dir] += 1;
+    dirs[dir].serf_requested = false;
+    dirs[dir].free_transporters++;
   }
 
   /* The slot that is scheduled for pickup by the given path. */

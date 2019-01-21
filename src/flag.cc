@@ -581,8 +581,8 @@ Flag::link_with_flag(Flag *dest_flag, bool water_path, size_t length_,
 
   size_t len = get_road_length_value(length_);
 
-  dest_flag->length[in_dir] = len << 4;
-  this->length[out_dir] = len << 4;
+  dest_flag->dirs[in_dir].lenght = len;
+  dirs[out_dir].lenght = len;
 
   dest_flag->other_endpoint.f[in_dir] = this;
   other_endpoint.f[out_dir] = dest_flag;
@@ -599,15 +599,10 @@ Flag::restore_path_serf_info(Direction dir, SerfPathInfo *data) {
 
   other_flag->transporter &= ~BIT(other_dir);
 
-  size_t len = Flag::get_road_length_value(data->path_len);
-
-  length[dir] = len << 4;
-  other_flag->length[other_dir] =
-    (0x80 & other_flag->length[other_dir]) | (len << 4);
-
-  if (other_flag->serf_requested(other_dir)) {
-    length[dir] |= BIT(7);
-  }
+  unsigned int len = Flag::get_road_length_value(data->path_len);
+  dirs[dir].lenght = len;
+  dirs[dir].free_transporters = other_flag->dirs[other_dir].free_transporters;
+  dirs[dir].serf_requested = other_flag->dirs[other_dir].serf_requested;
 
   other_end_dir[dir] = (other_end_dir[dir] & 0xc7) | (other_dir << 3);
   other_flag->other_end_dir[other_dir] =
@@ -631,8 +626,8 @@ Flag::restore_path_serf_info(Direction dir, SerfPathInfo *data) {
     transporter |= BIT(dir);
     other_flag->transporter |= BIT(other_dir);
 
-    length[dir] |= std::min(data->serf_count, max_serfs);
-    other_flag->length[other_dir] |= std::min(data->serf_count, max_serfs);
+    dirs[dir].free_transporters = std::min(data->serf_count, max_serfs);
+    other_flag->dirs[other_dir].free_transporters = std::min(data->serf_count, max_serfs);
   }
 }
 
@@ -818,8 +813,8 @@ Flag::merge_paths(MapPos pos_) {
 
   size_t len = Flag::get_road_length_value((size_t)path_1_data.path_len +
                                            (size_t)path_2_data.path_len);
-  flag_1->length[dir_1] = len << 4;
-  flag_2->length[dir_2] = len << 4;
+  flag_1->dirs[dir_1].lenght = len;
+  flag_2->dirs[dir_2].lenght = len;
 
   int max_serfs = max_transporters[flag_1->length_category(dir_1)];
   int serf_count = path_1_data.serf_count + path_2_data.serf_count;
@@ -831,8 +826,8 @@ Flag::merge_paths(MapPos pos_) {
       /* TODO 59B8B */
     }
 
-    flag_1->length[dir_1] += serf_count;
-    flag_2->length[dir_2] += serf_count;
+    flag_1->dirs[dir_1].free_transporters += serf_count;
+    flag_2->dirs[dir_2].free_transporters += serf_count;
   }
 
   /* Update serfs with reference to this flag. */
@@ -980,8 +975,8 @@ Flag::call_transporter(Direction dir, bool water) {
 
   Flag *dest_flag = game->get_flag(inventory->get_flag_index());
 
-  length[dir] |= BIT(7);
-  src_2->length[dir_2] |= BIT(7);
+  dirs[dir].serf_requested = true;
+  src_2->dirs[dir_2].serf_requested = true;
 
   Flag *src = this;
   if (dest_flag->search_dir == src_2->search_dir) {
@@ -1057,7 +1052,9 @@ operator >> (SaveReaderBinary &reader, Flag &flag) {
 
   for (Direction j : cycle_directions_cw()) {
     reader >> val8;  // 6+j
-    flag.length[j] = val8;
+    flag.dirs[j].lenght = (val8 >> 4) & 7;
+    flag.dirs[j].serf_requested = (val8 >> 7) & 1;
+    flag.dirs[j].free_transporters = (val8 & 0xf);
   }
 
   Resource::Type types[8];
@@ -1144,9 +1141,19 @@ operator >> (SaveReaderText &reader, Flag &flag) {
   reader.value("transporter") >> flag.transporter;
 
   for (Direction i : cycle_directions_cw()) {
-    int len;
-    reader.value("length")[i] >> len;
-    flag.length[i] = len;
+    if (reader.has_value("free_transporters")) {
+      reader.value("length")[i] >> flag.dirs[i].lenght;
+      reader.value("free_transporters")[i] >> flag.dirs[i].free_transporters;
+      unsigned int val;
+      reader.value("serf_requested")[i] >> val;
+      flag.dirs[i].serf_requested = (val != 0);
+    } else {
+      int len;
+      reader.value("length")[i] >> len;
+      flag.dirs[i].lenght = ((len >> 4) & 7);
+      flag.dirs[i].free_transporters = (len & 0xf);
+      flag.dirs[i].serf_requested = ((len >> 7) & 1);
+    }
     unsigned int obj_index;
     reader.value("other_endpoint")[i] >> obj_index;
     if (flag.has_building() && (i == DirectionUpLeft)) {
@@ -1207,7 +1214,9 @@ operator << (SaveWriterText &writer, Flag &flag) {
   writer.value("transporter") << flag.transporter;
 
   for (Direction d : cycle_directions_cw()) {
-    writer.value("length") << static_cast<int>(flag.length[d]);
+    writer.value("length") << flag.dirs[d].lenght;
+    writer.value("free_transporters") << flag.dirs[d].free_transporters;
+    writer.value("serf_requested") << flag.dirs[d].serf_requested;
     if (d == DirectionUpLeft && flag.has_building()) {
       writer.value("other_endpoint") <<
         flag.other_endpoint.b[DirectionUpLeft]->get_index();
