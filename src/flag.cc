@@ -97,6 +97,9 @@ Flag::Flag(Game *game, unsigned int index)
   , bld2_flags(0) {
   for (int i = 0; i < maxResCount; i++) {
     slot[i].dir = DirectionNone;
+  bld_flags = 0;
+  bld2_flags = 0;
+  accepts_resources = false;
   }
 }
 
@@ -349,7 +352,7 @@ Flag::schedule_slot_to_unknown_dest(int slot_num) {
 static bool
 find_nearest_inventory_search_cb(Flag *flag, void *data) {
   Flag **dest = reinterpret_cast<Flag**>(data);
-  if (flag->accepts_resources()) {
+  if (flag->is_accepts_resources()) {
     *dest = flag;
     return true;
   }
@@ -370,7 +373,7 @@ Flag::find_nearest_inventory_for_resource() {
 static bool
 flag_search_inventory_search_cb(Flag *flag, void *data) {
   int *dest_index = static_cast<int*>(data);
-  if (flag->accepts_serfs()) {
+  if (flag->is_accepts_serfs()) {
     Building *building = flag->get_building();
     *dest_index = building->get_flag_index();
     return true;
@@ -1100,7 +1103,8 @@ operator >> (SaveReaderBinary &reader, Flag &flag) {
   }
 
   reader >> val8;  // 66
-  flag.bld_flags = val8;
+  flag.accepts_serfs = ((val8 >> 7) & 1);
+  flag.inventory = ((val8 >> 6) & 1);
 
   reader >> val8;  // 67
   if (flag.has_building()) {
@@ -1108,7 +1112,7 @@ operator >> (SaveReaderBinary &reader, Flag &flag) {
   }
 
   reader >> val8;  // 68
-  flag.bld2_flags = val8;
+  flag.accepts_resources = ((val8 >> 7) & 1);
 
   reader >> val8;  // 69
   if (flag.has_building()) {
@@ -1167,8 +1171,26 @@ operator >> (SaveReaderText &reader, Flag &flag) {
     flag.slot[i].package = Package(type, dest);
   }
 
-  reader.value("bld_flags") >> flag.bld_flags;
-  reader.value("bld2_flags") >> flag.bld2_flags;
+  if (reader.has_value("accepts_serfs")) {
+    int val;
+    reader.value("accepts_serfs") >> val; flag.accepts_serfs = (val != 0);
+    reader.value("inventory") >> val; flag.inventory = (val != 0);
+  } else {
+    unsigned int val;
+    reader.value("bld_flags") >> val;
+    flag.accepts_serfs = ((val >> 7) & 1);;
+    flag.inventory = ((val >> 6) & 1);
+  }
+
+  if (reader.has_value("accepts_resources")) {
+    int val;
+    reader.value("accepts_resources") >> val;
+    flag.accepts_resources = (val != 0);
+  } else {
+    unsigned int val;
+    reader.value("bld2_flags") >> val;
+    flag.accepts_resources = ((val >> 7) & 1);;
+  }
 
   return reader;
 }
@@ -1205,8 +1227,9 @@ operator << (SaveWriterText &writer, Flag &flag) {
     writer.value("slot.dest") << flag.slot[i].package.get_dest();
   }
 
-  writer.value("bld_flags") << flag.bld_flags;
-  writer.value("bld2_flags") << flag.bld2_flags;
+  writer.value("accepts_serfs") << flag.accepts_serfs;
+  writer.value("inventory") << flag.inventory;
+  writer.value("accepts_resources") << flag.accepts_resources;
 
   return writer;
 }

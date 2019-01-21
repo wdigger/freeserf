@@ -1451,10 +1451,8 @@ Serf::handle_serf_entering_building_state() {
           int flag_index = map->get_obj_index(map->move_down_right(pos));
           Flag *flag = game->get_flag(flag_index);
 
-          /* Mark as inventory accepting resources and serfs. */
-          flag->set_has_inventory();
-          flag->set_accepts_resources(true);
-          flag->set_accepts_serfs(true);
+          // Mark as inventory accepting resources and serfs
+          flag->init_inventory();
 
           set_state(StateWaitForResourceOut);
           counter = 63;
@@ -2334,7 +2332,7 @@ Serf::find_inventory() {
   if (map->has_flag(pos)) {
     Flag *flag = game->get_flag(map->get_obj_index(pos));
     if ((flag->land_paths() != 0 ||
-         (flag->has_inventory() && flag->accepts_serfs())) &&
+         (flag->has_inventory() && flag->is_accepts_serfs())) &&
           map->get_owner(pos) == get_owner()) {
       set_state(StateWalking);
       s.walking.dir1 = -2;
@@ -3300,7 +3298,7 @@ Serf::handle_serf_lost_state() {
       if (map->has_flag(dest)) {
         Flag *flag = game->get_flag(map->get_obj_index(dest));
         if ((flag->land_paths() != 0 ||
-             (flag->has_inventory() && flag->accepts_serfs())) &&
+             (flag->has_inventory() && flag->is_accepts_serfs())) &&
               map->has_owner(dest) &&
               map->get_owner(dest) == get_owner()) {
           if (get_type() >= TypeKnight0 &&

@@ -1510,9 +1510,7 @@ Game::build_castle(MapPos pos, Player *player) {
   castle->start_building(Building::TypeCastle);
 
   flag->set_owner(player->get_index());
-  flag->set_accepts_serfs(true);
-  flag->set_has_inventory();
-  flag->set_accepts_resources(true);
+  flag->init_inventory();
   castle->link_flag(flag->get_index());
   flag->link_building(castle);
 

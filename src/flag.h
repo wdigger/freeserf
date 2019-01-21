@@ -71,8 +71,9 @@ class Flag : public GameObject {
   } other_endpoint;
   int other_end_dir[6];
 
-  int bld_flags;
-  int bld2_flags;
+  bool inventory;
+  bool accepts_serfs;
+  bool accepts_resources;
 
  public:
   Flag(Game *game, unsigned int index);
@@ -151,19 +152,17 @@ class Flag : public GameObject {
   void remove_all_resources();
   Resource::Type get_resource_at_slot(int slot) const;
 
-  /* Whether this flag has an inventory building. */
-  bool has_inventory() const { return ((bld_flags >> 6) & 1); }
-  /* Whether this inventory accepts resources. */
-  bool accepts_resources() const { return ((bld2_flags >> 7) & 1); }
-  /* Whether this inventory accepts serfs. */
-  bool accepts_serfs() const { return ((bld_flags >> 7) & 1); }
+  // Whether this flag has an inventory building
+  bool has_inventory() const { return inventory; }
+  // Whether this inventory accepts resources
+  bool is_accepts_resources() const { return accepts_resources; }
+  // Whether this inventory accepts serfs
+  bool is_accepts_serfs() const { return accepts_serfs; }
 
-  void set_has_inventory() { bld_flags |= BIT(6); }
-  void set_accepts_resources(bool accepts) { accepts ? bld2_flags |= BIT(7) :
-                                                       bld2_flags &= ~BIT(7); }
-  void set_accepts_serfs(bool accepts) { accepts ? bld_flags |= BIT(7) :
-                                                   bld_flags &= ~BIT(7); }
-  void clear_flags() { bld_flags = 0; bld2_flags = 0; }
+  void init_inventory() { inventory = true; accepts_resources = true; accepts_serfs = true; }
+  void set_accepts_resources(bool accepts) { accepts_resources = accepts; }
+  void set_accepts_serfs(bool accepts) { accepts_serfs = accepts; }
+  void clear_flags() { accepts_serfs = false; inventory = false; accepts_resources = false; }
 
   friend SaveReaderBinary&
     operator >> (SaveReaderBinary &reader, Flag &flag);
