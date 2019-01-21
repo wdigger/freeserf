@@ -95,7 +95,7 @@ Flag::Flag(Game *game, unsigned int index)
   , other_end_dir{}
   , bld_flags(0)
   , bld2_flags(0) {
-  for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
+  for (int i = 0; i < maxResCount; i++) {
     slot[i].dir = DirectionNone;
   }
 }
@@ -135,7 +135,7 @@ Flag::del_path(Direction dir) {
 
 Package
 Flag::pick_up_resource(unsigned int from_slot) {
-  if (from_slot >= FLAG_MAX_RES_COUNT) {
+  if (from_slot >= maxResCount) {
     throw ExceptionFreeserf("Wrong flag slot index.");
   }
 
@@ -155,7 +155,7 @@ Flag::drop_resource(Package package) {
     throw ExceptionFreeserf("Wrong resource type.");
   }
 
-  for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
+  for (int i = 0; i < maxResCount; i++) {
     if (slot[i].package.is_empty()) {
       slot[i].package = package;
       slot[i].dir = DirectionNone;
@@ -169,7 +169,7 @@ Flag::drop_resource(Package package) {
 
 bool
 Flag::has_empty_slot() const {
-  for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
+  for (int i = 0; i < maxResCount; i++) {
     if (slot[i].package.is_empty()) {
       return true;
     }
@@ -180,7 +180,7 @@ Flag::has_empty_slot() const {
 
 void
 Flag::remove_all_resources() {
-  for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
+  for (int i = 0; i < maxResCount; i++) {
     if (!slot[i].package.is_empty()) {
       Package package = slot[i].package;
       game->cancel_transported_resource(package);
@@ -197,7 +197,7 @@ Flag::get_resource_at_slot(int slot_) const {
 void
 Flag::fix_scheduled() {
   int scheduled_slots = 0;
-  for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
+  for (int i = 0; i < maxResCount; i++) {
     if (!slot[i].package.is_empty()) {
       scheduled_slots++;
     }
@@ -513,7 +513,7 @@ Flag::prioritize_pickup(Direction dir, Player *player) {
   int res_next = -1;
   int res_prio = -1;
 
-  for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
+  for (int i = 0; i < maxResCount; i++) {
     if (!slot[i].package.is_empty()) {
       // Use flag_prio to prioritize resource pickup
       Direction res_dir = slot[i].dir;
@@ -529,9 +529,22 @@ Flag::prioritize_pickup(Direction dir, Player *player) {
   if (res_next > -1) other_end_dir[dir] |= BIT(7) | res_next;
 }
 
+std::vector<Resource::Type>
+Flag::get_resources() const {
+  std::vector<Resource::Type> resources;
+
+  for (int i = 0; i < maxResCount; i++) {
+    if (!slot[i].package.is_empty()) {
+      resources.push_back(slot[i].package.get_resource());
+    }
+  }
+
+  return resources;
+}
+
 void
 Flag::invalidate_resource_path(Direction dir) {
-  for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
+  for (int i = 0; i < maxResCount; i++) {
     if (!slot[i].package.is_empty() && slot[i].dir == dir) {
       slot[i].dir = DirectionNone;
       endpoint |= BIT(7);
@@ -838,7 +851,7 @@ Flag::update() {
   // Count and store in bitfield which directions
   // have strictly more than 0,1,2,3 slots waiting
   unsigned int res_waiting[4] = {0};
-  for (int j = 0; j < FLAG_MAX_RES_COUNT; j++) {
+  for (int j = 0; j < maxResCount; j++) {
     if (!slot[j].package.is_empty() && slot[j].dir != DirectionNone) {
       Direction res_dir = slot[j].dir;
       for (int k = 0; k < 4; k++) {
@@ -855,7 +868,7 @@ Flag::update() {
 
   if (has_resources()) {
     endpoint &= ~BIT(7);
-    for (int slot_ = 0; slot_ < FLAG_MAX_RES_COUNT; slot_++) {
+    for (int slot_ = 0; slot_ < maxResCount; slot_++) {
       if (!slot[slot_].package.is_empty()) {
         waiting_count += 1;
 
@@ -980,7 +993,7 @@ Flag::call_transporter(Direction dir, bool water) {
 
 void
 Flag::reset_transport(Flag *other) {
-  for (int slot_ = 0; slot_ < FLAG_MAX_RES_COUNT; slot_++) {
+  for (int slot_ = 0; slot_ < maxResCount; slot_++) {
     if (!other->slot[slot_].package.is_empty() &&
         other->slot[slot_].package.get_dest() == index) {
       other->slot[slot_].package.lost();
@@ -997,7 +1010,7 @@ Flag::reset_transport(Flag *other) {
 
 void
 Flag::reset_destination_of_stolen_resources() {
-  for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
+  for (int i = 0; i < maxResCount; i++) {
     if (!slot[i].package.is_empty()) {
       game->cancel_transported_resource(slot[i].package);
       slot[i].package.lost();
@@ -1145,7 +1158,7 @@ operator >> (SaveReaderText &reader, Flag &flag) {
     reader.value("other_end_dir")[i] >> flag.other_end_dir[i];
   }
 
-  for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
+  for (int i = 0; i < Flag::maxResCount; i++) {
     reader.value("slot.dir")[i] >> flag.slot[i].dir;
     Resource::Type type;
     unsigned int dest;
@@ -1186,7 +1199,7 @@ operator << (SaveWriterText &writer, Flag &flag) {
     writer.value("other_end_dir") << flag.other_end_dir[d];
   }
 
-  for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
+  for (int i = 0; i < Flag::maxResCount; i++) {
     writer.value("slot.type") << flag.slot[i].package.get_resource();
     writer.value("slot.dir") << flag.slot[i].dir;
     writer.value("slot.dest") << flag.slot[i].package.get_dest();

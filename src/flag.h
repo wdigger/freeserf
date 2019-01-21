@@ -36,9 +36,6 @@ typedef struct SerfPathInfo {
   int serfs[16];
 } SerfPathInfo;
 
-/* Max number of resources waiting at a flag */
-#define FLAG_MAX_RES_COUNT  8
-
 class Building;
 class Player;
 class SaveReaderBinary;
@@ -47,6 +44,9 @@ class SaveWriterText;
 
 class Flag : public GameObject {
  protected:
+  // Max number of resources waiting at a flag
+  static const unsigned int maxResCount = 8;
+
   class ResourceSlot {
    public:
     Package package;
@@ -58,7 +58,7 @@ class Flag : public GameObject {
   MapPos pos; /* ADDITION */
   int path_con;
   int endpoint;
-  ResourceSlot slot[FLAG_MAX_RES_COUNT];
+  ResourceSlot slot[maxResCount];
 
   int search_num;
   Direction search_dir;
@@ -104,8 +104,9 @@ class Flag : public GameObject {
    (Always at UP LEFT direction). */
   bool has_building() const { return (endpoint >> 6) & 1; }
 
-  /* Whether resources exist that are not yet scheduled. */
+  // Whether resources exist that are not yet scheduled
   bool has_resources() const { return (endpoint >> 7) & 1; }
+  std::vector<Resource::Type> get_resources() const;
 
   /* Bitmap showing whether the outgoing paths have transporters
    servicing them. */

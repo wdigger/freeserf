@@ -2178,7 +2178,7 @@ PopupBox::draw_transport_info_box() {
            interface->get_game()->get_flag(interface->get_player()->temp_index);
 
 #if 1
-  /* Draw viewport of flag */
+  // Draw viewport of flag
   Viewport flag_view(interface, interface->get_game()->get_map());
   flag_view.switch_layer(Viewport::LayerLandscape);
   flag_view.switch_layer(Viewport::LayerSerfs);
@@ -2193,7 +2193,7 @@ PopupBox::draw_transport_info_box() {
   flag_view.move_to(8, 24);
   flag_view.draw(frame);
 #else
-  /* Static flag */
+  // Static flag
   draw_popup_building(8, 40, 0x80 + 4*popup->interface->player->player_num);
 #endif
 
@@ -2202,24 +2202,24 @@ PopupBox::draw_transport_info_box() {
     int lx = layout[2*index];
     int ly = layout[2*index + 1];
     if (flag->has_path(d)) {
-      int sprite = 0xdc; /* Minus box */
+      int sprite = 0xdc;  // Minus box
       if (flag->has_transporter(d)) {
-        sprite = 0x120; /* Check box */
+        sprite = 0x120;  // Check box
       }
       draw_popup_icon(lx, ly, sprite);
     }
   }
 
   draw_green_string(0, 4, "Transport Info:");
-  draw_popup_icon(2, 96, 0x1c); /* Geologist */
-  draw_popup_icon(14, 128, 0x3c); /* Exit box */
+  draw_popup_icon(2, 96, 0x1c);  // Geologist
+  draw_popup_icon(14, 128, 0x3c);  // Exit box
 
-  /* Draw list of resources */
-  for (int i = 0; i < FLAG_MAX_RES_COUNT; i++) {
-    if (flag->get_resource_at_slot(i) != Resource::TypeNone) {
-      draw_popup_icon(7 + 2*(i&3), 88 + 16*(i>>2),
-                      0x22 + flag->get_resource_at_slot(i));
-    }
+  // Draw list of resources
+  std::vector<Resource::Type> resources = flag->get_resources();
+  size_t i = 0;
+  for (Resource::Type res : resources) {
+    draw_popup_icon(7 + 2 * (i & 3), 88 + 16 * (i >> 2), 0x22 + res);
+    i++;
   }
 
   draw_green_string(0, 128, "Index:");
@@ -2229,8 +2229,8 @@ PopupBox::draw_transport_info_box() {
 void
 PopupBox::draw_castle_serf_box() {
   const int layout[] = {
-    0x3d, 12, 128, /* flip */
-    0x3c, 14, 128, /* exit */
+    0x3d, 12, 128,  // flip
+    0x3c, 14, 128,  // exit
     -1
   };
 
