@@ -56,38 +56,31 @@ class Flag : public GameObject {
   class DirInfo {
    public:
     DirInfo() : lenght(0), free_transporters(0), serf_requested(false),
-      has_path(false), water_path(false)
+      has_path(false), water_path(false), flag(nullptr)
     {}
     unsigned int lenght;
     unsigned int free_transporters;
     bool serf_requested;
     bool has_path;
     bool water_path;
+    Flag *flag;
   };
 
  protected:
   unsigned int owner;
   MapPos pos;
-  int endpoint_;
   ResourceSlot slot[maxResCount];
-
-  int search_num;
-  Direction search_dir;
   int transporter;
-  union other_endpoint {
-    Building *b[6];
-    Flag *f[6];
-    void *v[6];
-  } other_endpoint;
   int other_end_dir[6];
-
   DirInfo dirs[6];
-
   bool inventory;
   bool accepts_serfs;
   bool accepts_resources;
   Building *building;
   bool has_resources;
+
+  int search_num;
+  Direction search_dir;
 
  public:
   Flag(Game *game, unsigned int index);
@@ -151,8 +144,7 @@ class Flag : public GameObject {
   /* The direction from the other endpoint leading back to this flag. */
   Direction get_other_end_dir(Direction dir) const {
     return (Direction)((other_end_dir[dir] >> 3) & 7); }
-  Flag *get_other_end_flag(Direction dir) const {
-    return other_endpoint.f[dir]; }
+  Flag *get_other_end_flag(Direction dir) const { return dirs[dir].flag; }
   /* Whether the given direction has a resource pickup scheduled. */
   bool is_scheduled(Direction dir) const {
     return (other_end_dir[dir] >> 7) & 1; }
@@ -189,7 +181,7 @@ class Flag : public GameObject {
 
   void link_building(Building *building);
   void unlink_building();
-  Building *get_building() { return other_endpoint.b[DirectionUpLeft]; }
+  Building *get_building() { return building; }
 
   void invalidate_resource_path(Direction dir);
 

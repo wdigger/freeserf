@@ -57,10 +57,10 @@ FlagSearch::execute(flag_search_func *callback, bool land,
     for (Direction i : cycle_directions_ccw()) {
       if ((!land || !flag->is_water_path(i)) &&
           (!transporter || flag->has_transporter(i)) &&
-          flag->other_endpoint.f[i]->search_num != id) {
-        flag->other_endpoint.f[i]->search_num = id;
-        flag->other_endpoint.f[i]->search_dir = flag->search_dir;
-        Flag *other_flag = flag->other_endpoint.f[i];
+          flag->dirs[i].flag->search_num != id) {
+        flag->dirs[i].flag->search_num = id;
+        flag->dirs[i].flag->search_dir = flag->search_dir;
+        Flag *other_flag = flag->dirs[i].flag;
         queue.push_back(other_flag);
       }
     }
@@ -127,7 +127,7 @@ Flag::del_path(Direction dir) {
   }
 
   other_end_dir[dir] &= 0x78;
-  other_endpoint.f[dir] = NULL;
+  dirs[dir].flag = nullptr;
 
   /* Mark resource path for recalculation if they would
    have followed the removed path. */
@@ -293,7 +293,7 @@ Flag::schedule_slot_to_unknown_dest(int slot_num) {
     if (data.flag != nullptr) {
       Log::Verbose["game"] << "dest for flag " << index << " res " << slot
                            << " found: flag " << data.flag->get_index();
-      Building *dest_bld = data.flag->other_endpoint.b[DirectionUpLeft];
+      Building *dest_bld = data.flag->building;
 
       if (!dest_bld->add_requested_resource(res, true)) {
         throw ExceptionFreeserf("Failed to request resource.");
@@ -443,7 +443,7 @@ Flag::schedule_slot_to_known_dest(int slot_, unsigned int res_waiting[4]) {
     for (Direction k : cycle_directions_ccw()) {
       if (BIT_TEST(flags, k)) {
         tr &= ~BIT(k);
-        Flag *other_flag = other_endpoint.f[k];
+        Flag *other_flag = dirs[k].flag;
         if (other_flag->search_num != search.get_id()) {
           other_flag->search_dir = k;
           search.add_source(other_flag);
@@ -459,7 +459,7 @@ Flag::schedule_slot_to_known_dest(int slot_, unsigned int res_waiting[4]) {
       for (Direction k : cycle_directions_ccw()) {
         if (BIT_TEST(flags, k)) {
           tr &= ~BIT(k);
-          Flag *other_flag = other_endpoint.f[k];
+          Flag *other_flag = dirs[k].flag;
           if (other_flag->search_num != search.get_id()) {
             other_flag->search_dir = k;
             search.add_source(other_flag);
@@ -474,7 +474,7 @@ Flag::schedule_slot_to_known_dest(int slot_, unsigned int res_waiting[4]) {
       for (Direction k : cycle_directions_ccw()) {
         if (BIT_TEST(flags, k)) {
           tr &= ~BIT(k);
-          Flag *other_flag = other_endpoint.f[k];
+          Flag *other_flag = dirs[k].flag;
           if (other_flag->search_num != search.get_id()) {
             other_flag->search_dir = k;
             search.add_source(other_flag);
@@ -586,8 +586,8 @@ Flag::link_with_flag(Flag *dest_flag, bool water_path, size_t length_,
   dest_flag->dirs[in_dir].lenght = len;
   dirs[out_dir].lenght = len;
 
-  dest_flag->other_endpoint.f[in_dir] = this;
-  other_endpoint.f[out_dir] = dest_flag;
+  dest_flag->dirs[in_dir].flag = this;
+  dirs[out_dir].flag = dest_flag;
 }
 
 void
@@ -610,8 +610,8 @@ Flag::restore_path_serf_info(Direction dir, SerfPathInfo *data) {
   other_flag->other_end_dir[other_dir] =
     (other_flag->other_end_dir[other_dir] & 0xc7) | (dir << 3);
 
-  other_endpoint.f[dir] = other_flag;
-  other_flag->other_endpoint.f[other_dir] = this;
+  dirs[dir].flag = other_flag;
+  other_flag->dirs[other_dir].flag = this;
 
   int max_serfs = max_path_serfs[len];
   if (serf_requested(dir)) max_serfs -= 1;
@@ -635,8 +635,12 @@ Flag::restore_path_serf_info(Direction dir, SerfPathInfo *data) {
 
 bool
 Flag::can_demolish() const {
+  if (building != nullptr) {
+    return false;
+  }
+
   int connected = 0;
-  void *other_end = NULL;
+  Flag *other_end = nullptr;
 
   for (Direction d : cycle_directions_cw()) {
     if (has_path(d)) {
@@ -644,12 +648,12 @@ Flag::can_demolish() const {
 
       connected += 1;
 
-      if (other_end != NULL) {
-        if (other_endpoint.v[d] == other_end) {
+      if (other_end != nullptr) {
+        if (dirs[d].flag == other_end) {
           return false;
         }
       } else {
-        other_end = other_endpoint.v[d];
+        other_end = dirs[d].flag;
       }
     }
   }
@@ -807,8 +811,8 @@ Flag::merge_paths(MapPos pos_) {
   flag_2->other_end_dir[dir_2] =
     (flag_2->other_end_dir[dir_2] & 0xc7) | (dir_1 << 3);
 
-  flag_1->other_endpoint.f[dir_1] = flag_2;
-  flag_2->other_endpoint.f[dir_2] = flag_1;
+  flag_1->dirs[dir_1].flag = flag_2;
+  flag_2->dirs[dir_2].flag = flag_1;
 
   flag_1->transporter &= ~BIT(dir_1);
   flag_2->transporter &= ~BIT(dir_2);
@@ -954,7 +958,7 @@ send_serf_to_road_search_cb(Flag *flag, void *data) {
 
 bool
 Flag::call_transporter(Direction dir, bool water) {
-  Flag *src_2 = other_endpoint.f[dir];
+  Flag *src_2 = dirs[dir].flag;
   Direction dir_2 = get_other_end_dir(dir);
 
   search_dir = DirectionRight;
@@ -1020,13 +1024,11 @@ Flag::reset_destination_of_stolen_resources() {
 
 void
 Flag::link_building(Building *building_) {
-  other_endpoint.b[DirectionUpLeft] = building_;
   building = building_;
 }
 
 void
 Flag::unlink_building() {
-  other_endpoint.b[DirectionUpLeft] = nullptr;
   building = nullptr;
   clear_flags();
 }
@@ -1086,17 +1088,16 @@ operator >> (SaveReaderBinary &reader, Flag &flag) {
     if (j == DirectionUpLeft && flag.has_building()) {
       unsigned int index = offset/18;
       flag.building = flag.get_game()->create_building(index);
-      flag.other_endpoint.b[j] = flag.building;
     } else {
       if (!flag.has_path(j)) {
-        flag.other_endpoint.f[j] = NULL;
+        flag.dirs[j].flag = nullptr;
         continue;
       }
       if (offset < 0) {
-        flag.other_endpoint.f[j] = NULL;
+        flag.dirs[j].flag = nullptr;
       } else {
         unsigned int index = offset/70;
-        flag.other_endpoint.f[j] = flag.get_game()->create_flag(index);
+        flag.dirs[j].flag = flag.get_game()->create_flag(index);
       }
     }
   }
@@ -1112,16 +1113,16 @@ operator >> (SaveReaderBinary &reader, Flag &flag) {
   flag.inventory = ((val8 >> 6) & 1);
 
   reader >> val8;  // 67
-  if (flag.has_building()) {
-    flag.other_endpoint.b[DirectionUpLeft]->set_priority_in_stock(0, val8);
+  if (flag.building != nullptr) {
+    flag.building->set_priority_in_stock(0, val8);
   }
 
   reader >> val8;  // 68
   flag.accepts_resources = ((val8 >> 7) & 1);
 
   reader >> val8;  // 69
-  if (flag.has_building()) {
-    flag.other_endpoint.b[DirectionUpLeft]->set_priority_in_stock(1, val8);
+  if (flag.building != nullptr) {
+    flag.building->set_priority_in_stock(1, val8);
   }
 
   return reader;
@@ -1198,7 +1199,7 @@ operator >> (SaveReaderText &reader, Flag &flag) {
       if (obj_index != 0) {
         other_flag = flag.get_game()->create_flag(obj_index);
       }
-      flag.other_endpoint.f[i] = other_flag;
+      flag.dirs[i].flag = other_flag;
     }
     reader.value("other_end_dir")[i] >> flag.other_end_dir[i];
   }
@@ -1255,15 +1256,10 @@ operator << (SaveWriterText &writer, Flag &flag) {
     writer.value("serf_requested") << flag.dirs[d].serf_requested;
     writer.value("has_path") << flag.dirs[d].has_path;
     writer.value("water_path") << flag.dirs[d].water_path;
-    if (d == DirectionUpLeft && flag.has_building()) {
-      writer.value("other_endpoint") <<
-        flag.other_endpoint.b[DirectionUpLeft]->get_index();
+    if (flag.has_path((Direction)d)) {
+      writer.value("other_endpoint") << flag.dirs[d].flag->get_index();
     } else {
-      if (flag.has_path((Direction)d)) {
-        writer.value("other_endpoint") << flag.other_endpoint.f[d]->get_index();
-      } else {
-        writer.value("other_endpoint") << 0;
-      }
+      writer.value("other_endpoint") << 0;
     }
     writer.value("other_end_dir") << flag.other_end_dir[d];
   }
