@@ -55,17 +55,20 @@ class Flag : public GameObject {
 
   class DirInfo {
    public:
-    DirInfo() : lenght(0), free_transporters(0), serf_requested(false) {}
+    DirInfo() : lenght(0), free_transporters(0), serf_requested(false),
+      has_path(false), water_path(false)
+    {}
     unsigned int lenght;
     unsigned int free_transporters;
     bool serf_requested;
+    bool has_path;
+    bool water_path;
   };
 
  protected:
   unsigned int owner;
   MapPos pos;
-  int path_con;
-  int endpoint;
+  int endpoint_;
   ResourceSlot slot[maxResCount];
 
   int search_num;
@@ -83,6 +86,8 @@ class Flag : public GameObject {
   bool inventory;
   bool accepts_serfs;
   bool accepts_resources;
+  Building *building;
+  bool has_resources;
 
  public:
   Flag(Game *game, unsigned int index);
@@ -90,13 +95,10 @@ class Flag : public GameObject {
   MapPos get_position() const { return pos; }
   void set_position(MapPos pos) { this->pos = pos; }
 
-  /* Bitmap of all directions with outgoing paths. */
-  int paths() const { return path_con & 0x3f; }
   void add_path(Direction dir, bool water);
   void del_path(Direction dir);
-  /* Whether a path exists in a given direction. */
-  bool has_path(Direction dir) const {
-    return ((path_con & (1 << (dir))) != 0); }
+  // Whether a path exists in a given direction
+  bool has_path(Direction dir) const { return dirs[dir].has_path; }
 
   void prioritize_pickup(Direction dir, Player *player);
 
@@ -104,18 +106,17 @@ class Flag : public GameObject {
   unsigned int get_owner() const { return owner; }
   void set_owner(unsigned int _owner) { owner = _owner; }
 
-  /* Bitmap showing whether the outgoing paths are land paths. */
-  int land_paths() const { return endpoint & 0x3f; }
-  /* Whether the path in the given direction is a water path. */
-  bool is_water_path(Direction dir) const {
-    return !(endpoint & (1 << (dir))); }
-  /* Whether a building is connected to this flag. If so, the pointer to
-   the other endpoint is a valid building pointer.
-   (Always at UP LEFT direction). */
-  bool has_building() const { return (endpoint >> 6) & 1; }
+  // Bitmap showing whether the outgoing paths are land paths
+  bool has_land_paths() const;
+  // Whether the path in the given direction is a water path
+  bool is_water_path(Direction dir) const { return dirs[dir].water_path; }
+  // Whether a building is connected to this flag. If so, the pointer to
+  // the other endpoint is a valid building pointer.
+  // (Always at UP LEFT direction)
+  bool has_building() const { return (building != nullptr); }
 
   // Whether resources exist that are not yet scheduled
-  bool has_resources() const { return (endpoint >> 7) & 1; }
+  bool is_has_resources() const { return has_resources; }
   std::vector<Resource::Type> get_resources() const;
 
   /* Bitmap showing whether the outgoing paths have transporters

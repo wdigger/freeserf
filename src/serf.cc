@@ -2331,7 +2331,7 @@ Serf::find_inventory() {
   PMap map = game->get_map();
   if (map->has_flag(pos)) {
     Flag *flag = game->get_flag(map->get_obj_index(pos));
-    if ((flag->land_paths() != 0 ||
+    if ((flag->has_land_paths() ||
          (flag->has_inventory() && flag->is_accepts_serfs())) &&
           map->get_owner(pos) == get_owner()) {
       set_state(StateWalking);
@@ -3297,7 +3297,7 @@ Serf::handle_serf_lost_state() {
 
       if (map->has_flag(dest)) {
         Flag *flag = game->get_flag(map->get_obj_index(dest));
-        if ((flag->land_paths() != 0 ||
+        if ((flag->has_land_paths() ||
              (flag->has_inventory() && flag->is_accepts_serfs())) &&
               map->has_owner(dest) &&
               map->get_owner(dest) == get_owner()) {
@@ -3370,15 +3370,15 @@ Serf::handle_lost_sailor() {
 
   PMap map = game->get_map();
   while (counter < 0) {
-    /* Try to find a suitable destination. */
+    // Try to find a suitable destination
     for (int i = 0; i < 258; i++) {
       MapPos dest = map->pos_add_spirally(pos, i);
 
       if (map->has_flag(dest)) {
         Flag *flag = game->get_flag(map->get_obj_index(dest));
-        if (flag->land_paths() != 0 &&
+        if (flag->has_land_paths() &&
             map->has_owner(dest) &&
-            map->get_owner(dest) == get_owner()) {
+            map->get_owner(dest) == owner) {
           set_state(StateFreeSailing);
 
           s.free_walking.dist_col = Map::get_spiral_pattern()[2*i];
