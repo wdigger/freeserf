@@ -282,8 +282,13 @@ EventLoopSDL::run() {
         break;
       default:
         if (event.type == eventUserTypeStep) {
+          Uint64 time = SDL_GetPerformanceCounter();
+
           // Update and draw interface
           notify_update();
+
+          Uint64 t1 = SDL_GetPerformanceCounter() - time;
+          time = SDL_GetPerformanceCounter();
 
           if (screen == nullptr) {
             screen = gfx.get_screen_frame();
@@ -292,6 +297,12 @@ EventLoopSDL::run() {
 
           // Swap video buffers
           gfx.swap_buffers();
+
+          Uint64 t2 = SDL_GetPerformanceCounter() - time;
+
+          printf("%3.2f : %3.2f\n",
+                 (double)(t1 * 1000) / SDL_GetPerformanceFrequency(),
+                 (double)(t2 * 1000) / SDL_GetPerformanceFrequency());
 
           SDL_FlushEvent(eventUserTypeStep);
         }
