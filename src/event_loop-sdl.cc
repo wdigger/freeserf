@@ -301,8 +301,8 @@ EventLoopSDL::run() {
           Uint64 t2 = SDL_GetPerformanceCounter() - time;
 
           printf("%3.2f : %3.2f\n",
-                 (double)(t1 * 1000) / SDL_GetPerformanceFrequency(),
-                 (double)(t2 * 1000) / SDL_GetPerformanceFrequency());
+                 static_cast<double>(t1 * 1000) / SDL_GetPerformanceFrequency(),
+                static_cast<double>(t2 * 1000) / SDL_GetPerformanceFrequency());
 
           SDL_FlushEvent(eventUserTypeStep);
         }
