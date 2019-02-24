@@ -24,6 +24,8 @@
 
 #include <exception>
 #include <string>
+#include <map>
+#include <vector>
 
 #include <SDL.h>
 
@@ -43,6 +45,44 @@ class Video::Image {
   SDL_Texture *texture;
 
   Image() : w(0), h(0), texture(NULL) {}
+};
+
+class Video::Sprite {
+ public:
+  unsigned int x;
+  unsigned int y;
+  unsigned int w;
+  unsigned int h;
+  SDL_Texture *texture;
+
+  Sprite() : x(0), y(0), w(0), h(0), texture(NULL) {}
+};
+
+class CacheItem {
+ protected:
+  SDL_Texture *texture;
+  std::map<uint64_t, Video::Sprite*> sprites;
+
+ public:
+  CacheItem();
+  virtual ~CacheItem();
+
+  SDL_Texture *add_sprite(Video::Sprite *sprite, uint64_t key,
+                          unsigned int *x, unsigned int *y);
+  Video::Sprite *get_sprite(uint64_t key);
+};
+
+class Cache {
+ protected:
+  std::vector<CacheItem> items;
+
+ public:
+  Cache();
+  virtual ~Cache();
+
+  SDL_Texture *add_sprite(Video::Sprite *sprite, uint64_t key,
+                          unsigned int *x, unsigned int *y);
+  Video::Sprite *get_sprite(uint64_t key);
 };
 
 class ExceptionSDL : public ExceptionVideo {
@@ -71,6 +111,7 @@ class VideoSDL : public Video {
   bool fullscreen;
   SDL_Cursor *cursor;
   float zoom_factor;
+  Cache *cache;
 
  public:
   VideoSDL();
@@ -90,10 +131,17 @@ class VideoSDL : public Video {
                                      unsigned int height);
   virtual void destroy_image(Video::Image *image);
 
+  virtual Sprite *create_sprite(void *data, unsigned int width,
+                                unsigned int height, uint64_t key);
+  virtual void destroy_sprite(Sprite *image);
+  virtual Sprite *get_sprite(uint64_t key);
+
   virtual void warp_mouse(int x, int y);
 
   virtual void draw_image(const Video::Image *image, int x, int y,
                            int y_offset, Video::Frame *dest);
+  virtual void draw_sprite(const Sprite *sprite, int x, int y,
+                           int y_offset, Frame *dest);
   virtual void draw_frame(int dx, int dy, Video::Frame *dest, int sx, int sy,
                           Video::Frame *src, int w, int h);
   virtual void draw_rect(int x, int y, unsigned int width, unsigned int height,

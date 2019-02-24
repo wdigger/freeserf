@@ -48,6 +48,7 @@ class Video {
 
   class Frame;
   class Image;
+  class Sprite;
 
  protected:
   Video() {}
@@ -64,18 +65,24 @@ class Video {
   virtual bool is_fullscreen() = 0;
 
   virtual Frame *get_screen_frame() = 0;
-  virtual Frame *create_frame(unsigned int width,
-                                      unsigned int height) = 0;
+  virtual Frame *create_frame(unsigned int width, unsigned int height) = 0;
   virtual void destroy_frame(Frame *frame) = 0;
 
   virtual Image *create_image(void *data, unsigned int width,
-                                      unsigned int height) = 0;
+                              unsigned int height) = 0;
   virtual void destroy_image(Image *image) = 0;
+
+  virtual Sprite *create_sprite(void *data, unsigned int width,
+                                unsigned int height, uint64_t key) = 0;
+  virtual void destroy_sprite(Sprite *sprite) = 0;
+  virtual Sprite *get_sprite(uint64_t key) = 0;
 
   virtual void warp_mouse(int x, int y) = 0;
 
   virtual void draw_image(const Image *image, int x, int y,
                           int y_offset, Frame *dest) = 0;
+  virtual void draw_sprite(const Sprite *sprite, int x, int y,
+                           int y_offset, Frame *dest) = 0;
   virtual void draw_frame(int dx, int dy, Frame *dest, int sx, int sy,
                           Frame *src, int w, int h) = 0;
   virtual void draw_rect(int x, int y, unsigned int width, unsigned int height,

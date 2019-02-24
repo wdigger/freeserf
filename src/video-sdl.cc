@@ -51,7 +51,7 @@ VideoSDL::VideoSDL() {
     Log::Info["video"] << "\t" << SDL_GetVideoDriver(i);
   }
 
-  /* Initialize defaults and Video subsystem */
+  // Initialize defaults and Video subsystem
   if (SDL_VideoInit(NULL) != 0) {
     throw ExceptionSDL("Unable to initialize SDL video");
   }
@@ -64,7 +64,7 @@ VideoSDL::VideoSDL() {
                      << static_cast<int>(version.patch)
                      << " (driver: " << SDL_GetCurrentVideoDriver() << ")";
 
-  /* Create window and renderer */
+  // Create window and renderer
   window = SDL_CreateWindow("freeserf",
                             SDL_WINDOWPOS_UNDEFINED,
                             SDL_WINDOWPOS_UNDEFINED,
@@ -74,14 +74,14 @@ VideoSDL::VideoSDL() {
     throw ExceptionSDL("Unable to create SDL window");
   }
 
-  /* Create renderer for window */
+  // Create renderer for window
   renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED |
                                             SDL_RENDERER_TARGETTEXTURE);
   if (renderer == NULL) {
     throw ExceptionSDL("Unable to create SDL renderer");
   }
 
-  /* Determine optimal pixel format for current window */
+  // Determine optimal pixel format for current window
   SDL_RendererInfo render_info = {0, 0, 0, {0}, 0, 0};
   SDL_GetRendererInfo(renderer, &render_info);
   for (Uint32 i = 0; i < render_info.num_texture_formats; i++) {
@@ -95,13 +95,15 @@ VideoSDL::VideoSDL() {
   SDL_PixelFormatEnumToMasks(pixel_format, &bpp,
                              &Rmask, &Gmask, &Bmask, &Amask);
 
-  /* Set scaling mode */
+  // Set scaling mode
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
 
   int w = 0;
   int h = 0;
   SDL_GL_GetDrawableSize(window, &w, &h);
   set_resolution(w, h, fullscreen);
+
+//  cache = new Cache();
 }
 
 VideoSDL::~VideoSDL() {
@@ -132,7 +134,7 @@ VideoSDL::create_surface(int width, int height) {
 
 void
 VideoSDL::set_resolution(unsigned int width, unsigned int height, bool fs) {
-  /* Set fullscreen mode */
+  // Set fullscreen mode
   int r = SDL_SetWindowFullscreen(window,
                                   fs ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
   if (r < 0) {
@@ -143,13 +145,13 @@ VideoSDL::set_resolution(unsigned int width, unsigned int height, bool fs) {
     screen = new Video::Frame();
   }
 
-  /* Allocate new screen surface and texture */
+  // Allocate new screen surface and texture
   if (screen->texture != nullptr) {
     SDL_DestroyTexture(screen->texture);
   }
   screen->texture = create_texture(width, height);
 
-  /* Set logical size of screen */
+  // Set logical size of screen
   r = SDL_RenderSetLogicalSize(renderer, width, height);
   if (r < 0) {
     throw ExceptionSDL("Unable to set logical size");
@@ -217,6 +219,28 @@ VideoSDL::destroy_image(Video::Image *image) {
   delete image;
 }
 
+Video::Sprite *
+VideoSDL::create_sprite(void *data, unsigned int width, unsigned int height,
+                        uint64_t key) {
+  Video::Sprite *sprite = new Video::Sprite();
+  sprite->w = width;
+  sprite->h = height;
+  SDL_Surface *surface = create_surface_from_data(data, width, height);
+  SDL_LockSurface(surface);
+
+  return nullptr;
+}
+
+void
+VideoSDL::destroy_sprite(Video::Sprite *sprite) {
+  delete sprite;
+}
+
+Video::Sprite *
+VideoSDL::get_sprite(uint64_t key) {
+  return nullptr;
+}
+
 void
 VideoSDL::warp_mouse(int x, int y) {
   SDL_WarpMouseInWindow(nullptr, x, y);
@@ -224,7 +248,7 @@ VideoSDL::warp_mouse(int x, int y) {
 
 SDL_Surface *
 VideoSDL::create_surface_from_data(void *data, int width, int height) {
-  /* Create sprite surface */
+  // Create sprite surface
   SDL_Surface *surf = SDL_CreateRGBSurfaceFrom(data, width, height, 32,
                                                4 * width,
                                                0x00FF0000, 0x0000FF00,
@@ -233,7 +257,7 @@ VideoSDL::create_surface_from_data(void *data, int width, int height) {
     throw ExceptionSDL("Unable to create sprite surface");
   }
 
-  /* Covert to screen format */
+  // Covert to screen format
   SDL_Surface *surf_screen = SDL_ConvertSurfaceFormat(surf, pixel_format, 0);
   if (surf_screen == nullptr) {
     throw ExceptionSDL("Unable to convert sprite surface");
@@ -277,7 +301,7 @@ VideoSDL::create_texture_from_data(void *data, int width, int height) {
 
 void
 VideoSDL::draw_image(const Video::Image *image, int x, int y, int y_offset,
-                        Video::Frame *dest) {
+                     Video::Frame *dest) {
   SDL_Rect dest_rect = { x, y + y_offset,
                          static_cast<int>(image->w),
                          static_cast<int>(image->h - y_offset) };
@@ -285,7 +309,7 @@ VideoSDL::draw_image(const Video::Image *image, int x, int y, int y_offset,
                         static_cast<int>(image->w),
                         static_cast<int>(image->h - y_offset) };
 
-  /* Blit sprite */
+  // Blit sprite
   SDL_SetRenderTarget(renderer, dest->texture);
   SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
   int r = SDL_RenderCopy(renderer, image->texture, &src_rect, &dest_rect);
@@ -295,8 +319,28 @@ VideoSDL::draw_image(const Video::Image *image, int x, int y, int y_offset,
 }
 
 void
+VideoSDL::draw_sprite(const Sprite *sprite, int x, int y, int y_offset,
+                      Frame *dest) {
+  SDL_Rect dest_rect = { x, y + y_offset,
+                         static_cast<int>(sprite->w),
+                         static_cast<int>(sprite->h - y_offset) };
+  SDL_Rect src_rect = { static_cast<int>(sprite->x),
+                        static_cast<int>(sprite->y) + y_offset,
+                        static_cast<int>(sprite->w),
+                        static_cast<int>(sprite->h - y_offset) };
+
+  // Blit sprite
+  SDL_SetRenderTarget(renderer, dest->texture);
+  SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+  int r = SDL_RenderCopy(renderer, sprite->texture, &src_rect, &dest_rect);
+  if (r < 0) {
+    throw ExceptionSDL("RenderCopy error");
+  }
+}
+
+void
 VideoSDL::draw_frame(int dx, int dy, Video::Frame *dest, int sx, int sy,
-                        Video::Frame *src, int w, int h) {
+                     Video::Frame *src, int w, int h) {
   SDL_Rect dest_rect = { dx, dy, w, h };
   SDL_Rect src_rect = { sx, sy, w, h };
 
@@ -310,8 +354,8 @@ VideoSDL::draw_frame(int dx, int dy, Video::Frame *dest, int sx, int sy,
 
 void
 VideoSDL::draw_rect(int x, int y, unsigned int width, unsigned int height,
-                       const Video::Color color, Video::Frame *dest) {
-  /* Draw rectangle. */
+                    const Video::Color color, Video::Frame *dest) {
+  // Draw rectangle
   fill_rect(x, y, width, 1, color, dest);
   fill_rect(x, y+height-1, width, 1, color, dest);
   fill_rect(x, y, 1, height, color, dest);
@@ -320,10 +364,10 @@ VideoSDL::draw_rect(int x, int y, unsigned int width, unsigned int height,
 
 void
 VideoSDL::fill_rect(int x, int y, unsigned int width, unsigned int height,
-                       const Video::Color color, Video::Frame *dest) {
+                    const Video::Color color, Video::Frame *dest) {
   SDL_Rect rect = { x, y, static_cast<int>(width), static_cast<int>(height) };
 
-  /* Fill rectangle */
+  // Fill rectangle
   SDL_SetRenderTarget(renderer, dest->texture);
   SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 0xff);
   int r = SDL_RenderFillRect(renderer, &rect);
