@@ -6,6 +6,7 @@ Build status
 
 [![Build Status](https://travis-ci.org/freeserf/freeserf.svg?branch=master)](https://travis-ci.org/freeserf/freeserf)
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/freeserf/freeserf?branch=master&svg=true)](https://ci.appveyor.com/project/jonls/freeserf)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fwdigger%2Ffreeserf.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fwdigger%2Ffreeserf?ref=badge_shield)
 
 Last build downloads
 --------------------
@@ -73,3 +74,7 @@ Please report bugs at <https://github.com/freeserf/freeserf/issues>.
 Development
 -----------
 The main source repository for this project is at <https://github.com/freeserf/freeserf>. See the HACKING document in the source code root for information on how to compile and how to contribute.
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fwdigger%2Ffreeserf.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fwdigger%2Ffreeserf?ref=badge_large)
