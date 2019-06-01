@@ -1,7 +1,7 @@
 /*
  * sprite-file-sdl.cc - Sprite loaded from file implementation
  *
- * Copyright (C) 2017  Wicked_Digger <wicked_digger@mail.ru>
+ * Copyright (C) 2019  Wicked_Digger <wicked_digger@mail.ru>
  *
  * This file is part of freeserf.
  *
@@ -21,35 +21,48 @@
 
 #include "src/sprite-file.h"
 
-#include <SDL_image.h>
+#include <windows.h>
+#include <gdiplus.h>
+#include <codecvt>
+
+ULONG_PTR gdiplusToken;
 
 SpriteFile::SpriteFile() {
-  IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_TIF);
+  /* Initialize Video subsystem */
+  Gdiplus::GdiplusStartupInput gdiplusStartupInput = 0;
+  Gdiplus::GdiplusStartupOutput gdiplusStartupOutput = { 0 };
+  if (Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput,
+    &gdiplusStartupOutput) != Gdiplus::Ok) {
+    Log::Error["video-win"] << "Unable to initialize Gdiplus.";
+    return;
+  }
 }
 
 SpriteFile::~SpriteFile() {
+  Gdiplus::GdiplusShutdown(gdiplusToken);
+  gdiplusToken = 0;
 }
 
 bool
 SpriteFile::load(const std::string &path) {
-  SDL_Surface *image = IMG_Load(path.c_str());
+  wchar_t wpath[MAX_PATH];
+  size_t l = mbstowcs(wpath, path.c_str(), MAX_PATH);
+  Gdiplus::Bitmap *image = Gdiplus::Bitmap::FromFile(wpath);
   if (image == nullptr) {
     return false;
   }
-  SDL_Surface *surf = SDL_ConvertSurfaceFormat(image,
-                                               SDL_PIXELFORMAT_ARGB8888,
-                                               0);
-  SDL_FreeSurface(image);
-  SDL_LockSurface(surf);
-  width = surf->w;
-  height = surf->h;
+  width = image->GetWidth();
+  height = image->GetHeight();
+
+  Gdiplus::Rect r(0, 0, (INT)width, (INT)height);
+  Gdiplus::BitmapData bits;
+  image->LockBits(&r, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &bits);
   size_t size = width * height * 4;
   data = reinterpret_cast<uint8_t*>(malloc(size));
-  bool res = (surf->pixels != nullptr) && (data != nullptr);
+  bool res = (bits.Scan0 != nullptr) && (data != nullptr);
   if (res) {
-    memcpy(data, surf->pixels, size);
+    memcpy(data, bits.Scan0, size);
   }
-  SDL_UnlockSurface(surf);
-  SDL_FreeSurface(surf);
+  image->UnlockBits(&bits);
   return res;
 }
