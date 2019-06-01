@@ -71,11 +71,13 @@ target_check_style(game)
 
 set(PLATFORM_SOURCES video.cc
                      audio.cc
-                     event_loop.cc)
+                     event_loop.cc
+                     application.cc)
 
 set(PLATFORM_HEADERS video.h
                      audio.h
-                     event_loop.h)
+                     event_loop.h
+                     application.h)
 
 if(SDL2_FOUND)
   include_directories(${INCLUDE_DIRECTORIES} ${SDL2_INCLUDE_DIR})
@@ -189,7 +191,7 @@ if(WIN32)
   if(DEFINED _VCPKG_INSTALLED_DIR)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
       get_filename_component(SDL2_LIBRARY_DIR ${SDL2_LIBRARY_DEBUG} DIRECTORY)
-	else()
+    else()
       get_filename_component(SDL2_LIBRARY_DIR ${SDL2_LIBRARY} DIRECTORY)
     endif()
     get_filename_component(BIN_DIRS ${SDL2_LIBRARY_DIR} DIRECTORY)

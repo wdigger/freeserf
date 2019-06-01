@@ -32,13 +32,10 @@
 #include "src/interface.h"
 #include "src/game-manager.h"
 #include "src/command_line.h"
-
-#ifdef WIN32
-# include <SDL.h>
-#endif  // WIN32
+#include "src/application.h"
 
 int
-main(int argc, char *argv[]) {
+freeserf_main(int argc, char *argv[]) {
   std::string data_dir;
   std::string save_file;
 
@@ -97,8 +94,10 @@ main(int argc, char *argv[]) {
 
   Graphics &gfx = Graphics::get_instance();
 
-  /* TODO move to right place */
-  Audio &audio = Audio::get_instance();
+  Application &application = Application::get_instance();
+
+  // TODO(jonls): move to right place
+  Audio &audio = application.get_audio();
   Audio::PPlayer player = audio.get_music_player();
   if (player) {
     Audio::PTrack t = player->play_track(Audio::TypeMidiTrack0);
@@ -106,8 +105,7 @@ main(int argc, char *argv[]) {
 
   GameManager &game_manager = GameManager::get_instance();
 
-  /* Either load a save game if specified or
-     start a new game. */
+  // Either load a save game if specified or start a new game
   if (!save_file.empty()) {
     if (!game_manager.load_game(save_file)) {
       return EXIT_FAILURE;
@@ -118,7 +116,7 @@ main(int argc, char *argv[]) {
     }
   }
 
-  /* Initialize interface */
+  // Initialize interface
   Interface interface;
   if ((screen_width == 0) || (screen_height == 0)) {
     gfx.get_resolution(&screen_width, &screen_height);
@@ -130,11 +128,11 @@ main(int argc, char *argv[]) {
     interface.open_game_init();
   }
 
-  /* Init game loop */
-  EventLoop &event_loop = EventLoop::get_instance();
+  // Init game loop
+  EventLoop &event_loop = application.get_event_loop();
   event_loop.add_handler(&interface);
 
-  /* Start game loop */
+  // Start game loop
   event_loop.run();
 
   event_loop.del_handler(&interface);

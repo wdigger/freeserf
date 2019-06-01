@@ -357,3 +357,10 @@ Timer::create(unsigned int _id, unsigned int _interval,
               Timer::Handler *_handler) {
   return new TimerSDL(_id, _interval, _handler);
 }
+
+extern int freeserf_main(int argc, char *argv[]);
+
+int
+main(int argc, char *argv[]) {
+  return freeserf_main(argc, argv);
+}
