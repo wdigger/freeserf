@@ -22,32 +22,18 @@
 #ifndef SRC_GAME_INIT_H_
 #define SRC_GAME_INIT_H_
 
-#include <string>
 #include <memory>
 
-#include "src/gui.h"
-#include "src/game.h"
+#include "src/dialog.h"
 #include "src/mission.h"
 
 class Interface;
-class RandomInput;
 class Minimap;
-class ListSavedFiles;
 
-class GameInitBox : public GuiObject {
+class GameInitBox : public Dialog {
  protected:
-  typedef enum Action {
-    ActionStartGame,
-    ActionToggleGameType,
-    ActionShowOptions,
-    ActionIncrement,
-    ActionDecrement,
-    ActionClose,
-    ActionGenRandom,
-    ActionApplyRandom
-  } Action;
-
   typedef enum GameType {
+    GameNone = -1,
     GameCustom = 0,
     GameMission = 1,
     GameLoad = 2
@@ -56,36 +42,32 @@ class GameInitBox : public GuiObject {
  protected:
   Interface *interface;
 
-  unsigned int game_type;
+  int game_type;
   int game_mission;
 
   PGameInfo custom_mission;
   PGameInfo mission;
 
-//  std::shared_ptr<RandomInput> random_input;
-  PMap map;
-//  std::shared_ptr<Minimap> minimap;
+  std::shared_ptr<Minimap> minimap;
   std::shared_ptr<ListSavedFiles> file_list;
+  PLayout layout_custom;
+  PLayout layout_mission;
+  PLayout layout_load;
 
  public:
   explicit GameInitBox(Interface *interface);
   virtual ~GameInitBox();
 
  protected:
-  void draw_box_icon(int x, int y, int sprite);
-  void draw_box_string(int x, int y, const std::string &str);
-  void draw_player_box(unsigned int player, int x, int y);
-  void draw_background();
-  unsigned int get_player_face_sprite(size_t face);
-  void handle_action(int action);
-  bool handle_player_click(unsigned int player, int x, int y);
-  unsigned int get_next_character(unsigned int player);
+  PLayout create_layout_custom();
+  PLayout create_layout_mission();
+  PLayout create_layout_load();
+
   void apply_random(Random rnd);
   void generate_map_preview();
 
   virtual void init();
-  virtual void internal_draw();
-  virtual bool handle_click_left(int x, int y);
+  virtual void draw_background();
 };
 
 #endif  // SRC_GAME_INIT_H_
