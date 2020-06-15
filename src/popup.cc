@@ -244,7 +244,6 @@ typedef enum Action {
   ACTION_OPTIONS_FULLSCREEN,
   ACTION_OPTIONS_VOLUME_MINUS,
   ACTION_OPTIONS_VOLUME_PLUS,
-  ACTION_DEMOLISH,
   ACTION_OPTIONS_SFX,
   ACTION_SAVE,
   ACTION_NEW_NAME
@@ -2015,19 +2014,6 @@ PopupBox::draw_player_faces_box() {
 }
 
 void
-PopupBox::draw_demolish_box() {
-  draw_box_background(PatternSquaresGreen);
-
-  draw_popup_icon(14, 128, 60); /* Exit */
-  draw_popup_icon(7, 45, 288); /* Checkbox */
-
-  draw_green_string(0, 10, "    Demolish:");
-  draw_green_string(0, 30, "   Click here");
-  draw_green_string(0, 68, "   if you are");
-  draw_green_string(0, 86, "      sure");
-}
-
-void
 PopupBox::draw_save_box() {
   const int layout[] = {
     224, 0, 128,
@@ -2143,9 +2129,6 @@ PopupBox::internal_draw() {
     break;
   case TypePlayerFaces:
     draw_player_faces_box();
-    break;
-  case TypeDemolish:
-    draw_demolish_box();
     break;
   case TypeLoadSave:
     draw_save_box();
@@ -2802,10 +2785,6 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
     play_sound(Audio::TypeSfxClick);
     break;
   }
-  case ACTION_DEMOLISH:
-    interface->demolish_object();
-    close();
-    break;
   case ACTION_SHOW_SAVE:
 //    file_list->set_displayed(true);
 //    file_field->set_displayed(true);
@@ -3204,16 +3183,6 @@ PopupBox::handle_player_faces_click(int cx, int cy) {
 }
 
 void
-PopupBox::handle_box_demolish_clk(int cx, int cy) {
-  const int clkmap[] = {
-    ACTION_CLOSE_BOX, 112, 128, 16, 16,
-    ACTION_DEMOLISH, 56, 45, 16, 16,
-    -1
-  };
-  handle_clickmap(cx, cy, clkmap);
-}
-
-void
 PopupBox::handle_box_bld_1(int cx, int cy) {
   const int clkmap[] = {
     ACTION_MINIMAP_BLD_1, 0, 0, 64, 51,
@@ -3377,9 +3346,6 @@ PopupBox::handle_click_left(int cx, int cy) {
     break;
   case TypePlayerFaces:
     handle_player_faces_click(cx, cy);
-    break;
-  case TypeDemolish:
-    handle_box_demolish_clk(cx, cy);
     break;
   case TypeLoadSave:
     handle_save_clk(cx, cy);

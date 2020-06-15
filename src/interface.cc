@@ -43,6 +43,7 @@
 #include "src/dialog-map.h"
 #include "src/dialog-ground-analysis.h"
 #include "src/dialog-quit-confirm.h"
+#include "src/dialog-demolish-confirm.h"
 
 // Interval between automatic save games
 #define AUTOSAVE_INTERVAL  (10*60*TICKS_PER_SEC)
@@ -107,6 +108,11 @@ Interface::open_popup(int box) {
       dialog->set_enabled(true);
     } else if (box == PopupBox::TypeGroundAnalysis) {
       dialog = std::make_shared<DialogGroundAnalysis>(this);
+      add_float(dialog, 0, 0);
+      dialog->set_displayed(true);
+      dialog->set_enabled(true);
+    } else if (box == PopupBox::TypeDemolish) {
+      dialog = std::make_shared<DialogDemolishConfirm>(this);
       add_float(dialog, 0, 0);
       dialog->set_displayed(true);
       dialog->set_enabled(true);

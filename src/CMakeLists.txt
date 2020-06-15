@@ -151,7 +151,8 @@ set(OTHER_SOURCES pathfinder.cc
                   dialog-building.cc
                   dialog-ground-analysis.cc
                   dialog-map.cc
-                  dialog-quit-confirm.cc)
+                  dialog-quit-confirm.cc
+                  dialog-demolish-confirm.cc)
 
 set(OTHER_HEADERS pathfinder.h
                   gfx.h
@@ -175,7 +176,8 @@ set(OTHER_HEADERS pathfinder.h
                   dialog-building.h
                   dialog-ground-analysis.h
                   dialog-map.h
-                  dialog-quit-confirm.h)
+                  dialog-quit-confirm.h
+                  dialog-demolish-confirm.h)
 
 set(FREESERF_SOURCES freeserf.cc ${OTHER_SOURCES})
 set(FREESERF_HEADERS freeserf.h ${OTHER_HEADERS})

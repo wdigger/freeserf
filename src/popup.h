@@ -212,7 +212,6 @@ class PopupBox : public GuiObject {
   void draw_bld_4_box();
   void draw_building_stock_box();
   void draw_player_faces_box();
-  void draw_demolish_box();
   void draw_save_box();
 
   void activate_sett_5_6_item(int index);
@@ -245,7 +244,6 @@ class PopupBox : public GuiObject {
   void handle_sett_8_click(int x, int y);
   void handle_message_clk(int x, int y);
   void handle_player_faces_click(int x, int y);
-  void handle_box_demolish_clk(int x, int y);
   void handle_box_bld_1(int x, int y);
   void handle_box_bld_2(int x, int y);
   void handle_box_bld_3(int x, int y);
