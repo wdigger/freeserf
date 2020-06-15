@@ -46,9 +46,7 @@ void
 ListSavedFiles::internal_draw() {
   frame->fill_rect(0, 0, width, height, color_background);
 
-  if (focused) {
-    frame->draw_rect(0, 0, width, height, color_focus);
-  }
+  frame->draw_rect(0, 0, width, height, color_focus);
 
   unsigned int item = first_visible_item;
   for (int ly = 0; (ly < (height - 6)) && (item < items.size()); ly += 9) {
@@ -64,7 +62,6 @@ ListSavedFiles::internal_draw() {
 
 bool
 ListSavedFiles::handle_click_left(int /*cx*/, int cy) {
-  set_focused();
   cy -= 3;
   if (cy >= 0) {
     cy = first_visible_item + (cy / 9);
@@ -83,10 +80,6 @@ ListSavedFiles::handle_click_left(int /*cx*/, int cy) {
 
 bool
 ListSavedFiles::handle_drag(int dx, int dy) {
-  if (!focused) {
-    return false;
-  }
-
   int nfvi = static_cast<int>(first_visible_item) + (dy / 32);
   if (nfvi < 0) {
     nfvi = 0;
@@ -108,7 +101,6 @@ ListSavedFiles::handle_key_pressed(char key, int modifier) {
 
 bool
 ListSavedFiles::handle_focus_loose() {
-  focused = false;
   set_redraw();
   return true;
 }

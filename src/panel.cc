@@ -1,7 +1,7 @@
 /*
  * panel.cc - Panel GUI component
  *
- * Copyright (C) 2013-2016  Jon Lund Steffensen <jonlst@gmail.com>
+ * Copyright (C) 2013-2017  Jon Lund Steffensen <jonlst@gmail.com>
  *
  * This file is part of freeserf.
  *
@@ -20,6 +20,8 @@
  */
 
 #include "src/panel.h"
+
+#include <memory>
 
 #include "src/game.h"
 #include "src/debug.h"
@@ -156,12 +158,13 @@ PanelBar::internal_draw() {
 /* Handle a click on the panel buttons. */
 void
 PanelBar::button_click(int button) {
-  PopupBox *popup = interface->get_popup_box();
+  std::shared_ptr<PopupBox> popup = interface->get_popup_box();
   switch (panel_btns[button]) {
     case ButtonMap:
     case ButtonMapStarred:
       play_sound(Audio::TypeSfxClick);
-      if ((popup != nullptr) && popup->is_displayed()) {
+      if ((interface->get_popup_box() != NULL) &&
+          interface->get_popup_box()->is_displayed()) {
         interface->close_popup();
       } else {
         panel_btns[0] = ButtonBuildInactive;
@@ -173,20 +176,19 @@ PanelBar::button_click(int button) {
         interface->open_popup(PopupBox::TypeMap);
 
         /* Synchronize minimap window with viewport. */
-        if (popup != nullptr) {
-          Viewport *viewport = interface->get_viewport();
-          Minimap *minimap = popup->get_minimap();
-          if (minimap != nullptr) {
-            MapPos pos = viewport->get_current_map_pos();
-            minimap->move_to_map_pos(pos);
-          }
+        std::shared_ptr<Viewport> viewport = interface->get_viewport();
+        std::shared_ptr<PopupBox> popup = interface->get_popup_box();
+        Minimap *minimap = popup->get_minimap();
+        if (minimap != NULL) {
+          MapPos pos = viewport->get_current_map_pos();
+          minimap->move_to_map_pos(pos);
         }
       }
       break;
     case ButtonSett:
     case ButtonSettStarred:
       play_sound(Audio::TypeSfxClick);
-      if ((popup != nullptr) && popup->is_displayed()) {
+      if (popup && popup->is_displayed()) {
         interface->close_popup();
       } else {
         panel_btns[0] = ButtonBuildInactive;
@@ -200,7 +202,7 @@ PanelBar::button_click(int button) {
     case ButtonStats:
     case ButtonStatsStarred:
       play_sound(Audio::TypeSfxClick);
-      if ((popup != nullptr) && popup->is_displayed()) {
+      if (popup && popup->is_displayed()) {
         interface->close_popup();
       } else {
         panel_btns[0] = ButtonBuildInactive;

@@ -23,6 +23,7 @@
 
 #include <string>
 #include <iostream>
+#include <memory>
 
 #include "src/log.h"
 #include "src/version.h"
@@ -106,38 +107,34 @@ main(int argc, char *argv[]) {
 
   GameManager &game_manager = GameManager::get_instance();
 
-  /* Either load a save game if specified or
-     start a new game. */
-  if (!save_file.empty()) {
-    if (!game_manager.load_game(save_file)) {
-      return EXIT_FAILURE;
-    }
-  } else {
-    if (!game_manager.start_random_game()) {
-      return EXIT_FAILURE;
-    }
-  }
-
-  /* Initialize interface */
-  Interface interface;
+  // Initialize interface
+  PInterface interface = std::make_shared<Interface>();
   if ((screen_width == 0) || (screen_height == 0)) {
     gfx.get_resolution(&screen_width, &screen_height);
   }
-  interface.set_size(screen_width, screen_height);
-  interface.set_displayed(true);
+  interface->set_size(screen_width, screen_height);
+  interface->set_displayed(true);
 
+  // Either load a save game if specified or start a new game.
   if (save_file.empty()) {
-    interface.open_game_init();
+    if (!game_manager.start_random_game()) {
+      return EXIT_FAILURE;
+    }
+    interface->open_game_init();
+  } else {
+    if (!game_manager.load_game(save_file)) {
+      return EXIT_FAILURE;
+    }
   }
 
-  /* Init game loop */
+  // Init game loop
   EventLoop &event_loop = EventLoop::get_instance();
-  event_loop.add_handler(&interface);
+  event_loop.add_handler(interface.get());
 
-  /* Start game loop */
+  // Start game loop
   event_loop.run();
 
-  event_loop.del_handler(&interface);
+  event_loop.del_handler(interface.get());
 
   Log::Info["main"] << "Cleaning up...";
 

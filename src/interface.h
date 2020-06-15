@@ -1,7 +1,7 @@
 /*
  * interface.h - Top-level GUI interface
  *
- * Copyright (C) 2013  Jon Lund Steffensen <jonlst@gmail.com>
+ * Copyright (C) 2013-2019  Jon Lund Steffensen <jonlst@gmail.com>
  *
  * This file is part of freeserf.
  *
@@ -21,6 +21,8 @@
 
 #ifndef SRC_INTERFACE_H_
 #define SRC_INTERFACE_H_
+
+#include <memory>
 
 #include "src/misc.h"
 #include "src/random.h"
@@ -76,11 +78,11 @@ class Interface : public GuiObject, public GameManager::Handler {
 
   Random random;
 
-  Viewport *viewport;
-  PanelBar *panel;
-  PopupBox *popup;
-  GameInitBox *init_box;
-  NotificationBox *notification_box;
+  std::shared_ptr<Viewport> viewport;
+  std::shared_ptr<PanelBar> panel;
+  std::shared_ptr<PopupBox> popup;
+  std::shared_ptr<GameInitBox> init_box;
+  std::shared_ptr<NotificationBox> notification_box;
 
   MapPos map_cursor_pos;
   CursorType map_cursor_type;
@@ -112,15 +114,19 @@ class Interface : public GuiObject, public GameManager::Handler {
   Interface();
   virtual ~Interface();
 
+  void init();
+
   PGame get_game() { return game; }
   void set_game(PGame game);
 
   Color get_player_color(unsigned int player_index);
 
-  Viewport *get_viewport();
-  PanelBar *get_panel_bar();
-  PopupBox *get_popup_box();
-  NotificationBox *get_notification_box() { return notification_box; }
+  std::shared_ptr<Viewport> get_viewport() { return viewport; }
+  std::shared_ptr<PanelBar> get_panel_bar() { return panel; }
+  std::shared_ptr<PopupBox> get_popup_box() { return popup; }
+  std::shared_ptr<NotificationBox> get_notification_box() {
+    return notification_box;
+  }
 
   bool get_config(int i) const { return (BIT_TEST(config, i) != 0); }
   void set_config(int i) { config |= BIT(i); }
@@ -197,5 +203,7 @@ class Interface : public GuiObject, public GameManager::Handler {
   virtual void on_new_game(PGame game);
   virtual void on_end_game(PGame game);
 };
+
+typedef std::shared_ptr<Interface> PInterface;
 
 #endif  // SRC_INTERFACE_H_

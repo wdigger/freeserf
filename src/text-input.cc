@@ -44,9 +44,8 @@ TextInput::get_text() {
 void
 TextInput::internal_draw() {
   frame->fill_rect(0, 0, width, height, color_background);
-  if (draw_focus && focused) {
-    frame->draw_rect(0, 0, width, height, color_focus);
-  }
+  frame->draw_rect(0, 0, width, height, color_focus);
+
   int ch_width = width/8;
   std::string str = text;
   int cx = 0;
@@ -65,16 +64,11 @@ TextInput::internal_draw() {
 
 bool
 TextInput::handle_click_left(int x, int y) {
-  set_focused();
   return true;
 }
 
 bool
 TextInput::handle_key_pressed(char key, int modifier) {
-  if (!focused) {
-    return false;
-  }
-
   if ((max_length != 0) && (text.length() >= max_length)) {
     return true;
   }
@@ -100,7 +94,6 @@ TextInput::handle_key_pressed(char key, int modifier) {
 
 bool
 TextInput::handle_focus_loose() {
-  focused = false;
   set_redraw();
   return true;
 }

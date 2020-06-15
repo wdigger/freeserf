@@ -1,7 +1,7 @@
 /*
  * game-init.cc - Game initialization GUI component
  *
- * Copyright (C) 2013-2018  Jon Lund Steffensen <jonlst@gmail.com>
+ * Copyright (C) 2013-2019  Jon Lund Steffensen <jonlst@gmail.com>
  *
  * This file is part of freeserf.
  *
@@ -88,11 +88,8 @@ class RandomInput : public TextInput {
   }
 };
 
-GameInitBox::GameInitBox(Interface *interface)
-  : random_input(new RandomInput())
-  , minimap(new Minimap(nullptr))
-  , file_list(new ListSavedFiles()) {
-  this->interface = interface;
+GameInitBox::GameInitBox(Interface *_interface) {
+  interface = _interface;
 
   game_type = GameCustom;
   game_mission = 0;
@@ -104,17 +101,26 @@ GameInitBox::GameInitBox(Interface *interface)
   custom_mission->add_player(12, {0x00, 0xe3, 0xe3}, 40, 40, 40);
   custom_mission->add_player(1, {0xcf, 0x63, 0x63}, 20, 30, 40);
   mission = custom_mission;
+}
 
+GameInitBox::~GameInitBox() {
+}
+
+void
+GameInitBox::init() {
+  minimap = std::make_shared<Minimap>(nullptr);
   minimap->set_displayed(true);
   minimap->set_size(150, 160);
-  add_float(minimap.get(), 190, 55);
+  add_float(minimap, 190, 55);
 
   generate_map_preview();
 
+  random_input = std::make_shared<RandomInput>();
   random_input->set_random(custom_mission->get_random_base());
   random_input->set_displayed(true);
-  add_float(random_input.get(), 19 + 31*8, 15);
+  add_float(random_input, 19 + 31*8, 15);
 
+  file_list = std::make_shared<ListSavedFiles>();
   file_list->set_size(160, 160);
   file_list->set_displayed(false);
   file_list->set_selection_handler([this](const std::string &item) {
@@ -124,10 +130,7 @@ GameInitBox::GameInitBox(Interface *interface)
       this->minimap->set_map(map);
     }
   });
-  add_float(file_list.get(), 20, 55);
-}
-
-GameInitBox::~GameInitBox() {
+  add_float(file_list, 20, 55);
 }
 
 void

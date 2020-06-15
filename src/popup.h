@@ -142,9 +142,9 @@ class PopupBox : public GuiObject {
 
  protected:
   Interface *interface;
-  std::unique_ptr<MinimapGame> minimap;
-  std::unique_ptr<ListSavedFiles> file_list;
-  std::unique_ptr<TextInput> file_field;
+  std::shared_ptr<MinimapGame> minimap;
+  std::shared_ptr<ListSavedFiles> file_list;
+  std::shared_ptr<TextInput> file_field;
 
   Type box;
 
@@ -283,6 +283,7 @@ class PopupBox : public GuiObject {
 
   void set_box(Type box);
 
+  virtual void init();
   virtual void internal_draw();
   virtual bool handle_click_left(int x, int y);
 };

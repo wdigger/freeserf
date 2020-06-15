@@ -1,7 +1,7 @@
 /*
  * gui.h - Base functions for the GUI hierarchy
  *
- * Copyright (C) 2012  Jon Lund Steffensen <jonlst@gmail.com>
+ * Copyright (C) 2012-2017  Jon Lund Steffensen <jonlst@gmail.com>
  *
  * This file is part of freeserf.
  *
@@ -23,13 +23,18 @@
 #define SRC_GUI_H_
 
 #include <list>
+#include <memory>
 
 #include "src/gfx.h"
 #include "src/event_loop.h"
 
-class GuiObject : public EventLoop::Handler {
+class GuiObject;
+typedef std::shared_ptr<GuiObject> PGuiObject;
+
+class GuiObject : public EventLoop::Handler,
+                  public std::enable_shared_from_this<GuiObject> {
  private:
-  typedef std::list<GuiObject*> FloatList;
+  typedef std::list<PGuiObject> FloatList;
   FloatList floats;
 
  protected:
@@ -38,11 +43,11 @@ class GuiObject : public EventLoop::Handler {
   bool displayed;
   bool enabled;
   bool redraw;
-  GuiObject *parent;
+  std::weak_ptr<GuiObject> parent;
   Frame *frame;
-  static GuiObject *focused_object;
-  bool focused;
+  bool initialized;
 
+  virtual void init() {}
   virtual void internal_draw() = 0;
   virtual void layout();
 
@@ -51,9 +56,11 @@ class GuiObject : public EventLoop::Handler {
     return false; }
   virtual bool handle_drag(int dx, int dy) { return true; }
   virtual bool handle_key_pressed(char key, int modifier) { return false; }
-  virtual bool handle_focus_loose() { return false; }
+  virtual void on_float_closed(PGuiObject obj) {}
 
   void delete_frame();
+
+  void close_float(PGuiObject obj);
 
  public:
   GuiObject();
@@ -68,14 +75,15 @@ class GuiObject : public EventLoop::Handler {
   void set_enabled(bool enabled);
   void set_redraw();
   bool is_displayed() { return displayed; }
-  GuiObject *get_parent() { return parent; }
-  void set_parent(GuiObject *parent) { this->parent = parent; }
+  PGuiObject get_parent() { return parent.lock(); }
+  virtual void set_parent(std::shared_ptr<GuiObject> _parent) {
+    parent = _parent;
+  }
   bool point_inside(int point_x, int point_y);
 
-  void add_float(GuiObject *obj, int x, int y);
-  void del_float(GuiObject *obj);
-
-  void set_focused();
+  void add_float(PGuiObject obj, int x, int y);
+  void del_float(PGuiObject obj);
+  void close();
 
   virtual bool handle_event(const Event *event);
 

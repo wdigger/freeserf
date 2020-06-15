@@ -289,9 +289,7 @@ typedef enum Action {
 } Action;
 
 PopupBox::PopupBox(Interface *_interface)
-  : minimap(new MinimapGame(_interface, _interface->get_game()))
-  , file_list(new ListSavedFiles())
-  , file_field(new TextInput())
+  : file_field(new TextInput())
   , box(TypeNone) {
   interface = _interface;
 
@@ -299,13 +297,21 @@ PopupBox::PopupBox(Interface *_interface)
   current_sett_6_item = 15;
   current_stat_7_item = 7;
   current_stat_8_mode = 0;
+}
 
+PopupBox::~PopupBox() {
+}
+
+void
+PopupBox::init() {
   /* Initialize minimap */
+  minimap = std::make_shared<MinimapGame>(interface, interface->get_game());
   minimap->set_displayed(false);
-  minimap->set_parent(this);
+  minimap->set_parent(shared_from_this());
   minimap->set_size(128, 128);
-  add_float(minimap.get(), 8, 9);
+  add_float(minimap, 8, 9);
 
+  file_list = std::make_shared<ListSavedFiles>();
   file_list->set_size(120, 100);
   file_list->set_displayed(false);
   file_list->set_selection_handler([this](const std::string &item) {
@@ -313,14 +319,12 @@ PopupBox::PopupBox(Interface *_interface)
     std::string file_name = item.substr(p+1, item.size());
     this->file_field->set_text(file_name);
   });
-  add_float(file_list.get(), 12, 22);
+  add_float(file_list, 12, 22);
 
+  file_field = std::make_shared<TextInput>();
   file_field->set_size(120, 10);
   file_field->set_displayed(false);
-  add_float(file_field.get(), 12, 124);
-}
-
-PopupBox::~PopupBox() {
+  add_float(file_field, 12, 124);
 }
 
 /* Draw the frame around the popup box. */
@@ -2185,7 +2189,7 @@ PopupBox::draw_transport_info_box() {
   flag_view.switch_layer(Viewport::LayerCursor);
   flag_view.set_displayed(true);
 
-  flag_view.set_parent(this);
+  flag_view.set_parent(shared_from_this());
   flag_view.set_size(128, 64);
   flag_view.move_to_map_pos(flag->get_position());
   flag_view.move_by_pixels(0, -10);
@@ -4349,6 +4353,11 @@ void PopupBox::hide() {
 
 void
 PopupBox::set_box(Type box_) {
+  if (!initialized) {
+    init();
+    initialized = true;
+  }
+
   box = box_;
   if (box == TypeMap) {
     minimap->set_displayed(true);

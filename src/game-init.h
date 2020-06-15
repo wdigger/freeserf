@@ -1,7 +1,7 @@
 /*
  * game-init.h - Game initialization GUI component header
  *
- * Copyright (C) 2013-2016  Jon Lund Steffensen <jonlst@gmail.com>
+ * Copyright (C) 2013-2017  Jon Lund Steffensen <jonlst@gmail.com>
  *
  * This file is part of freeserf.
  *
@@ -62,10 +62,10 @@ class GameInitBox : public GuiObject {
   PGameInfo custom_mission;
   PGameInfo mission;
 
-  std::unique_ptr<RandomInput> random_input;
+  std::shared_ptr<RandomInput> random_input;
   PMap map;
-  std::unique_ptr<Minimap> minimap;
-  std::unique_ptr<ListSavedFiles> file_list;
+  std::shared_ptr<Minimap> minimap;
+  std::shared_ptr<ListSavedFiles> file_list;
 
  public:
   explicit GameInitBox(Interface *interface);
@@ -83,6 +83,7 @@ class GameInitBox : public GuiObject {
   void apply_random(Random rnd);
   void generate_map_preview();
 
+  virtual void init();
   virtual void internal_draw();
   virtual bool handle_click_left(int x, int y);
 };
