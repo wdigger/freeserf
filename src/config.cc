@@ -1,7 +1,7 @@
 /*
- * config.cc - Memory buffer implementation
+ * config.cc - Config file implementation
  *
- * Copyright (C) 2019  Wicked_Digger <wicked_digger@mail.ru>
+ * Copyright (C) 2020  Wicked_Digger <wicked_digger@mail.ru>
  *
  * This file is part of freeserf.
  *

@@ -1,7 +1,7 @@
 /*
- * config.h - Memory buffer declaration
+ * config.h - Config file declaration
  *
- * Copyright (C) 2019  Wicked_Digger <wicked_digger@mail.ru>
+ * Copyright (C) 2020  Wicked_Digger <wicked_digger@mail.ru>
  *
  * This file is part of freeserf.
  *
@@ -25,16 +25,29 @@
 #include <memory>
 #include <string>
 #include <sstream>
+#include <map>
+
+template <typename T> class Property {
+ protected:
+  std::string name;
+  T value;
+
+ public:
+  Property(std::string name, T value): name(name), value(value) {}
+  virtual ~Property() {}
+  virtual T& operator= (const T& f) { return value = f; }
+  virtual const T& operator() () const { return value; }
+  virtual explicit operator const T& () const { return value; }
+  virtual T* operator->() { return &value; }
+};
 
 class Config {
- protected:
+ public:
   template <typename T, T def> class Parameter {
    protected:
     T value = def;
-    std::string name;
 
    public:
-     std::string get_name() const { return name; }
      T get_value() const { return value; }
      operator T () const { return value; }
      operator std::string () const {
@@ -44,9 +57,29 @@ class Config {
      }
   };
 
+  class Section {
+   protected:
+    std::map<std::string, Section> sections;
+    
+   public:
+    Section() {
+    }
+
+    virtual Section& operator[](const std::string &name) {
+      return sections[name];
+    }
+  };
+
+ protected:
+  std::map<std::string, Section> sections;
+
  public:
   Config();
   virtual ~Config();
+
+  virtual Section& operator[](const std::string &name) {
+    return sections[name];
+  }
 };
 
 typedef std::shared_ptr<Config> PConfig;
