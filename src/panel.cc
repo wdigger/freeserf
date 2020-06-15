@@ -163,9 +163,8 @@ PanelBar::button_click(int button) {
     case ButtonMap:
     case ButtonMapStarred:
       play_sound(Audio::TypeSfxClick);
-      if ((interface->get_popup_box() != NULL) &&
-          interface->get_popup_box()->is_displayed()) {
-        interface->close_popup();
+      if (interface->get_popup_box()) {
+        interface->get_popup_box()->close();
       } else {
         panel_btns[0] = ButtonBuildInactive;
         panel_btns[1] = ButtonDestroyInactive;
@@ -179,9 +178,8 @@ PanelBar::button_click(int button) {
     case ButtonSett:
     case ButtonSettStarred:
       play_sound(Audio::TypeSfxClick);
-      if ((interface->get_popup_box() != NULL) &&
-          interface->get_popup_box()->is_displayed()) {
-        interface->close_popup();
+      if (interface->get_popup_box()) {
+        interface->get_popup_box()->close();
       } else {
         panel_btns[0] = ButtonBuildInactive;
         panel_btns[1] = ButtonDestroyInactive;
@@ -194,9 +192,8 @@ PanelBar::button_click(int button) {
     case ButtonStats:
     case ButtonStatsStarred:
       play_sound(Audio::TypeSfxClick);
-      if ((interface->get_popup_box() != NULL) &&
-          interface->get_popup_box()->is_displayed()) {
-        interface->close_popup();
+      if (interface->get_popup_box()) {
+        interface->get_popup_box()->close();
       } else {
         panel_btns[0] = ButtonBuildInactive;
         panel_btns[1] = ButtonDestroyInactive;
@@ -222,9 +219,8 @@ PanelBar::button_click(int button) {
     case ButtonBuildSmall:
     case ButtonBuildSmallStarred:
       play_sound(Audio::TypeSfxClick);
-      if ((interface->get_popup_box() != NULL) &&
-          interface->get_popup_box()->is_displayed()) {
-        interface->close_popup();
+      if (interface->get_popup_box()) {
+        interface->get_popup_box()->close();
       } else {
         panel_btns[0] = ButtonBuildSmallStarred;
         panel_btns[1] = ButtonDestroyInactive;
@@ -237,9 +233,8 @@ PanelBar::button_click(int button) {
     case ButtonBuildLarge:
     case ButtonBuildLargeStarred:
       play_sound(Audio::TypeSfxClick);
-      if ((interface->get_popup_box() != NULL) &&
-          interface->get_popup_box()->is_displayed()) {
-        interface->close_popup();
+      if (interface->get_popup_box()) {
+        interface->get_popup_box()->close();
       } else {
         panel_btns[0] = ButtonBuildLargeStarred;
         panel_btns[1] = ButtonDestroyInactive;
@@ -252,9 +247,8 @@ PanelBar::button_click(int button) {
     case ButtonBuildMine:
     case ButtonBuildMineStarred:
       play_sound(Audio::TypeSfxClick);
-      if ((interface->get_popup_box() != NULL) &&
-          interface->get_popup_box()->is_displayed()) {
-        interface->close_popup();
+      if (interface->get_popup_box()) {
+        interface->get_popup_box()->close();
       } else {
         panel_btns[0] = ButtonBuildMineStarred;
         panel_btns[1] = ButtonDestroyInactive;
@@ -295,8 +289,8 @@ PanelBar::button_click(int button) {
     case ButtonGroundAnalysis:
     case ButtonGroundAnalysisStarred:
       play_sound(Audio::TypeSfxClick);
-      if ((popup != nullptr) && popup->is_displayed()) {
-        interface->close_popup();
+      if (interface->get_popup_box()) {
+        interface->get_popup_box()->close();
       } else {
         panel_btns[0] = ButtonBuildInactive;
         panel_btns[1] = ButtonGroundAnalysisStarred;
@@ -411,13 +405,13 @@ PanelBar::update() {
       interface->get_popup_box()->is_displayed()) {
     switch (interface->get_popup_box()->get_box()) {
       case PopupBox::TypeTransportInfo:
-      case PopupBox::TypeOrderedBld:
-      case PopupBox::TypeCastleRes:
-      case PopupBox::TypeDefenders:
-      case PopupBox::TypeMineOutput:
+//      case PopupBox::TypeOrderedBld:
+//      case PopupBox::TypeCastleRes:
+//      case PopupBox::TypeDefenders:
+//      case PopupBox::TypeMineOutput:
       case PopupBox::TypeBldStock:
       case PopupBox::TypeStartAttack:
-      case PopupBox::TypeQuitConfirm:
+//      case PopupBox::TypeQuitConfirm:
       case PopupBox::TypeOptions: {
         panel_btns[0] = ButtonBuildInactive;
         panel_btns[1] = ButtonDestroyInactive;

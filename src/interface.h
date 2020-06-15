@@ -44,6 +44,7 @@ class PanelBar;
 class PopupBox;
 class GameInitBox;
 class NotificationBox;
+class Dialog;
 
 class Interface : public GuiObject, public GameManager::Handler {
  public:
@@ -83,6 +84,7 @@ class Interface : public GuiObject, public GameManager::Handler {
   std::shared_ptr<PopupBox> popup;
   std::shared_ptr<GameInitBox> init_box;
   std::shared_ptr<NotificationBox> notification_box;
+  std::shared_ptr<Dialog> dialog;
 
   MapPos map_cursor_pos;
   CursorType map_cursor_type;
@@ -150,10 +152,8 @@ class Interface : public GuiObject, public GameManager::Handler {
   BuildPossibility get_build_possibility() const { return build_possibility; }
 
   void open_popup(int box);
-  void close_popup();
 
   void open_game_init();
-  void close_game_init();
 
   void open_message();
   void return_from_message();

@@ -35,7 +35,7 @@ class ListSavedFiles : public Control {
   Color color_text;
   Color color_background;
 
-  GameStore *save_game;
+  GameStore &save_game;
   std::vector<GameStore::SaveInfo> items;
   unsigned int first_visible_item;
   int selected_item;
@@ -48,7 +48,7 @@ class ListSavedFiles : public Control {
     selection_handler = handler;
   }
   std::string get_selected() const;
-  std::string get_folder_path() const { return save_game->get_folder_path(); }
+  std::string get_folder_path() const { return save_game.get_folder_path(); }
 
  protected:
   virtual void draw(Frame *frame, unsigned int x, unsigned int y);

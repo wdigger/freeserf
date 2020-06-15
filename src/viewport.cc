@@ -36,6 +36,7 @@
 #include "src/interface.h"
 #include "src/popup.h"
 #include "src/pathfinder.h"
+#include "src/dialog-building.h"
 
 #define MAP_TILE_WIDTH   32
 #define MAP_TILE_HEIGHT  20
@@ -2415,27 +2416,12 @@ Viewport::handle_dbl_click(int lx, int ly, Event::Button button) {
         return false;
       }
       if (map->get_owner(clk_pos) == player->get_index()) {
-        if (!building->is_done()) {
-          interface->open_popup(PopupBox::TypeOrderedBld);
-        } else if (building->get_type() == Building::TypeCastle) {
-          interface->open_popup(PopupBox::TypeCastleRes);
-        } else if (building->get_type() == Building::TypeStock) {
-          if (!building->is_active()) return 0;
-          interface->open_popup(PopupBox::TypeCastleRes);
-        } else if (building->get_type() == Building::TypeHut ||
-                   building->get_type() == Building::TypeTower ||
-                   building->get_type() == Building::TypeFortress) {
-          interface->open_popup(PopupBox::TypeDefenders);
-        } else if (building->get_type() == Building::TypeStoneMine ||
-                   building->get_type() == Building::TypeCoalMine ||
-                   building->get_type() == Building::TypeIronMine ||
-                   building->get_type() == Building::TypeGoldMine) {
-          interface->open_popup(PopupBox::TypeMineOutput);
-        } else {
-          interface->open_popup(PopupBox::TypeBldStock);
-        }
-
-        player->temp_index = map->get_obj_index(clk_pos);
+        Building *building =
+                            interface->get_game()->get_building_at_pos(clk_pos);
+        PDialog dialog = std::make_shared<DialogBuilding>(interface, building);
+        interface->add_float(dialog, 0, 0);
+        dialog->set_displayed(true);
+        dialog->set_enabled(true);
       } else { /* Foreign building */
         /* TODO handle coop mode*/
         player->building_attacked = building->get_index();

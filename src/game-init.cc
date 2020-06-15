@@ -220,23 +220,9 @@ GameInitBox::create_layout_custom() {
   layout_custom->set_indents(20, 16);
   // Start button
   layout_custom->make_item<Button>(0, 0, 32, 32, 266, [this](int x, int y) {
-    Game *game = new Game();
-    if (!game->load_mission_map(this->mission)) {
-      return;
-    }
-
-    Game *old_game = this->interface->get_game();
-    if (old_game != nullptr) {
-      EventLoop::get_instance()->del_handler(old_game);
-    }
-
-    EventLoop::get_instance()->add_handler(game);
-    this->interface->set_game(game);
-    if (old_game != nullptr) {
-      delete old_game;
-    }
-    this->interface->set_player(0);
-    this->interface->close_game_init();
+    GameManager &game_manager = GameManager::get_instance();
+    game_manager.start_game(this->mission);
+    this->close();
   });
 
   // Game type button
@@ -286,7 +272,7 @@ GameInitBox::create_layout_custom() {
   layout_custom->add_item(248, 0, rnd_field);
 
   // Options button
-  layout_custom->make_item<Button>(288, 0, 32, 32, 267, [this](int x, int y) {
+  layout_custom->make_item<Button>(288, 0, 32, 32, 267, [](int x, int y) {
   });
 
   unsigned int x = 0;
@@ -313,7 +299,7 @@ GameInitBox::create_layout_custom() {
 
   // Exit button
   layout_custom->make_item<Button>(304, 208, 16, 16, 60, [this](int x, int y) {
-    this->interface->close_game_init();
+    this->close();
   });
 
   return layout_custom;
@@ -325,23 +311,9 @@ GameInitBox::create_layout_mission() {
   layout_mission->set_indents(20, 16);
   // Start button
   layout_mission->make_item<Button>(0, 0, 32, 32, 266, [this](int x, int y) {
-    Game *game = new Game();
-    if (!game->load_mission_map(this->mission)) {
-      return;
-    }
-
-    Game *old_game = this->interface->get_game();
-    if (old_game != nullptr) {
-      EventLoop::get_instance()->del_handler(old_game);
-    }
-
-    EventLoop::get_instance()->add_handler(game);
-    this->interface->set_game(game);
-    if (old_game != nullptr) {
-      delete old_game;
-    }
-    this->interface->set_player(0);
-    this->interface->close_game_init();
+    GameManager &game_manager = GameManager::get_instance();
+    game_manager.start_game(this->mission);
+    this->close();
   });
 
   // Game type button
@@ -373,7 +345,7 @@ GameInitBox::create_layout_mission() {
   });
 
   // Options button
-  layout_mission->make_item<Button>(288, 0, 32, 32, 267, [this](int x, int y) {
+  layout_mission->make_item<Button>(288, 0, 32, 32, 267, [](int x, int y) {
   });
 
   unsigned int x = 0;
@@ -400,7 +372,7 @@ GameInitBox::create_layout_mission() {
 
   // Exit button
   layout_mission->make_item<Button>(304, 208, 16, 16, 60, [this](int x, int y) {
-    this->interface->close_game_init();
+    this->close();
   });
 
   return layout_mission;
@@ -413,23 +385,10 @@ GameInitBox::create_layout_load() {
 
   // Start button
   layout_load->make_item<Button>(0, 0, 32, 32, 266, [this](int x, int y) {
-    Game *game = new Game();
-    if (!game->load_mission_map(this->mission)) {
+    if (!GameManager::get_instance().start_game(this->mission)) {
       return;
     }
-
-    Game *old_game = this->interface->get_game();
-    if (old_game != nullptr) {
-      EventLoop::get_instance()->del_handler(old_game);
-    }
-
-    EventLoop::get_instance()->add_handler(game);
-    this->interface->set_game(game);
-    if (old_game != nullptr) {
-      delete old_game;
-    }
-    this->interface->set_player(0);
-    this->interface->close_game_init();
+    this->close();
   });
 
   // Game type button
@@ -448,20 +407,21 @@ GameInitBox::create_layout_load() {
   layout_load->add_item(0, 40, list);
   list->set_selection_handler([this](const std::string &item) {
     Game game;
-    if (GameStore::get_instance()->load(item, &game)) {
-      player_index = mission->get_player_count() - 1;
+    if (GameStore::get_instance().load(item, &game)) {
+      int player_index = mission->get_player_count() - 1;
     }
+    this->close();
   });
 
   // Options button
-  layout_load->make_item<Button>(288, 0, 32, 32, 267, [this](int x, int y) {
+  layout_load->make_item<Button>(288, 0, 32, 32, 267, [](int x, int y) {
   });
 
   layout_load->make_item<Label>(0, 212, 296, 9, FREESERF_VERSION);
 
   // Exit button
   layout_load->make_item<Button>(304, 208, 16, 16, 60, [this](int x, int y) {
-    this->interface->close_game_init();
+    this->close();
   });
 
   return layout_load;

@@ -39,30 +39,31 @@
 #include "src/panel.h"
 #include "src/savegame.h"
 #include "src/game.h"
+#include "src/dialog-build.h"
+#include "src/dialog-map.h"
+#include "src/dialog-ground-analysis.h"
+#include "src/dialog-quit-confirm.h"
 
 // Interval between automatic save games
 #define AUTOSAVE_INTERVAL  (10*60*TICKS_PER_SEC)
 
 Interface::Interface()
   : building_road_valid_dir(0)
+  , map_cursor_pos(0)
+  , map_cursor_type(CursorTypeNone)
+  , build_possibility(BuildPossibilityNone)
   , sfx_queue{0}
+  , config(0x39)
+  , msg_flags(0)
+  , return_timeout(0)
   , water_in_view(false)
+  , current_stat_8_mode(0)
+  , current_stat_7_item(7)
   , trees_in_view(false)
   , return_pos(0)
   , player(nullptr) {
   displayed = true;
-
-  map_cursor_pos = 0;
-  map_cursor_type = (CursorType)0;
-  build_possibility = BuildPossibilityNone;
-
-  // Settings
-  config = 0x39;
-  msg_flags = 0;
-  return_timeout = 0;
-
-  current_stat_8_mode = 0;
-  current_stat_7_item = 7;
+  enabled = true;
 
   map_cursor_sprites[0].sprite = 32;
   map_cursor_sprites[1].sprite = 33;
@@ -88,27 +89,35 @@ void Interface::init() {
 // Open popup box
 void
 Interface::open_popup(int box) {
-  if (popup == nullptr) {
-    popup = std::make_shared<PopupBox>(this);
-    add_float(popup, 0, 0);
-    popup->show((PopupBox::Type)box);
+  if (dialog) {
+    dialog->close();
+    dialog = nullptr;
   }
-  layout();
-  if (panel != nullptr) {
-    panel->update();
-  }
-}
 
-// Close the current popup
-void
-Interface::close_popup() {
   if (popup == nullptr) {
-    return;
+    if (box > 2 && box < 8) {
+      dialog = std::make_shared<DialogBuild>(this);
+      add_float(dialog, 0, 0);
+      dialog->set_displayed(true);
+      dialog->set_enabled(true);
+    } else if (box == PopupBox::TypeMap) {
+      dialog = std::make_shared<DialogMap>(this);
+      add_float(dialog, 0, 0);
+      dialog->set_displayed(true);
+      dialog->set_enabled(true);
+    } else if (box == PopupBox::TypeGroundAnalysis) {
+      dialog = std::make_shared<DialogGroundAnalysis>(this);
+      add_float(dialog, 0, 0);
+      dialog->set_displayed(true);
+      dialog->set_enabled(true);
+    } else {
+      popup = std::make_shared<PopupBox>(this);
+      add_float(popup, 0, 0);
+      popup->show((PopupBox::Type)box);
+    }
   }
-  popup->hide();
-  del_float(popup);
-  popup = nullptr;
-  update_map_cursor_pos(map_cursor_pos);
+/* Close the current popup. */
+  layout();
   if (panel != nullptr) {
     panel->update();
   }
@@ -128,23 +137,6 @@ Interface::open_game_init() {
   }
   viewport->set_enabled(false);
   layout();
-}
-
-void
-Interface::close_game_init() {
-  if (init_box != nullptr) {
-    init_box->set_displayed(false);
-    del_float(init_box);
-    init_box = nullptr;
-  }
-  if (panel != nullptr) {
-    panel->set_displayed(true);
-    panel->set_enabled(true);
-  }
-  viewport->set_enabled(true);
-  layout();
-
-  update_map_cursor_pos(map_cursor_pos);
 }
 
 // Open box for next message in the message queue
@@ -193,8 +185,8 @@ Interface::return_from_message() {
     return_timeout = 0;
     viewport->move_to_map_pos(return_pos);
 
-    if ((popup != nullptr) && (popup->get_box() == PopupBox::TypeMessage)) {
-      close_popup();
+    if (popup && (popup->get_box() == PopupBox::TypeMessage)) {
+      popup->close();
     }
     play_sound(Audio::TypeSfxClick);
   }
@@ -407,7 +399,7 @@ Interface::update_interface() {
 
 void
 Interface::set_game(PGame new_game) {
-  if (viewport != nullptr) {
+  if (viewport) {
     del_float(viewport);
     viewport = nullptr;
   }
@@ -683,7 +675,7 @@ Interface::layout() {
   int panel_x = 0;
   int panel_y = height;
 
-  if (panel != nullptr) {
+  if (panel) {
     int panel_width = 352;
     int panel_height = 40;
     panel_x = (width - panel_width) / 2;
@@ -692,25 +684,16 @@ Interface::layout() {
     panel->set_size(panel_width, panel_height);
   }
 
-  if (popup != nullptr) {
-    int popup_width = 144;
+  if (popup) {
+    int popup_width = 0;
     int popup_height = 160;
+    popup->get_size(&popup_width, &popup_height);
     int popup_x = (width - popup_width) / 2;
     int popup_y = (height - popup_height) / 2;
     popup->move_to(popup_x, popup_y);
-    popup->set_size(popup_width, popup_height);
   }
 
-  if (init_box != nullptr) {
-    int init_box_width = 360;
-    int init_box_height = 256;
-    int init_box_x = (width - init_box_width) / 2;
-    int init_box_y = (height - init_box_height) / 2;
-    init_box->move_to(init_box_x, init_box_y);
-    init_box->set_size(init_box_width, init_box_height);
-  }
-
-  if (notification_box != nullptr) {
+  if (notification_box) {
     int notification_box_width = 200;
     int notification_box_height = 88;
     int notification_box_x = panel_x + 40;
@@ -719,7 +702,7 @@ Interface::layout() {
     notification_box->set_size(notification_box_width, notification_box_height);
   }
 
-  if (viewport != nullptr) {
+  if (viewport) {
     viewport->set_size(width, height);
   }
 
@@ -797,10 +780,10 @@ Interface::handle_key_pressed(char key, int modifier) {
       break;
     }
     case 27: {
-      if ((notification_box != nullptr) && notification_box->is_displayed()) {
+      if (notification_box) {
         close_message();
-      } else if ((popup != nullptr) && popup->is_displayed()) {
-        close_popup();
+      } else if (popup) {
+        popup->close();
       } else if (building_road.is_valid()) {
         build_road_end();
       }
@@ -872,7 +855,10 @@ Interface::handle_key_pressed(char key, int modifier) {
       break;
     case 'c':
       if (modifier & 1) {
-        open_popup(PopupBox::TypeQuitConfirm);
+        PDialog dialog = std::make_shared<DialogQuitConfirm>(this);
+        add_float(dialog, 0, 0);
+        dialog->set_enabled(true);
+        dialog->set_displayed(true);
       }
       break;
 

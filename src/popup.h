@@ -71,17 +71,10 @@ class PopupBox : public GuiObject {
     TypeKnightLevel,
     TypeSett4,
     TypeSett5,
-    TypeQuitConfirm,
     TypeNoSaveQuitConfirm,
     TypeSettSelectFile, /* UNUSED */
     TypeOptions,
-    TypeCastleRes,
-    TypeMineOutput,
-    TypeOrderedBld,
-    TypeDefenders,
     TypeTransportInfo,
-    TypeCastleSerf,
-    TypeResDir,
     TypeSett8,
     TypeSett6,
     TypeBld1,
@@ -142,7 +135,7 @@ class PopupBox : public GuiObject {
 
  protected:
   Interface *interface;
-//  std::shared_ptr<MinimapGame> minimap;
+  std::shared_ptr<MinimapGame> minimap;
   std::shared_ptr<ListSavedFiles> file_list;
   std::shared_ptr<TextInput> file_field;
 
@@ -158,6 +151,7 @@ class PopupBox : public GuiObject {
   virtual ~PopupBox();
 
   Type get_box() const { return box; }
+//  MinimapGame *get_minimap() { return minimap.get(); }
 
   void show(Type box);
   void hide();
@@ -176,12 +170,7 @@ class PopupBox : public GuiObject {
   void draw_player_face(int x, int y, int player);
   void draw_custom_bld_box(const int sprites[]);
   void draw_custom_icon_box(const int sprites[]);
-  const std::string prepare_res_amount_text(int amount) const;
-  void draw_map_box();
-  void draw_mine_building_box();
-  void draw_basic_building_box(int flip);
-  void draw_adv_1_building_box();
-  void draw_adv_2_building_box();
+
   void draw_resources_box(const ResourceMap &resources);
   void draw_serfs_box(const int serfs[], int total);
   void draw_stat_select_box();
@@ -203,7 +192,6 @@ class PopupBox : public GuiObject {
   void draw_stat_3_box();
   void draw_start_attack_redraw_box();
   void draw_start_attack_box();
-  void draw_ground_analysis_box();
   void draw_sett_select_box();
   void draw_slide_bar(int x, int y, int value);
   void draw_sett_1_box();
@@ -213,16 +201,9 @@ class PopupBox : public GuiObject {
   void draw_sett_4_box();
   void draw_popup_resource_stairs(int order[]);
   void draw_sett_5_box();
-  void draw_quit_confirm_box();
   void draw_no_save_quit_confirm_box();
   void draw_options_box();
-  void draw_castle_res_box();
-  void draw_mine_output_box();
-  void draw_ordered_building_box();
-  void draw_defenders_box();
   void draw_transport_info_box();
-  void draw_castle_serf_box();
-  void draw_resdir_box();
   void draw_sett_8_box();
   void draw_sett_6_box();
   void draw_bld_1_box();
@@ -233,6 +214,7 @@ class PopupBox : public GuiObject {
   void draw_player_faces_box();
   void draw_demolish_box();
   void draw_save_box();
+
   void activate_sett_5_6_item(int index);
   void move_sett_5_6_item(int up, int to_end);
   void handle_send_geologist();
@@ -245,17 +227,13 @@ class PopupBox : public GuiObject {
 
   void handle_box_close_clk(int x, int y);
   void handle_box_options_clk(int x, int y);
-  void handle_mine_building_clk(int x, int y);
-  void handle_basic_building_clk(int x, int y, int flip);
-  void handle_adv_1_building_clk(int x, int y);
-  void handle_adv_2_building_clk(int x, int y);
+
   void handle_stat_select_click(int x, int y);
   void handle_stat_bld_click(int x, int y);
   void handle_stat_8_click(int x, int y);
   void handle_stat_7_click(int x, int y);
   void handle_stat_1_2_3_4_6_click(int x, int y);
   void handle_start_attack_click(int x, int y);
-  void handle_ground_analysis_clk(int x, int y);
   void handle_sett_select_clk(int x, int y);
   void handle_sett_1_click(int x, int y);
   void handle_sett_2_click(int x, int y);
@@ -263,17 +241,11 @@ class PopupBox : public GuiObject {
   void handle_knight_level_click(int x, int y);
   void handle_sett_4_click(int x, int y);
   void handle_sett_5_6_click(int x, int y);
-  void handle_quit_confirm_click(int x, int y);
-  void handle_no_save_quit_confirm_click(int x, int y);
-  void handle_castle_res_clk(int x, int y);
   void handle_transport_info_clk(int x, int y);
-  void handle_castle_serf_clk(int x, int y);
-  void handle_resdir_clk(int x, int y);
   void handle_sett_8_click(int x, int y);
   void handle_message_clk(int x, int y);
   void handle_player_faces_click(int x, int y);
   void handle_box_demolish_clk(int x, int y);
-  void handle_minimap_clk(int x, int y);
   void handle_box_bld_1(int x, int y);
   void handle_box_bld_2(int x, int y);
   void handle_box_bld_3(int x, int y);

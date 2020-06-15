@@ -106,7 +106,7 @@ class MinimapGame : public Minimap {
 
  public:
   MinimapGame(unsigned int _width, unsigned int _height,
-              Interface *interface, Game *game);
+              Interface *interface, PGame game);
 
   int get_advanced() const { return advanced; }
   void set_advanced(int advanced) { this->advanced = advanced; }

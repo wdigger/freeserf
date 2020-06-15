@@ -23,12 +23,12 @@
 
 ListSavedFiles::ListSavedFiles(unsigned int _width, unsigned int _height)
   : Control(_width, _height)
-  , save_game(&GameStore::get_instance()) {
+  , save_game(GameStore::get_instance()) {
   color_focus = Color(0x00, 0x8b, 0x47);
   color_text = Color::green;
   color_background = Color::black;
 
-  items = save_game->get_saved_games();
+  items = save_game.get_saved_games();
   first_visible_item = 0;
   selected_item = -1;
 }
@@ -46,7 +46,9 @@ void
 ListSavedFiles::draw(Frame *frame, unsigned int _x, unsigned int _y) {
   frame->fill_rect(_x, _y, width, height, color_background);
 
-  frame->draw_rect(0, 0, width, height, color_focus);
+  if (is_focused()) {
+    frame->draw_rect(_x, _y, width, height, color_focus);
+  }
 
   unsigned int item = first_visible_item;
   for (unsigned int y = 0;
@@ -62,14 +64,14 @@ ListSavedFiles::draw(Frame *frame, unsigned int _x, unsigned int _y) {
 }
 
 bool
-ListSavedFiles::handle_click_left(int /*cx*/, int cy) {
-  cy -= 3;
-  if (cy >= 0) {
-    cy = first_visible_item + (cy / 9);
-    if ((selected_item != cy) && (cy >= 0) &&
-        (cy < static_cast<int>(items.size()))) {
-      selected_item = cy;
-      invalidate();
+ListSavedFiles::handle_click_left(int x, int y) {
+  own_focus();
+  y -= 3;
+  if (y >= 0) {
+    y = first_visible_item + (y / 9);
+    if ((selected_item != y) && (y >= 0) &&
+        (y < static_cast<int>(items.size()))) {
+      selected_item = y;
       if (selection_handler != nullptr) {
         std::string file_path = items[selected_item].path;
         selection_handler(file_path);
@@ -81,6 +83,10 @@ ListSavedFiles::handle_click_left(int /*cx*/, int cy) {
 
 bool
 ListSavedFiles::handle_drag(int dx, int dy) {
+  if (!is_focused()) {
+    return false;
+  }
+
   int nfvi = static_cast<int>(first_visible_item) + (dy / 32);
   if (nfvi < 0) {
     nfvi = 0;

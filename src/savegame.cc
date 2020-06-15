@@ -485,7 +485,6 @@ GameStore::GameStore() {
                         (LPSTR)folder_path.data(), len, nullptr, nullptr);
   ::CoTaskMemFree(saved_games_path);
   folder_path += '\\';
-  free(path);
 #elif defined(__APPLE__)
   folder_path = std::string(std::getenv("HOME"));
   folder_path += "/Library/Application Support";

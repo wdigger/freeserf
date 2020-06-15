@@ -26,9 +26,11 @@
 
 #include "src/dialog.h"
 #include "src/mission.h"
+#include "src/list.h"
 
 class Interface;
 class Minimap;
+class ListSavedFiles;
 
 class GameInitBox : public Dialog {
  protected:

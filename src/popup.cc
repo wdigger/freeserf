@@ -41,35 +41,6 @@
 /* Action types that can be fired from
    clicks in the popup window. */
 typedef enum Action {
-  ACTION_MINIMAP_CLICK = 0,
-  ACTION_MINIMAP_MODE,
-  ACTION_MINIMAP_ROADS,
-  ACTION_MINIMAP_BUILDINGS,
-  ACTION_MINIMAP_GRID,
-  ACTION_BUILD_STONEMINE,
-  ACTION_BUILD_COALMINE,
-  ACTION_BUILD_IRONMINE,
-  ACTION_BUILD_GOLDMINE,
-  ACTION_BUILD_FLAG,
-  ACTION_BUILD_STONECUTTER,
-  ACTION_BUILD_HUT,
-  ACTION_BUILD_LUMBERJACK,
-  ACTION_BUILD_FORESTER,
-  ACTION_BUILD_FISHER,
-  ACTION_BUILD_MILL,
-  ACTION_BUILD_BOATBUILDER,
-  ACTION_BUILD_BUTCHER,
-  ACTION_BUILD_WEAPONSMITH,
-  ACTION_BUILD_STEELSMELTER,
-  ACTION_BUILD_SAWMILL,
-  ACTION_BUILD_BAKER,
-  ACTION_BUILD_GOLDSMELTER,
-  ACTION_BUILD_FORTRESS,
-  ACTION_BUILD_TOWER,
-  ACTION_BUILD_TOOLMAKER,
-  ACTION_BUILD_FARM,
-  ACTION_BUILD_PIGFARM,
-  ACTION_BLD_FLIP_PAGE,
   ACTION_SHOW_STAT_1,
   ACTION_SHOW_STAT_2,
   ACTION_SHOW_STAT_8,
@@ -197,10 +168,6 @@ typedef enum Action {
   ACTION_SETT_5_6_UP,
   ACTION_SETT_5_6_DOWN,
   ACTION_SETT_5_6_BOTTOM,
-  ACTION_QUIT_CONFIRM,
-  ACTION_QUIT_CANCEL,
-  ACTION_NO_SAVE_QUIT_CONFIRM,
-  ACTION_SHOW_QUIT,
   ActionShowOptions,
   ACTION_SHOW_SAVE,
   ACTION_SETT_8_CYCLE,
@@ -219,9 +186,6 @@ typedef enum Action {
   ACTION_DEFAULT_SETT_2,
   ACTION_DEFAULT_SETT_5_6,
   ACTION_BUILD_STOCK,
-  ACTION_SHOW_CASTLE_SERF,
-  ACTION_SHOW_RESDIR,
-  ACTION_SHOW_CASTLE_RES,
   ACTION_SEND_GEOLOGIST,
   ACTION_RES_MODE_IN,
   ACTION_RES_MODE_STOP,
@@ -272,9 +236,7 @@ typedef enum Action {
   ACTION_CLOSE_MESSAGE,
   ACTION_DEFAULT_SETT_4,
   ACTION_SHOW_PLAYER_FACES,
-  ACTION_MINIMAP_SCALE,
   ACTION_OPTIONS_RIGHT_SIDE,
-  ACTION_CLOSE_GROUND_ANALYSIS,
   ACTION_UNKNOWN_TP_INFO_FLAG,
   ACTION_SETT_8_CASTLE_DEF_DEC,
   ACTION_SETT_8_CASTLE_DEF_INC,
@@ -305,12 +267,6 @@ PopupBox::~PopupBox() {
 void
 PopupBox::init() {
 /*
-  minimap = std::make_shared<MinimapGame>(interface, interface->get_game());
-  minimap->set_displayed(false);
-  minimap->set_parent(shared_from_this());
-  minimap->set_size(128, 128);
-  add_float(minimap, 8, 9);
-
   file_list = std::make_shared<ListSavedFiles>();
   file_list->set_size(120, 100);
   file_list->set_displayed(false);
@@ -447,128 +403,6 @@ PopupBox::draw_custom_icon_box(const int sprites[]) {
     draw_popup_icon(sprites[1], sprites[2], sprites[0]);
     sprites += 3;
   }
-}
-
-/* Translate resource amount to text. */
-const std::string
-PopupBox::prepare_res_amount_text(int amount) const {
-  if (amount == 0) return "Not Present";
-  else if (amount < 100) return "Minimum";
-  else if (amount < 180) return "Very Few";
-  else if (amount < 240) return "Few";
-  else if (amount < 300) return "Below Average";
-  else if (amount < 400) return "Average";
-  else if (amount < 500) return "Above Average";
-  else if (amount < 600) return "Much";
-  else if (amount < 800) return "Very Much";
-  return "Perfect";
-}
-
-void
-PopupBox::draw_map_box() {
-  /* Icons */
-//  draw_popup_icon(0, 128, minimap->get_ownership_mode());  // Mode
-//  draw_popup_icon(4, 128, minimap->get_draw_roads() ? 3 : 4);  // Roads
-//  if (minimap->get_advanced() >= 0) {  // Unknown mode
-//    draw_popup_icon(8, 128, minimap->get_advanced() == 0 ? 306 : 305);
-//  } else {  // Buildings
-//    draw_popup_icon(8, 128, minimap->get_draw_buildings() ? 5 : 6);
-//  }
-//  draw_popup_icon(12, 128, minimap->get_draw_grid() ? 7 : 8);  // Grid
-//  draw_popup_icon(14, 128, (minimap->get_scale() == 1) ? 91 : 92);  // Scale
-}
-
-/* Draw building mine popup box. */
-void
-PopupBox::draw_mine_building_box() {
-  const int layout[] = {
-    0xa3, 2, 8,
-    0xa4, 8, 8,
-    0xa5, 4, 77,
-    0xa6, 10, 77,
-    -1
-  };
-
-  draw_box_background(PatternConstruction);
-
-  if (interface->get_game()->can_build_flag(interface->get_map_cursor_pos(),
-                                            interface->get_player())) {
-    draw_popup_building(2, 114, 0x80+4*interface->get_player()->get_index());
-  }
-
-  draw_custom_bld_box(layout);
-}
-
-/* Draw .. popup box... */
-void
-PopupBox::draw_basic_building_box(int flip) {
-  const int layout[] = {
-    0xab, 10, 13, /* hut */
-    0xa9, 2, 13,
-    0xa8, 0, 58,
-    0xaa, 6, 56,
-    0xa7, 12, 55,
-    0xbc, 2, 85,
-    0xae, 10, 87,
-    -1
-  };
-
-  draw_box_background(PatternConstruction);
-
-  const int *l = layout;
-  if (!interface->get_game()->can_build_military(
-                                             interface->get_map_cursor_pos())) {
-    l += 3; /* Skip hut */
-  }
-
-  draw_custom_bld_box(l);
-
-  if (interface->get_game()->can_build_flag(interface->get_map_cursor_pos(),
-                                            interface->get_player())) {
-    draw_popup_building(8, 108, 0x80+4*interface->get_player()->get_index());
-  }
-
-  if (flip) draw_popup_icon(0, 128, 0x3d);
-}
-
-void
-PopupBox::draw_adv_1_building_box() {
-  const int layout[] = {
-    0x9c, 0, 15,
-    0x9d, 8, 15,
-    0xa1, 0, 50,
-    0xa0, 8, 50,
-    0xa2, 2, 100,
-    0x9f, 10, 96,
-    -1
-  };
-
-  draw_box_background(PatternConstruction);
-  draw_custom_bld_box(layout);
-  draw_popup_icon(0, 128, 0x3d);
-}
-
-void
-PopupBox::draw_adv_2_building_box() {
-  const int layout[] = {
-    0x9e, 2, 99, /* tower */
-    0x98, 8, 84, /* fortress */
-    0x99, 0, 1,
-    0xc0, 0, 46,
-    0x9a, 8, 1,
-    0x9b, 8, 45,
-    -1
-  };
-
-  const int *l = layout;
-  if (!interface->get_game()->can_build_military(
-                                             interface->get_map_cursor_pos())) {
-    l += 2*3; /* Skip tower and fortress */
-  }
-
-  draw_box_background(PatternConstruction);
-  draw_custom_bld_box(l);
-  draw_popup_icon(0, 128, 0x3d);
 }
 
 /* Draw generic popup box of resources. */
@@ -1103,7 +937,7 @@ PopupBox::draw_stat_7_box() {
 void
 PopupBox::draw_gauge_balance(int lx, int ly, unsigned int value,
                              unsigned int count) {
-  unsigned int sprite = 0xd3;
+  int sprite = -1;
   if (count > 0) {
     unsigned int v = (16  *value) / count;
     if (v >= 230) {
@@ -1549,43 +1383,6 @@ PopupBox::draw_start_attack_box() {
 }
 
 void
-PopupBox::draw_ground_analysis_box() {
-  const int layout[] = {
-    0x1c, 7, 10,
-    0x2f, 1, 50,
-    0x2c, 1, 70,
-    0x2e, 1, 90,
-    0x2b, 1, 110,
-    0x3c, 14, 128,
-    -1
-  };
-
-  MapPos pos = interface->get_map_cursor_pos();
-  int estimates[5];
-
-  draw_box_background(PatternStripedGreen);
-  draw_custom_icon_box(layout);
-  interface->get_game()->prepare_ground_analysis(pos, estimates);
-  draw_green_string(0, 30, "GROUND-ANALYSIS:");
-
-  /* Gold */
-  std::string s = prepare_res_amount_text(2*estimates[Map::MineralsGold]);
-  draw_green_string(3, 54, s);
-
-  /* Iron */
-  s = prepare_res_amount_text(estimates[Map::MineralsIron]);
-  draw_green_string(3, 74, s);
-
-  /* Coal */
-  s = prepare_res_amount_text(estimates[Map::MineralsCoal]);
-  draw_green_string(3, 94, s);
-
-  /* Stone */
-  s = prepare_res_amount_text(2*estimates[Map::MineralsStone]);
-  draw_green_string(3, 114, s);
-}
-
-void
 PopupBox::draw_sett_select_box() {
   const int layout[] = {
     230, 1, 8,
@@ -1861,16 +1658,6 @@ PopupBox::draw_sett_5_box() {
 }
 
 void
-PopupBox::draw_quit_confirm_box() {
-  draw_box_background(PatternDiagonalGreen);
-
-  draw_green_string(0, 10, "   Do you want");
-  draw_green_string(0, 20, "     to quit");
-  draw_green_string(0, 30, "   this game?");
-  draw_green_string(0, 45, "  Yes       No");
-}
-
-void
 PopupBox::draw_no_save_quit_confirm_box() {
   draw_green_string(0, 70, "The game has not");
   draw_green_string(0, 80, "   been saved");
@@ -1931,234 +1718,6 @@ PopupBox::draw_options_box() {
 }
 
 void
-PopupBox::draw_castle_res_box() {
-  const int layout[] = {
-    0x3d, 12, 128, /* flip */
-    0x3c, 14, 128, /* exit */
-    -1
-  };
-
-  draw_box_background(PatternPlaidAlongGreen);
-  draw_custom_icon_box(layout);
-
-  if (interface->get_player()->temp_index == 0) {
-    interface->close_popup();
-    return;
-  }
-
-  Building *building =
-       interface->get_game()->get_building(interface->get_player()->temp_index);
-  if (building->is_burning()) {
-    interface->close_popup();
-    return;
-  }
-
-  if (building->get_type() != Building::TypeStock &&
-      building->get_type() != Building::TypeCastle) {
-    interface->close_popup();
-    return;
-  }
-
-  Inventory *inventory = building->get_inventory();
-  ResourceMap resources = inventory->get_all_resources();
-  draw_resources_box(resources);
-}
-
-void
-PopupBox::draw_mine_output_box() {
-  draw_box_background(PatternPlaidAlongGreen);
-
-  if (interface->get_player()->temp_index == 0) {
-    interface->close_popup();
-    return;
-  }
-
-  Building *building =
-       interface->get_game()->get_building(interface->get_player()->temp_index);
-  if (building->is_burning()) {
-    interface->close_popup();
-    return;
-  }
-
-  Building::Type type = building->get_type();
-
-  if (type != Building::TypeStoneMine &&
-      type != Building::TypeCoalMine &&
-      type != Building::TypeIronMine &&
-      type != Building::TypeGoldMine) {
-    interface->close_popup();
-    return;
-  }
-
-  /* Draw building */
-  draw_popup_building(6, 60, map_building_sprite[type]);
-
-  /* Draw serf icon */
-  int sprite = 0xdc; /* minus box */
-  if (building->has_serf()) sprite = 0x11; /* miner */
-
-  draw_popup_icon(10, 75, sprite);
-
-  /* Draw food present at mine */
-  int stock = building->get_res_count_in_stock(0);
-  int stock_left_col = (stock + 1) >> 1;
-  int stock_right_col = stock >> 1;
-
-  /* Left column */
-  for (int i = 0; i < stock_left_col; i++) {
-    draw_popup_icon(1, 90 - 8*stock_left_col + i*16,
-                    0x24); /* meat (food) sprite */
-  }
-
-  /* Right column */
-  for (int i = 0; i < stock_right_col; i++) {
-    draw_popup_icon(13, 90 - 8*stock_right_col + i*16,
-                    0x24); /* meat (food) sprite */
-  }
-
-  /* Calculate output percentage (simple WMA) */
-  const int output_weight[] = { 10, 10, 9, 9, 8, 8, 7, 7,
-                                 6,  6, 5, 5, 4, 3, 2, 1 };
-  int output = 0;
-  for (int i = 0; i < 15; i++) {
-    output += !!BIT_TEST(building->get_progress(), i) * output_weight[i];
-  }
-
-  /* Print output precentage */
-  int lx = 7;
-  if (output >= 100) lx += 1;
-  if (output >= 10) lx += 1;
-  draw_green_string(lx, 38, "%");
-  draw_green_number(6, 38, output);
-
-  draw_green_string(1, 14, "MINING");
-  draw_green_string(1, 24, "OUTPUT:");
-
-  /* Exit box */
-  draw_popup_icon(14, 128, 0x3c);
-}
-
-void
-PopupBox::draw_ordered_building_box() {
-  draw_box_background(PatternPlaidAlongGreen);
-
-  if (interface->get_player()->temp_index == 0) {
-    interface->close_popup();
-    return;
-  }
-
-  Building *building =
-       interface->get_game()->get_building(interface->get_player()->temp_index);
-  if (building->is_burning()) {
-    interface->close_popup();
-    return;
-  }
-
-  Building::Type type = building->get_type();
-
-  int sprite = map_building_sprite[type];
-  int lx = 6;
-  if (sprite == 0xc0 /*stock*/ || sprite < 0x9e /*tower*/) lx = 4;
-  draw_popup_building(lx, 40, sprite);
-
-  draw_green_string(2, 4, "Ordered");
-  draw_green_string(2, 14, "Building");
-
-  if (building->has_serf()) {
-    if (building->get_progress() == 0) { /* Digger */
-      draw_popup_icon(2, 100, 0xb);
-    } else { /* Builder */
-      draw_popup_icon(2, 100, 0xc);
-    }
-  } else {
-    draw_popup_icon(2, 100, 0xdc); /* Minus box */
-  }
-
-  draw_popup_icon(14, 128, 0x3c); /* Exit box */
-}
-
-void
-PopupBox::draw_defenders_box() {
-  draw_box_background(PatternPlaidAlongGreen);
-
-  Player *player = interface->get_player();
-  if (player->temp_index == 0) {
-    interface->close_popup();
-    return;
-  }
-
-  Building *building = interface->get_game()->get_building(player->temp_index);
-  if (building->is_burning()) {
-    interface->close_popup();
-    return;
-  }
-
-  if (building->get_owner() != player->get_index()) {
-    interface->close_popup();
-    return;
-  }
-
-  if (building->get_type() != Building::TypeHut &&
-      building->get_type() != Building::TypeTower &&
-      building->get_type() != Building::TypeFortress) {
-    interface->close_popup();
-    return;
-  }
-
-  /* Draw building sprite */
-  int sprite = map_building_sprite[building->get_type()];
-  int lx = 0;
-  int ly = 0;
-  switch (building->get_type()) {
-    case Building::TypeHut:
-      lx = 6;
-      ly = 20;
-      break;
-    case Building::TypeTower:
-      lx = 4;
-      ly = 6;
-      break;
-    case Building::TypeFortress:
-      lx = 4;
-      ly = 1;
-      break;
-    default:
-      NOT_REACHED();
-  }
-
-  draw_popup_building(lx, ly, sprite);
-
-  /* Draw gold stock */
-  if (building->get_res_count_in_stock(1) > 0) {
-    int left = (building->get_res_count_in_stock(1) + 1) / 2;
-    for (int i = 0; i < left; i++) {
-      draw_popup_icon(1, 32 - 8*left + 16*i, 0x30);
-    }
-
-    int right = building->get_res_count_in_stock(1) / 2;
-    for (int i = 0; i < right; i++) {
-      draw_popup_icon(13, 32 - 8*right + 16*i, 0x30);
-    }
-  }
-
-  /* Draw heading string */
-  draw_green_string(3, 62, "Defenders:");
-
-  /* Draw knights */
-  int next_knight = building->get_first_knight();
-  for (int i = 0; next_knight != 0; i++) {
-    Serf *serf = interface->get_game()->get_serf(next_knight);
-    draw_popup_icon(3 + 4*(i%3), 72 + 16*(i/3), 7 + serf->get_type());
-    next_knight = serf->get_next();
-  }
-
-  draw_green_string(0, 128, "State:");
-  draw_green_number(7, 128, static_cast<int>(building->get_threat_level()));
-
-  draw_popup_icon(14, 128, 0x3c); /* Exit box */
-}
-
-void
 PopupBox::draw_transport_info_box() {
   const int layout[] = {
     9, 24,
@@ -2175,7 +1734,7 @@ PopupBox::draw_transport_info_box() {
   /* if (r == 0) draw_popup_icon(7, 51, 0x135); */
 
   if (interface->get_player()->temp_index == 0) {
-    interface->close_popup();
+    close();
     return;
   }
 
@@ -2232,134 +1791,7 @@ PopupBox::draw_transport_info_box() {
 }
 
 void
-PopupBox::draw_castle_serf_box() {
-  const int layout[] = {
-    0x3d, 12, 128, /* flip */
-    0x3c, 14, 128, /* exit */
-    -1
-  };
 
-  int serfs[27] = {0};
-
-  draw_box_background(PatternPlaidAlongGreen);
-  draw_custom_icon_box(layout);
-
-  if (interface->get_player()->temp_index == 0) {
-    interface->close_popup();
-    return;
-  }
-
-  Building *building =
-       interface->get_game()->get_building(interface->get_player()->temp_index);
-  if (building->is_burning()) {
-    interface->close_popup();
-    return;
-  }
-
-  Building::Type type = building->get_type();
-  if (type != Building::TypeStock && type != Building::TypeCastle) {
-    interface->close_popup();
-    return;
-  }
-
-  Inventory *inventory = building->get_inventory();
-  for (Serf *serf : interface->get_game()->get_serfs_in_inventory(inventory)) {
-    serfs[serf->get_type()] += 1;
-  }
-
-  draw_serfs_box(serfs, -1);
-}
-
-void
-PopupBox::draw_resdir_box() {
-  const int layout[] = {
-    0x128, 4, 16,
-    0x129, 4, 80,
-    0xdc, 9, 16,
-    0xdc, 9, 32,
-    0xdc, 9, 48,
-    0xdc, 9, 80,
-    0xdc, 9, 96,
-    0xdc, 9, 112,
-    0x3d, 12, 128,
-    0x3c, 14, 128,
-    -1
-  };
-
-  const int knights_layout[] = {
-    0x21, 12, 16,
-    0x20, 12, 36,
-    0x1f, 12, 56,
-    0x1e, 12, 76,
-    0x1d, 12, 96,
-    -1
-  };
-
-  draw_box_background(PatternPlaidAlongGreen);
-  draw_custom_icon_box(layout);
-
-  if (interface->get_player()->temp_index == 0) {
-    interface->close_popup();
-    return;
-  }
-
-  Building *building =
-       interface->get_game()->get_building(interface->get_player()->temp_index);
-  if (building->is_burning()) {
-    interface->close_popup();
-    return;
-  }
-
-  Building::Type type = building->get_type();
-  if (type == Building::TypeCastle) {
-    int knights[] = { 0, 0, 0, 0, 0 };
-    draw_custom_icon_box(knights_layout);
-
-    /* Follow linked list of knights on duty */
-    int serf_index = building->get_first_knight();
-    while (serf_index != 0) {
-      Serf *serf = interface->get_game()->get_serf(serf_index);
-      Serf::Type serf_type = serf->get_type();
-      if ((serf_type < Serf::TypeKnight0) || (serf_type > Serf::TypeKnight4)) {
-        throw ExceptionFreeserf("Not a knight among the castle defenders.");
-      }
-      knights[serf_type-Serf::TypeKnight0] += 1;
-      serf_index = serf->get_next();
-    }
-
-    draw_green_number(14, 20, knights[4]);
-    draw_green_number(14, 40, knights[3]);
-    draw_green_number(14, 60, knights[2]);
-    draw_green_number(14, 80, knights[1]);
-    draw_green_number(14, 100, knights[0]);
-  } else if (type != Building::TypeStock) {
-    interface->close_popup();
-    return;
-  }
-
-  /* Draw resource mode checkbox */
-  Inventory *inventory = building->get_inventory();
-  Inventory::Mode res_mode = inventory->get_res_mode();
-  if (res_mode == Inventory::ModeIn) { /* in */
-    draw_popup_icon(9, 16, 0x120);
-  } else if (res_mode == Inventory::ModeStop) { /* stop */
-    draw_popup_icon(9, 32, 0x120);
-  } else { /* out */
-    draw_popup_icon(9, 48, 0x120);
-  }
-
-  /* Draw serf mode checkbox */
-  Inventory::Mode serf_mode = inventory->get_serf_mode();
-  if (serf_mode == Inventory::ModeIn) { /* in */
-    draw_popup_icon(9, 80, 0x120);
-  } else if (serf_mode == Inventory::ModeStop) { /* stop */
-    draw_popup_icon(9, 96, 0x120);
-  } else { /* out */
-    draw_popup_icon(9, 112, 0x120);
-  }
-}
-
-void
 PopupBox::draw_sett_8_box() {
   const int layout[] = {
     9, 2, 8,
@@ -2516,14 +1948,14 @@ PopupBox::draw_building_stock_box() {
   draw_box_background(PatternPlaidAlongGreen);
 
   if (interface->get_player()->temp_index == 0) {
-    interface->close_popup();
+    close();
     return;
   }
 
   Building *building = interface->get_game()->get_building(
                                            interface->get_player()->temp_index);
   if (building->is_burning()) {
-    interface->close_popup();
+    close();
     return;
   }
 
@@ -2616,24 +2048,6 @@ PopupBox::internal_draw() {
 
   /* Dispatch to one of the popup box functions above. */
   switch (box) {
-  case TypeMap:
-    draw_map_box();
-    break;
-  case TypeMineBuilding:
-    draw_mine_building_box();
-    break;
-  case TypeBasicBld:
-    draw_basic_building_box(0);
-    break;
-  case TypeBasicBldFlip:
-    draw_basic_building_box(1);
-    break;
-  case TypeAdv1Bld:
-    draw_adv_1_building_box();
-    break;
-  case TypeAdv2Bld:
-    draw_adv_2_building_box();
-    break;
   case TypeStatSelect:
     draw_stat_select_box();
     break;
@@ -2676,10 +2090,6 @@ PopupBox::internal_draw() {
   case TypeStartAttackRedraw:
     draw_start_attack_redraw_box();
     break;
-  case TypeGroundAnalysis:
-    draw_ground_analysis_box();
-    break;
-    /* TODO */
   case TypeSettSelect:
     draw_sett_select_box();
     break;
@@ -2701,35 +2111,14 @@ PopupBox::internal_draw() {
   case TypeSett5:
     draw_sett_5_box();
     break;
-  case TypeQuitConfirm:
-    draw_quit_confirm_box();
-    break;
   case TypeNoSaveQuitConfirm:
     draw_no_save_quit_confirm_box();
     break;
   case TypeOptions:
     draw_options_box();
     break;
-  case TypeCastleRes:
-    draw_castle_res_box();
-    break;
-  case TypeMineOutput:
-    draw_mine_output_box();
-    break;
-  case TypeOrderedBld:
-    draw_ordered_building_box();
-    break;
-  case TypeDefenders:
-    draw_defenders_box();
-    break;
   case TypeTransportInfo:
     draw_transport_info_box();
-    break;
-  case TypeCastleSerf:
-    draw_castle_serf_box();
-    break;
-  case TypeResDir:
-    draw_resdir_box();
     break;
   case TypeSett8:
     draw_sett_8_box();
@@ -2832,7 +2221,7 @@ PopupBox::handle_send_geologist() {
     play_sound(Audio::TypeSfxNotAccepted);
   } else {
     play_sound(Audio::TypeSfxAccepted);
-    interface->close_popup();
+    close();
   }
 }
 
@@ -2870,108 +2259,6 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
   Player *player = interface->get_player();
 
   switch (action) {
-  case ACTION_MINIMAP_CLICK:
-    /* Not handled here, event is passed to minimap. */
-    break;
-  case ACTION_MINIMAP_MODE: {
-//    int mode = minimap->get_ownership_mode() + 1;
-//    if (mode > MinimapGame::OwnershipModeLast) {
-//      mode = MinimapGame::OwnershipModeNone;
-//    }
-//    minimap->set_ownership_mode((MinimapGame::OwnershipMode)mode);
-    set_box(TypeMap);
-    break;
-  }
-  case ACTION_MINIMAP_ROADS:
-//    minimap->set_draw_roads(!minimap->get_draw_roads());
-    set_box(TypeMap);
-    break;
-  case ACTION_MINIMAP_BUILDINGS:
-//    if (minimap->get_advanced() >= 0) {
-//      minimap->set_advanced(-1);
-//      minimap->set_draw_buildings(true);
-//    } else {
-//      minimap->set_draw_buildings(!minimap->get_draw_buildings());
-//    }
-    set_box(TypeMap);
-    break;
-  case ACTION_MINIMAP_GRID:
-//      minimap->set_draw_grid(!minimap->get_draw_grid());
-    set_box(TypeMap);
-    break;
-  case ACTION_BUILD_STONEMINE:
-    interface->build_building(Building::TypeStoneMine);
-    break;
-  case ACTION_BUILD_COALMINE:
-    interface->build_building(Building::TypeCoalMine);
-    break;
-  case ACTION_BUILD_IRONMINE:
-    interface->build_building(Building::TypeIronMine);
-    break;
-  case ACTION_BUILD_GOLDMINE:
-    interface->build_building(Building::TypeGoldMine);
-    break;
-  case ACTION_BUILD_FLAG:
-    interface->build_flag();
-    interface->close_popup();
-    break;
-  case ACTION_BUILD_STONECUTTER:
-    interface->build_building(Building::TypeStonecutter);
-    break;
-  case ACTION_BUILD_HUT:
-    interface->build_building(Building::TypeHut);
-    break;
-  case ACTION_BUILD_LUMBERJACK:
-    interface->build_building(Building::TypeLumberjack);
-    break;
-  case ACTION_BUILD_FORESTER:
-    interface->build_building(Building::TypeForester);
-    break;
-  case ACTION_BUILD_FISHER:
-    interface->build_building(Building::TypeFisher);
-    break;
-  case ACTION_BUILD_MILL:
-    interface->build_building(Building::TypeMill);
-    break;
-  case ACTION_BUILD_BOATBUILDER:
-    interface->build_building(Building::TypeBoatbuilder);
-    break;
-  case ACTION_BUILD_BUTCHER:
-    interface->build_building(Building::TypeButcher);
-    break;
-  case ACTION_BUILD_WEAPONSMITH:
-    interface->build_building(Building::TypeWeaponSmith);
-    break;
-  case ACTION_BUILD_STEELSMELTER:
-    interface->build_building(Building::TypeSteelSmelter);
-    break;
-  case ACTION_BUILD_SAWMILL:
-    interface->build_building(Building::TypeSawmill);
-    break;
-  case ACTION_BUILD_BAKER:
-    interface->build_building(Building::TypeBaker);
-    break;
-  case ACTION_BUILD_GOLDSMELTER:
-    interface->build_building(Building::TypeGoldSmelter);
-    break;
-  case ACTION_BUILD_FORTRESS:
-    interface->build_building(Building::TypeFortress);
-    break;
-  case ACTION_BUILD_TOWER:
-    interface->build_building(Building::TypeTower);
-    break;
-  case ACTION_BUILD_TOOLMAKER:
-    interface->build_building(Building::TypeToolMaker);
-    break;
-  case ACTION_BUILD_FARM:
-    interface->build_building(Building::TypeFarm);
-    break;
-  case ACTION_BUILD_PIGFARM:
-    interface->build_building(Building::TypePigFarm);
-    break;
-  case ACTION_BLD_FLIP_PAGE:
-    set_box((box + 1 <= TypeAdv2Bld) ? (Type)(box + 1) : TypeBasicBldFlip);
-    break;
   case ACTION_SHOW_STAT_1:
     set_box(TypeStat1);
     break;
@@ -3004,8 +2291,7 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
     break;
   case ACTION_CLOSE_BOX:
   case ACTION_CLOSE_SETT_BOX:
-  case ACTION_CLOSE_GROUND_ANALYSIS:
-    interface->close_popup();
+    close();
     break;
   case ACTION_SETT_8_SET_ASPECT_ALL:
     interface->set_current_stat_8_mode((0 << 2) |
@@ -3080,13 +2366,13 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
         play_sound(Audio::TypeSfxAccepted);
         player->start_attack();
       }
-      interface->close_popup();
+      close();
     } else {
       play_sound(Audio::TypeSfxNotAccepted);
     }
     break;
   case ACTION_CLOSE_ATTACK_BOX:
-    interface->close_popup();
+    close();
     break;
     /* TODO */
   case ACTION_SHOW_SETT_1:
@@ -3306,24 +2592,6 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
   case ACTION_SETT_5_6_BOTTOM:
     move_sett_5_6_item(0, 1);
     break;
-  case ACTION_QUIT_CONFIRM:
-//    if (0/* TODO suggest save game*/) {
-//      set_box(TypeNoSaveQuitConfirm);
-//    } else {
-      play_sound(Audio::TypeSfxAhhh);
-      EventLoop::get_instance().quit();
-//    }
-    break;
-  case ACTION_QUIT_CANCEL:
-    interface->close_popup();
-    break;
-  case ACTION_NO_SAVE_QUIT_CONFIRM:
-    play_sound(Audio::TypeSfxAhhh);
-    EventLoop::get_instance().quit();
-    break;
-  case ACTION_SHOW_QUIT:
-    interface->open_popup(TypeQuitConfirm);
-    break;
   case ActionShowOptions:
     interface->open_popup(TypeOptions);
     break;
@@ -3333,7 +2601,7 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
     play_sound(Audio::TypeSfxAccepted);
     break;
   case ACTION_CLOSE_OPTIONS:
-    interface->close_popup();
+    close();
     break;
   case ACTION_OPTIONS_MESSAGE_COUNT_1:
     if (interface->get_config(3)) {
@@ -3374,15 +2642,6 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
     break;
   case ACTION_BUILD_STOCK:
     interface->build_building(Building::TypeStock);
-    break;
-  case ACTION_SHOW_CASTLE_SERF:
-    set_box(TypeCastleSerf);
-    break;
-  case ACTION_SHOW_RESDIR:
-    set_box(TypeResDir);
-    break;
-  case ACTION_SHOW_CASTLE_RES:
-    set_box(TypeCastleRes);
     break;
   case ACTION_SEND_GEOLOGIST:
     handle_send_geologist();
@@ -3496,12 +2755,6 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
   case ACTION_SHOW_PLAYER_FACES:
     set_box(TypePlayerFaces);
     break;
-  case ACTION_MINIMAP_SCALE: {
-//    minimap->set_scale(minimap->get_scale() == 1 ? 2 : 1);
-    set_box(TypeMap);
-  }
-    break;
-    /* TODO */
   case ACTION_SETT_8_CASTLE_DEF_DEC:
     player->decrease_castle_knights_wanted();
     break;
@@ -3551,7 +2804,7 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
   }
   case ACTION_DEMOLISH:
     interface->demolish_object();
-    interface->close_popup();
+    close();
     break;
   case ACTION_SHOW_SAVE:
 //    file_list->set_displayed(true);
@@ -3574,7 +2827,7 @@ PopupBox::handle_action(int action, int x_, int /*y_*/) {
     std::string file_path = file_list->get_folder_path() + "/" + file_name;
     if (GameStore::get_instance().save(file_path,
                                        interface->get_game().get())) {
-      interface->close_popup();
+      close();
     }
     break;
   }
@@ -3621,70 +2874,6 @@ PopupBox::handle_box_options_clk(int cx, int cy) {
     ACTION_OPTIONS_FULLSCREEN, 106, 70, 16, 16,
     ACTION_OPTIONS_MESSAGE_COUNT_1, 90, 90, 32, 16,
     ACTION_CLOSE_OPTIONS, 112, 126, 16, 16,
-    -1
-  };
-  handle_clickmap(cx, cy, clkmap);
-}
-
-void
-PopupBox::handle_mine_building_clk(int cx, int cy) {
-  const int clkmap[] = {
-    ACTION_BUILD_STONEMINE, 16, 8, 33, 65,
-    ACTION_BUILD_COALMINE, 64, 8, 33, 65,
-    ACTION_BUILD_IRONMINE, 32, 77, 33, 65,
-    ACTION_BUILD_GOLDMINE, 80, 77, 33, 65,
-    ACTION_BUILD_FLAG, 10, 114, 17, 21,
-    -1
-  };
-  handle_clickmap(cx, cy, clkmap);
-}
-
-void
-PopupBox::handle_basic_building_clk(int cx, int cy, int flip) {
-  const int clkmap[] = {
-    ACTION_BLD_FLIP_PAGE, 0, 129, 16, 15,
-    ACTION_BUILD_STONECUTTER, 16, 13, 33, 29,
-    ACTION_BUILD_HUT, 80, 13, 33, 27,
-    ACTION_BUILD_LUMBERJACK, 0, 58, 33, 24,
-    ACTION_BUILD_FORESTER, 48, 56, 33, 26,
-    ACTION_BUILD_FISHER, 96, 55, 33, 30,
-    ACTION_BUILD_MILL, 16, 92, 33, 46,
-    ACTION_BUILD_FLAG, 58, 108, 17, 21,
-    ACTION_BUILD_BOATBUILDER, 80, 87, 33, 53,
-    -1
-  };
-
-  const int *c = clkmap;
-  if (!flip) c += 5; /* Skip flip button */
-
-  handle_clickmap(cx, cy, c);
-}
-
-void
-PopupBox::handle_adv_1_building_clk(int cx, int cy) {
-  const int clkmap[] = {
-    ACTION_BLD_FLIP_PAGE, 0, 129, 16, 15,
-    ACTION_BUILD_BUTCHER, 0, 15, 65, 26,
-    ACTION_BUILD_WEAPONSMITH, 64, 15, 65, 26,
-    ACTION_BUILD_STEELSMELTER, 0, 50, 49, 39,
-    ACTION_BUILD_SAWMILL, 64, 50, 49, 41,
-    ACTION_BUILD_BAKER, 16, 100, 49, 33,
-    ACTION_BUILD_GOLDSMELTER, 80, 96, 49, 40,
-    -1
-  };
-  handle_clickmap(cx, cy, clkmap);
-}
-
-void
-PopupBox::handle_adv_2_building_clk(int cx, int cy) {
-  const int clkmap[] = {
-    ACTION_BLD_FLIP_PAGE, 0, 129, 16, 15,
-    ACTION_BUILD_FORTRESS, 64, 87, 64, 56,
-    ACTION_BUILD_TOWER, 16, 99, 48, 43,
-    ACTION_BUILD_TOOLMAKER, 0, 1, 64, 48,
-    ACTION_BUILD_FARM, 64, 1, 64, 42,
-    ACTION_BUILD_PIGFARM, 64, 45, 64, 41,
-    ACTION_BUILD_STOCK, 0, 50, 48, 48,
     -1
   };
   handle_clickmap(cx, cy, clkmap);
@@ -3803,18 +2992,9 @@ PopupBox::handle_start_attack_click(int cx, int cy) {
 }
 
 void
-PopupBox::handle_ground_analysis_clk(int cx, int cy) {
-  const int clkmap[] = {
-    ACTION_CLOSE_GROUND_ANALYSIS, 112, 128, 16, 16,
-    -1
-  };
-  handle_clickmap(cx, cy, clkmap);
-}
-
-void
 PopupBox::handle_sett_select_clk(int cx, int cy) {
   const int clkmap[] = {
-    ACTION_SHOW_QUIT, 0, 128, 32, 16,
+//    ACTION_SHOW_QUIT, 0, 128, 32, 16,
     ActionShowOptions, 32, 128, 32, 16,
     ACTION_SHOW_SAVE, 64, 128, 32, 16,
 
@@ -3970,36 +3150,6 @@ PopupBox::handle_sett_5_6_click(int cx, int cy) {
 }
 
 void
-PopupBox::handle_quit_confirm_click(int cx, int cy) {
-  const int clkmap[] = {
-    ACTION_QUIT_CONFIRM, 8, 45, 32, 8,
-    ACTION_QUIT_CANCEL, 88, 45, 32, 8,
-    -1
-  };
-  handle_clickmap(cx, cy, clkmap);
-}
-
-void
-PopupBox::handle_no_save_quit_confirm_click(int cx, int cy) {
-  const int clkmap[] = {
-    ACTION_NO_SAVE_QUIT_CONFIRM, 8, 125, 32, 8,
-    ACTION_QUIT_CANCEL, 88, 125, 32, 8,
-    -1
-  };
-  handle_clickmap(cx, cy, clkmap);
-}
-
-void
-PopupBox::handle_castle_res_clk(int cx, int cy) {
-  const int clkmap[] = {
-    ACTION_CLOSE_BOX, 112, 128, 16, 16,
-    ACTION_SHOW_CASTLE_SERF, 96, 128, 16, 16,
-    -1
-  };
-  handle_clickmap(cx, cy, clkmap);
-}
-
-void
 PopupBox::handle_transport_info_clk(int cx, int cy) {
   const int clkmap[] = {
     ACTION_UNKNOWN_TP_INFO_FLAG, 56, 51, 16, 15,
@@ -4009,35 +3159,6 @@ PopupBox::handle_transport_info_clk(int cx, int cy) {
   };
 
   handle_clickmap(cx, cy, clkmap);
-}
-
-void
-PopupBox::handle_castle_serf_clk(int cx, int cy) {
-  const int clkmap[] = {
-    ACTION_CLOSE_BOX, 112, 128, 16, 16,
-    ACTION_SHOW_RESDIR, 96, 128, 16, 16,
-    -1
-  };
-  handle_clickmap(cx, cy, clkmap);
-}
-
-void
-PopupBox::handle_resdir_clk(int cx, int cy) {
-  const int mode_clkmap[] = {
-    ACTION_RES_MODE_IN, 72, 16, 16, 16,
-    ACTION_RES_MODE_STOP, 72, 32, 16, 16,
-    ACTION_RES_MODE_OUT, 72, 48, 16, 16,
-    ACTION_SERF_MODE_IN, 72, 80, 16, 16,
-    ACTION_SERF_MODE_STOP, 72, 96, 16, 16,
-    ACTION_SERF_MODE_OUT, 72, 112, 16, 16,
-
-    ACTION_SHOW_CASTLE_RES, 96, 128, 16, 16,
-    ACTION_CLOSE_BOX, 112, 128, 16, 16,
-
-    -1
-  };
-
-  handle_clickmap(cx, cy, mode_clkmap);
 }
 
 void
@@ -4089,21 +3210,6 @@ PopupBox::handle_box_demolish_clk(int cx, int cy) {
     ACTION_DEMOLISH, 56, 45, 16, 16,
     -1
   };
-  handle_clickmap(cx, cy, clkmap);
-}
-
-void
-PopupBox::handle_minimap_clk(int cx, int cy) {
-  const int clkmap[] = {
-    ACTION_MINIMAP_CLICK, 0, 0, 128, 128,
-    ACTION_MINIMAP_MODE, 0, 128, 32, 16,
-    ACTION_MINIMAP_ROADS, 32, 128, 32, 16,
-    ACTION_MINIMAP_BUILDINGS, 64, 128, 32, 16,
-    ACTION_MINIMAP_GRID, 96, 128, 16, 16,
-    ACTION_MINIMAP_SCALE, 112, 128, 16, 16,
-    -1
-  };
-
   handle_clickmap(cx, cy, clkmap);
 }
 
@@ -4192,24 +3298,6 @@ PopupBox::handle_click_left(int cx, int cy) {
   cy -= 8;
 
   switch (box) {
-  case TypeMap:
-    handle_minimap_clk(cx, cy);
-    break;
-  case TypeMineBuilding:
-    handle_mine_building_clk(cx, cy);
-    break;
-  case TypeBasicBld:
-    handle_basic_building_clk(cx, cy, 0);
-    break;
-  case TypeBasicBldFlip:
-    handle_basic_building_clk(cx, cy, 1);
-    break;
-  case TypeAdv1Bld:
-    handle_adv_1_building_clk(cx, cy);
-    break;
-  case TypeAdv2Bld:
-    handle_adv_2_building_clk(cx, cy);
-    break;
   case TypeStatSelect:
     handle_stat_select_click(cx, cy);
     break;
@@ -4236,11 +3324,6 @@ PopupBox::handle_click_left(int cx, int cy) {
   case TypeStartAttackRedraw:
     handle_start_attack_click(cx, cy);
     break;
-    /* TODO */
-  case TypeGroundAnalysis:
-    handle_ground_analysis_clk(cx, cy);
-    break;
-    /* TODO ... */
   case TypeSettSelect:
     handle_sett_select_clk(cx, cy);
     break;
@@ -4262,35 +3345,11 @@ PopupBox::handle_click_left(int cx, int cy) {
   case TypeSett5:
     handle_sett_5_6_click(cx, cy);
     break;
-  case TypeQuitConfirm:
-    handle_quit_confirm_click(cx, cy);
-    break;
-  case TypeNoSaveQuitConfirm:
-    handle_no_save_quit_confirm_click(cx, cy);
-    break;
   case TypeOptions:
     handle_box_options_clk(cx, cy);
     break;
-  case TypeCastleRes:
-    handle_castle_res_clk(cx, cy);
-    break;
-  case TypeMineOutput:
-    handle_box_close_clk(cx, cy);
-    break;
-  case TypeOrderedBld:
-    handle_box_close_clk(cx, cy);
-    break;
-  case TypeDefenders:
-    handle_box_close_clk(cx, cy);
-    break;
   case TypeTransportInfo:
     handle_transport_info_clk(cx, cy);
-    break;
-  case TypeCastleSerf:
-    handle_castle_serf_clk(cx, cy);
-    break;
-  case TypeResDir:
-    handle_resdir_clk(cx, cy);
     break;
   case TypeSett8:
     handle_sett_8_click(cx, cy);

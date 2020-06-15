@@ -146,7 +146,12 @@ set(OTHER_SOURCES pathfinder.cc
                   text-input.cc
                   list.cc
                   command_line.cc
-                  dialog.cc)
+                  dialog.cc
+                  dialog-build.cc
+                  dialog-building.cc
+                  dialog-ground-analysis.cc
+                  dialog-map.cc
+                  dialog-quit-confirm.cc)
 
 set(OTHER_HEADERS pathfinder.h
                   gfx.h
@@ -165,7 +170,12 @@ set(OTHER_HEADERS pathfinder.h
                   list.h
                   convertor.h
                   command_line.h
-                  dialog.h)
+                  dialog.h
+                  dialog-build.h
+                  dialog-building.h
+                  dialog-ground-analysis.h
+                  dialog-map.h
+                  dialog-quit-confirm.h)
 
 set(FREESERF_SOURCES freeserf.cc ${OTHER_SOURCES})
 set(FREESERF_HEADERS freeserf.h ${OTHER_HEADERS})
