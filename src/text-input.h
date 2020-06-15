@@ -1,7 +1,7 @@
 /*
  * text-input.h - Text input GUI component
  *
- * Copyright (C) 2015  Wicked_Digger <wicked_digger@mail.ru>
+ * Copyright (C) 2015-2017  Wicked_Digger <wicked_digger@mail.ru>
  *
  * This file is part of freeserf.
  *
@@ -24,11 +24,11 @@
 
 #include <string>
 
-#include "src/gui.h"
+#include "src/dialog.h"
 
 class TextInput;
 
-class TextInput : public GuiObject {
+class TextInput : public Control {
  public:
   typedef bool(*Filter)(const char key, TextInput *text_input);
 
@@ -42,7 +42,7 @@ class TextInput : public GuiObject {
   bool draw_focus;
 
  public:
-  TextInput();
+  TextInput(unsigned int _width, unsigned int _height);
 
   void set_text(const std::string &text);
   std::string get_text();
@@ -51,11 +51,10 @@ class TextInput : public GuiObject {
   void set_filter(Filter _filter) { filter = _filter; }
 
  protected:
-  virtual void internal_draw();
+  virtual void draw(Frame *frame, unsigned int x, unsigned int y);
 
   virtual bool handle_click_left(int x, int y);
   virtual bool handle_key_pressed(char key, int modifier);
-  virtual bool handle_focus_loose();
 };
 
 #endif  // SRC_TEXT_INPUT_H_

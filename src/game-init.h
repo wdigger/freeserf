@@ -62,9 +62,9 @@ class GameInitBox : public GuiObject {
   PGameInfo custom_mission;
   PGameInfo mission;
 
-  std::shared_ptr<RandomInput> random_input;
+//  std::shared_ptr<RandomInput> random_input;
   PMap map;
-  std::shared_ptr<Minimap> minimap;
+//  std::shared_ptr<Minimap> minimap;
   std::shared_ptr<ListSavedFiles> file_list;
 
  public:

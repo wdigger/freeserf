@@ -1,7 +1,7 @@
 /*
  * text-input.cc - Text input GUI component
  *
- * Copyright (C) 2015  Wicked_Digger <wicked_digger@mail.ru>
+ * Copyright (C) 2015-2017  Wicked_Digger <wicked_digger@mail.ru>
  *
  * This file is part of freeserf.
  *
@@ -21,7 +21,8 @@
 
 #include "src/text-input.h"
 
-TextInput::TextInput() : GuiObject() {
+TextInput::TextInput(unsigned int _width, unsigned int _height)
+  : Control(_width, _height) {
   max_length = 0;
   filter = NULL;
   draw_focus = true;
@@ -33,7 +34,7 @@ TextInput::TextInput() : GuiObject() {
 void
 TextInput::set_text(const std::string &text) {
   this->text = text;
-  set_redraw();
+  invalidate();
 }
 
 std::string
@@ -42,10 +43,11 @@ TextInput::get_text() {
 }
 
 void
-TextInput::internal_draw() {
-  frame->fill_rect(0, 0, width, height, color_background);
-  frame->draw_rect(0, 0, width, height, color_focus);
-
+TextInput::draw(Frame *frame, unsigned int x, unsigned int y) {
+  frame->fill_rect(x, y, width, height, color_background);
+  if (draw_focus && is_focused()) {
+    frame->draw_rect(x, y, width, height, color_focus);
+  }
   int ch_width = width/8;
   std::string str = text;
   int cx = 0;
@@ -57,25 +59,30 @@ TextInput::internal_draw() {
   while (str.length()) {
     std::string substr = str.substr(0, ch_width);
     str.erase(0, ch_width);
-    frame->draw_string(cx, cy, substr, color_text);
+    frame->draw_string(x + cx, y + cy, substr, color_text);
     cy += 8;
   }
 }
 
 bool
 TextInput::handle_click_left(int x, int y) {
+  own_focus();
   return true;
 }
 
 bool
 TextInput::handle_key_pressed(char key, int modifier) {
+  if (!is_focused()) {
+    return false;
+  }
+
   if ((max_length != 0) && (text.length() >= max_length)) {
     return true;
   }
 
   if ((key == '\b') && (text.length() > 0)) {
     text = text.substr(0, text.length() - 1);
-    set_redraw();
+    invalidate();
     return true;
   }
 
@@ -87,14 +94,8 @@ TextInput::handle_key_pressed(char key, int modifier) {
 
   text += key;
 
-  set_redraw();
+  invalidate();
 
-  return true;
-}
-
-bool
-TextInput::handle_focus_loose() {
-  set_redraw();
   return true;
 }
 

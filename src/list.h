@@ -26,10 +26,10 @@
 #include <vector>
 #include <functional>
 
-#include "src/gui.h"
+#include "src/dialog.h"
 #include "src/savegame.h"
 
-class ListSavedFiles : public GuiObject {
+class ListSavedFiles : public Control {
  protected:
   Color color_focus;
   Color color_text;
@@ -42,7 +42,7 @@ class ListSavedFiles : public GuiObject {
   std::function<void(const std::string&)> selection_handler;
 
  public:
-  ListSavedFiles();
+  ListSavedFiles(unsigned int _width, unsigned int _height);
 
   void set_selection_handler(std::function<void(const std::string&)> handler) {
     selection_handler = handler;
@@ -51,12 +51,12 @@ class ListSavedFiles : public GuiObject {
   std::string get_folder_path() const { return save_game->get_folder_path(); }
 
  protected:
-  virtual void internal_draw();
+  virtual void draw(Frame *frame, unsigned int x, unsigned int y);
 
   virtual bool handle_click_left(int x, int y);
   virtual bool handle_drag(int dx, int dy);
   virtual bool handle_key_pressed(char key, int modifier);
-  virtual bool handle_focus_loose();
+  virtual void handle_focus_loose();
 };
 
 #endif  // SRC_LIST_H_

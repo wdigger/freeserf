@@ -174,21 +174,13 @@ PanelBar::button_click(int button) {
         panel_btns[4] = ButtonSettInactive;
 
         interface->open_popup(PopupBox::TypeMap);
-
-        /* Synchronize minimap window with viewport. */
-        std::shared_ptr<Viewport> viewport = interface->get_viewport();
-        std::shared_ptr<PopupBox> popup = interface->get_popup_box();
-        Minimap *minimap = popup->get_minimap();
-        if (minimap != NULL) {
-          MapPos pos = viewport->get_current_map_pos();
-          minimap->move_to_map_pos(pos);
-        }
       }
       break;
     case ButtonSett:
     case ButtonSettStarred:
       play_sound(Audio::TypeSfxClick);
-      if (popup && popup->is_displayed()) {
+      if ((interface->get_popup_box() != NULL) &&
+          interface->get_popup_box()->is_displayed()) {
         interface->close_popup();
       } else {
         panel_btns[0] = ButtonBuildInactive;
@@ -202,7 +194,8 @@ PanelBar::button_click(int button) {
     case ButtonStats:
     case ButtonStatsStarred:
       play_sound(Audio::TypeSfxClick);
-      if (popup && popup->is_displayed()) {
+      if ((interface->get_popup_box() != NULL) &&
+          interface->get_popup_box()->is_displayed()) {
         interface->close_popup();
       } else {
         panel_btns[0] = ButtonBuildInactive;
@@ -229,7 +222,8 @@ PanelBar::button_click(int button) {
     case ButtonBuildSmall:
     case ButtonBuildSmallStarred:
       play_sound(Audio::TypeSfxClick);
-      if ((popup != nullptr) && popup->is_displayed()) {
+      if ((interface->get_popup_box() != NULL) &&
+          interface->get_popup_box()->is_displayed()) {
         interface->close_popup();
       } else {
         panel_btns[0] = ButtonBuildSmallStarred;
@@ -243,7 +237,8 @@ PanelBar::button_click(int button) {
     case ButtonBuildLarge:
     case ButtonBuildLargeStarred:
       play_sound(Audio::TypeSfxClick);
-      if ((popup != nullptr) && popup->is_displayed()) {
+      if ((interface->get_popup_box() != NULL) &&
+          interface->get_popup_box()->is_displayed()) {
         interface->close_popup();
       } else {
         panel_btns[0] = ButtonBuildLargeStarred;
@@ -257,7 +252,8 @@ PanelBar::button_click(int button) {
     case ButtonBuildMine:
     case ButtonBuildMineStarred:
       play_sound(Audio::TypeSfxClick);
-      if ((popup != nullptr) && popup->is_displayed()) {
+      if ((interface->get_popup_box() != NULL) &&
+          interface->get_popup_box()->is_displayed()) {
         interface->close_popup();
       } else {
         panel_btns[0] = ButtonBuildMineStarred;

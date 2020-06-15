@@ -43,9 +43,8 @@ class RandomInput : public TextInput {
   std::string saved_text;
 
  public:
-  RandomInput() {
+  RandomInput() : TextInput(34, 34) {
     set_filter(text_input_filter);
-    set_size(34, 34);
     set_max_length(16);
   }
 
@@ -78,13 +77,12 @@ class RandomInput : public TextInput {
     return true;
   }
 
-  virtual bool handle_focus_loose() {
+  virtual void handle_focus_loose() {
     TextInput::handle_focus_loose();
     if ((text.length() < 16) && (saved_text.length() == 16)) {
       text = saved_text;
       saved_text.clear();
     }
-    return true;
   }
 };
 
@@ -108,6 +106,7 @@ GameInitBox::~GameInitBox() {
 
 void
 GameInitBox::init() {
+/*
   minimap = std::make_shared<Minimap>(nullptr);
   minimap->set_displayed(true);
   minimap->set_size(150, 160);
@@ -131,6 +130,7 @@ GameInitBox::init() {
     }
   });
   add_float(file_list, 20, 55);
+*/
 }
 
 void
@@ -319,22 +319,22 @@ GameInitBox::handle_action(int action) {
       switch (game_type) {
         case GameMission: {
           mission = GameInfo::get_mission(game_mission);
-          random_input->set_displayed(false);
-          file_list->set_displayed(false);
+//          random_input->set_displayed(false);
+//          file_list->set_displayed(false);
           generate_map_preview();
           break;
         }
         case GameCustom: {
           mission = custom_mission;
-          random_input->set_displayed(true);
-          random_input->set_random(custom_mission->get_random_base());
-          file_list->set_displayed(false);
+//          random_input->set_displayed(true);
+//          random_input->set_random(custom_mission->get_random_base());
+//          file_list->set_displayed(false);
           generate_map_preview();
           break;
         }
         case GameLoad: {
-          random_input->set_displayed(false);
-          file_list->set_displayed(true);
+//          random_input->set_displayed(false);
+//          file_list->set_displayed(true);
           break;
         }
       }
@@ -376,17 +376,17 @@ GameInitBox::handle_action(int action) {
       interface->close_game_init();
       break;
     case ActionGenRandom: {
-      random_input->set_random(Random());
+//      random_input->set_random(Random());
       set_redraw();
       break;
     }
     case ActionApplyRandom: {
-      std::string str = random_input->get_text();
-      if (str.length() == 16) {
-        custom_mission->set_random_base(random_input->get_random());
-        mission = custom_mission;
-        generate_map_preview();
-      }
+//      std::string str = random_input->get_text();
+//      if (str.length() == 16) {
+//        custom_mission->set_random_base(random_input->get_random());
+//        mission = custom_mission;
+//        generate_map_preview();
+//      }
       break;
     }
     default:
@@ -564,7 +564,7 @@ GameInitBox::generate_map_preview() {
     map->init_tiles(generator);
   }
 
-  minimap->set_map(map);
+//  minimap->set_map(map);
 
   set_redraw();
 }

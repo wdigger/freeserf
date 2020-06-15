@@ -1,7 +1,7 @@
 /*
  * minimap.h - Minimap GUI component
  *
- * Copyright (C) 2013  Jon Lund Steffensen <jonlst@gmail.com>
+ * Copyright (C) 2013-2017  Jon Lund Steffensen <jonlst@gmail.com>
  *
  * This file is part of freeserf.
  *
@@ -23,14 +23,17 @@
 #define SRC_MINIMAP_H_
 
 #include <vector>
+#include <array>
+#include <map>
 
 #include "src/gui.h"
 #include "src/map.h"
 #include "src/game.h"
+#include "src/dialog.h"
 
 class Interface;
 
-class Minimap : public GuiObject {
+class Minimap : public Control {
  protected:
   PMap map;
 
@@ -39,10 +42,12 @@ class Minimap : public GuiObject {
 
   bool draw_grid;
 
+  std::map<Map::Terrain, std::array<Color, 17>> palette;
+
   std::vector<Color> minimap;
 
  public:
-  explicit Minimap(PMap map);
+  explicit Minimap(unsigned int _width, unsigned int _height, PMap map);
 
   void set_map(PMap map);
 
@@ -63,16 +68,21 @@ class Minimap : public GuiObject {
 
   void init_minimap();
 
-  void draw_minimap_point(int col, int row, const Color &color, int density);
-  void draw_minimap_map();
-  void draw_minimap_grid();
-  void draw_minimap_rect();
+  void draw_minimap_point(Frame *frame, unsigned int x, unsigned int y,
+                          int col, int row,
+                          const Color &color, int density);
+  void draw_minimap_map(Frame *frame, unsigned int x, unsigned int y);
+  void draw_minimap_grid(Frame *frame, unsigned int x, unsigned int y);
+  void draw_minimap_rect(Frame *frame, unsigned int x, unsigned int y);
   int handle_scroll(int up);
   void screen_pix_from_map_pix(int mx, int my, int *sx, int *sy);
   void map_pix_from_map_coord(MapPos pos, int *mx, int *my);
 
-  virtual void internal_draw();
+  virtual void draw(Frame *frame, unsigned int x, unsigned int y);
   virtual bool handle_drag(int dx, int dy);
+
+  template <size_t size> std::array<Color, size>
+                              make_gradient(Color color_start, Color color_end);
 };
 
 class MinimapGame : public Minimap {
@@ -95,7 +105,8 @@ class MinimapGame : public Minimap {
   OwnershipMode ownership_mode;
 
  public:
-  MinimapGame(Interface *interface, PGame game);
+  MinimapGame(unsigned int _width, unsigned int _height,
+              Interface *interface, Game *game);
 
   int get_advanced() const { return advanced; }
   void set_advanced(int advanced) { this->advanced = advanced; }
@@ -107,12 +118,13 @@ class MinimapGame : public Minimap {
   void set_ownership_mode(OwnershipMode _ownership_mode);
 
  protected:
-  void draw_minimap_ownership(int density);
-  void draw_minimap_roads();
-  void draw_minimap_buildings();
-  void draw_minimap_traffic();
+  void draw_minimap_ownership(Frame *frame, unsigned int x, unsigned int y,
+                              int density);
+  void draw_minimap_roads(Frame *frame, unsigned int x, unsigned int y);
+  void draw_minimap_buildings(Frame *frame, unsigned int x, unsigned int y);
+  void draw_minimap_traffic(Frame *frame, unsigned int x, unsigned int y);
 
-  virtual void internal_draw();
+  virtual void draw(Frame *frame, unsigned int x, unsigned int y);
   virtual bool handle_click_left(int x, int y);
 };
 
