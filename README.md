@@ -3,9 +3,9 @@ Freeserf
 
 Build status
 ------------
-![Windows Build Status](https://github.com/freeserf/freeserf/workflows/windows/badge.svg)
-![Linux Build Status](https://github.com/freeserf/freeserf/workflows/linux/badge.svg)
-![macOS Build Status](https://github.com/freeserf/freeserf/workflows/macos/badge.svg)
+![Windows Build Status](https://github.com/wdigger/freeserf/workflows/windows/badge.svg)
+![Linux Build Status](https://github.com/wdigger/freeserf/workflows/linux/badge.svg)
+![macOS Build Status](https://github.com/wdigger/freeserf/workflows/macos/badge.svg)
 
 Play
 ------
