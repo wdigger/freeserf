@@ -28,6 +28,12 @@ add_definitions(-DPACKAGE_BUGREPORT="https://github.com/freeserf/freeserf/issues
 include(CppLint)
 enable_check_style()
 
+get_cmake_property(_variableNames VARIABLES)
+list (SORT _variableNames)
+foreach (_variableName ${_variableNames})
+    message(STATUS "${_variableName}=${${_variableName}}")
+endforeach()
+
 add_subdirectory(src)
 
 option(ENABLE_TESTS "Enable compilation of tests" ON)
