@@ -96,7 +96,7 @@ game_init_box_t::internal_draw() {
 
   /* Game type settings */
   if (game_tutorial > 0) {
-    draw_box_icon(5, 0, 260);
+    draw_box_icon(5, 0, 261);
 
     char level[4] = {0};
     snprintf(level, sizeof(level), "%d", game_tutorial);
