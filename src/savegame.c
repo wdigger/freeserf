@@ -140,13 +140,13 @@ load_v0_game_state(FILE *f, v0_map_t *map)
 
 	game.map_regions = *(uint16_t *)&data[120];
 
-	if (0/*game.game_type == GAME_TYPE_TUTORIAL*/) {
+	if (game.game_type == GAME_TYPE_TUTORIAL) {
 		game.tutorial_level = *(uint16_t *)&data[122];
-	} else if (0/*game.game_type == GAME_TYPE_MISSION*/) {
+	} else if (game.game_type == GAME_TYPE_MISSION) {
 		game.mission_level = *(uint16_t *)&data[124];
 		/*game.max_mission_level = *(uint16_t *)&data[126];*/
 		/* memcpy(game.mission_code, &data[128], 8); */
-	} else if (1/*game.game_type == GAME_TYPE_1_PLAYER*/) {
+	} else {
 		/*game.menu_map_size = *(uint16_t *)&data[136];*/
 		/*game.rnd_init_1 = *(uint16_t *)&data[138];
 		game.rnd_init_2 = *(uint16_t *)&data[140];
@@ -973,6 +973,8 @@ save_text_game_state(FILE *f)
 	save_text_write_map_pos(f, "update_map_initial_pos", game.update_map_initial_pos);
 
 	save_text_write_value(f, "game_type", game.game_type);
+	save_text_write_value(f, "tutorial_level", game.tutorial_level);
+	save_text_write_value(f, "mission_level", game.mission_level);
 	save_text_write_value(f, "tick", game.tick);
 	save_text_write_value(f, "game_stats_counter", game.game_stats_counter);
 	save_text_write_value(f, "history_counter", game.history_counter);
@@ -1825,6 +1827,10 @@ load_text_game_state(list_t *sections)
 			game.update_map_initial_pos = parse_map_pos(s->value);
 		} else if (!strcmp(s->key, "game_type")) {
 			game.game_type = atoi(s->value);
+		} else if (!strcmp(s->key, "tutorial_level")) {
+			game.tutorial_level = atoi(s->value);
+		} else if (!strcmp(s->key, "mission_level")) {
+			game.mission_level = atoi(s->value);
 		} else if (!strcmp(s->key, "tick")) {
 			game.tick = atoi(s->value);
 		} else if (!strcmp(s->key, "game_stats_counter")) {
@@ -2095,6 +2101,10 @@ load_text_player_section(section_t *section)
 	}
 
 	player->timers_count = 0;
+
+	/* Saves from before the in-game bit: every player with a face
+	   takes part in the game. */
+	if (player->face != 0) player->flags |= BIT(6);
 
 	return 0;
 }

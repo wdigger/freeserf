@@ -40,6 +40,9 @@
 #define PLAYER_CYCLING_SECOND(player)  ((int)(((player)->flags >> 5) & 1))
 /* Whether this player is active. */
 #define PLAYER_IS_ACTIVE(player)  ((player) != NULL)
+/* Whether this player takes part in the game (Amiga flags bit 6). The
+   passive enemy of tutorial 6 exists without it. */
+#define PLAYER_IN_GAME(player)  ((player) != NULL && (((player)->flags >> 6) & 1))
 /* Whether this player is a computer controlled opponent. */
 #define PLAYER_IS_AI(player)  ((int)(((player)->flags >> 7) & 1))
 

@@ -179,6 +179,7 @@ class popup_box_t : public gui_object_t {
   void draw_building_stock_box();
   void draw_player_faces_box();
   void draw_demolish_box();
+  void draw_game_end_box();
   void activate_sett_5_6_item(int index);
   void move_sett_5_6_item(int up, int to_end);
   void handle_send_geologist();

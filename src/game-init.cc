@@ -95,7 +95,16 @@ game_init_box_t::internal_draw() {
   }
 
   /* Game type settings */
-  if (game_mission < 0) {
+  if (game_tutorial > 0) {
+    draw_box_icon(5, 0, 260);
+
+    char level[4] = {0};
+    snprintf(level, sizeof(level), "%d", game_tutorial);
+
+    draw_box_string(10, 0, "Start tutorial");
+    draw_box_string(10, 14, "Tutorial:");
+    draw_box_string(20, 14, level);
+  } else if (game_mission < 0) {
     draw_box_icon(5, 0, 263);
 
     char str_map_size[4] = {0};
@@ -119,7 +128,21 @@ game_init_box_t::internal_draw() {
   draw_box_icon(28, 16, 240);
 
   /* Game info */
-  if (game_mission < 0) {
+  if (game_tutorial > 0) {
+    const mission_t *t = &tutorial[game_tutorial-1];
+    for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
+      int face = i == 0 ? 12 : 0;
+      draw_box_icon(10*i+1, 48, get_player_face_sprite(face));
+      draw_box_icon(10*i+6, 48, 282);
+      if (face == 0) continue;
+
+      frame->fill_rect(80*i+78, 124-40, 4, 40, 30);
+      int supplies = t->player[i].supplies;
+      frame->fill_rect(80*i+72, 124-supplies, 4, supplies, 67);
+      int reproduction = t->player[i].reproduction;
+      frame->fill_rect(80*i+84, 124-reproduction, 4, reproduction, 75);
+    }
+  } else if (game_mission < 0) {
     for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
       int face_ = face[i];
       draw_box_icon(10*i+1, 48, get_player_face_sprite(face_));
@@ -169,7 +192,10 @@ game_init_box_t::handle_action(int action) {
   switch (action) {
   case ACTION_START_GAME:
     game_init();
-    if (game_mission < 0) {
+    if (game_tutorial > 0) {
+      int r = game_load_tutorial_map(game_tutorial);
+      if (r < 0) return;
+    } else if (game_mission < 0) {
       random_state_t rnd = {{ 0x5a5a,
                               (uint16_t)(time(NULL) >> 16),
                               (uint16_t)time(NULL) }};
@@ -195,11 +221,16 @@ game_init_box_t::handle_action(int action) {
     interface->close_game_init();
     break;
   case ACTION_TOGGLE_GAME_TYPE:
-    if (game_mission < 0) {
+    /* Free game -> mission -> tutorial -> free game */
+    if (game_tutorial > 0) {
+      game_tutorial = 0;
+      game_mission = -1;
+      map_size = 3;
+    } else if (game_mission < 0) {
       game_mission = 0;
     } else {
       game_mission = -1;
-      map_size = 3;
+      game_tutorial = 1;
     }
     break;
   case ACTION_SHOW_OPTIONS:
@@ -207,14 +238,18 @@ game_init_box_t::handle_action(int action) {
   case ACTION_SHOW_LOAD_GAME:
     break;
   case ACTION_INCREMENT:
-    if (game_mission < 0) {
+    if (game_tutorial > 0) {
+      game_tutorial = std::min(game_tutorial+1, tutorial_count);
+    } else if (game_mission < 0) {
       map_size = std::min(map_size+1, 10);
     } else {
       game_mission = std::min(game_mission+1, mission_count-1);
     }
     break;
   case ACTION_DECREMENT:
-    if (game_mission < 0) {
+    if (game_tutorial > 0) {
+      game_tutorial = std::max(1, game_tutorial-1);
+    } else if (game_mission < 0) {
       map_size = std::max(3, map_size-1);
     } else {
       game_mission = std::max(0, game_mission-1);
@@ -299,6 +334,7 @@ game_init_box_t::game_init_box_t(interface_t *interface) {
   this->interface = interface;
   map_size = 3;
   game_mission = -1;
+  game_tutorial = 0;
 
   /* Clear player settings */
   for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {

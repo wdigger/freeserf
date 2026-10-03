@@ -35,6 +35,13 @@
 
 typedef void game_update_map_height_func(map_pos_t pos, void *data);
 
+/* Game types (Amiga game+0x352). */
+#define GAME_TYPE_MISSION     0
+#define GAME_TYPE_TUTORIAL    1
+#define GAME_TYPE_1_PLAYER    2
+#define GAME_TYPE_2_PLAYERS   3
+#define GAME_TYPE_DEMO        4
+
 typedef struct {
 	map_t map; /* ADDITION */
 	/* 0 */
@@ -68,6 +75,9 @@ typedef struct {
 	int map_gold_morale_factor;
 	/* 5E */
 	int winning_player;
+	/* Set when a winner is found; the interface shows the game end box
+	   (Amiga game+0x381). */
+	int game_end_pending;
 	/* Reminders after the last save (Amiga game+0x3d6/0x3da):
 	   counted down by tick_diff, notification 17/18 at 0. */
 	int save_reminder_30m;
@@ -194,7 +204,7 @@ typedef struct {
 	uint16_t field_342;
 	inventory_t *field_344;
 	/* 352 */
-	int game_type;
+	int game_type; /* GAME_TYPE_* */
 	int tutorial_level;
 	int mission_level;
 	int map_generator; /* ADDITION */
@@ -222,6 +232,7 @@ void game_init();
 int game_add_player(uint face, uint color, uint supplies,
 		    uint reproduction, uint intelligence);
 int game_load_mission_map(int m);
+int game_load_tutorial_map(int level);
 int game_load_random_map(int size, const random_state_t *rnd);
 int game_load_save_game(const char *path);
 void game_reset_save_reminders();

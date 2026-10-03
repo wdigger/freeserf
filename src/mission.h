@@ -36,7 +36,12 @@ typedef struct {
 } mission_t;
 
 extern mission_t mission[30];
+extern const char *const mission_name[30];
 extern const int mission_count;
 void init_missions();
+
+extern mission_t tutorial[6];
+extern const int tutorial_count;
+void init_tutorials();
 
 #endif /* !_MISSION_H */

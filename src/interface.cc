@@ -717,6 +717,19 @@ interface_t::update() {
   int tick_diff = game.const_tick - last_const_tick;
   last_const_tick = game.const_tick;
 
+  /* Show the end of the game unless a file or quit dialog is open
+     (Amiga clear_serf_request_failure @0xa3aa). */
+  if (game.game_end_pending) {
+    int box = popup->is_displayed() ? popup->get_box() : 0;
+    if (!((box >= BOX_LOAD_ARCHIVE && box <= BOX_DISK_MSG) ||
+          box == BOX_QUIT_CONFIRM || box == BOX_NO_SAVE_QUIT_CONFIRM ||
+          box == BOX_OPTIONS)) {
+      game.game_end_pending = 0;
+      game_pause(1);
+      open_popup(BOX_GAME_END);
+    }
+  }
+
   /* Update timers */
   for (int i = 0; i < player->timers_count; i++) {
     player->timers[i].timeout -= tick_diff;

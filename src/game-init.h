@@ -38,6 +38,7 @@ class game_init_box_t : public gui_object_t {
 
   int map_size;
   int game_mission;
+  int game_tutorial; /* 1..6, 0 for none */
 
   uint face[GAME_MAX_PLAYER_COUNT];
   uint intelligence[GAME_MAX_PLAYER_COUNT];

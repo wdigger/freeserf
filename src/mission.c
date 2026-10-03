@@ -23,6 +23,17 @@
 
 mission_t mission[30] = {0};
 
+/* Mission names, which are also the passwords (Amiga mission_table
+   +0..7, letters coded with the table at 0x280a8). */
+const char *const mission_name[30] = {
+	"START", "STATION", "UNITY", "WAVE", "EXPORT", "OPTION",
+	"RECORD", "SCALE", "SIGN", "ACORN", "CHOPPER", "GATE",
+	"ISLAND", "LEGION", "PIECE", "RIVAL", "SAVAGE", "XAVER",
+	"BLADE", "BEACON", "PASTURE", "OMNUS", "TRIBUTE", "FOUNTAIN",
+	"CHUDE", "TRAILER", "CANYON", "REPRESS", "YOKI", "PASSIVE",
+};
+
+
 void
 init_missions()
 {
@@ -682,6 +693,68 @@ init_missions()
 	mission[29].player[1].reproduction = 20;
 	mission[29].player[1].castle.col = 51;
 	mission[29].player[1].castle.row = 42;
+
+	init_tutorials();
 }
 
 const int mission_count = sizeof(mission) / sizeof(mission[0]);
+
+/* Tutorials 1-6 (Amiga mission_table entries 0..5): one human player,
+   no computer players, castle placed by the player. */
+mission_t tutorial[6] = {0};
+
+void
+init_tutorials()
+{
+	for (int t = 0; t < 6; t++) {
+		for (int p = 0; p < 4; p++) {
+			tutorial[t].player[p].castle.col = -1;
+			tutorial[t].player[p].castle.row = -1;
+		}
+	}
+
+
+	/* Tutorial 1 */
+	tutorial[0].rnd.state[0] = 0xd372;
+	tutorial[0].rnd.state[1] = 0x5192;
+	tutorial[0].rnd.state[2] = 0xf9c2;
+	tutorial[0].player[0].supplies = 30;
+	tutorial[0].player[0].reproduction = 30;
+
+	/* Tutorial 2 */
+	tutorial[1].rnd.state[0] = 0x0a28;
+	tutorial[1].rnd.state[1] = 0x763c;
+	tutorial[1].rnd.state[2] = 0x1bb5;
+	tutorial[1].player[0].supplies = 30;
+	tutorial[1].player[0].reproduction = 30;
+
+	/* Tutorial 3 */
+	tutorial[2].rnd.state[0] = 0x4e19;
+	tutorial[2].rnd.state[1] = 0xd3ce;
+	tutorial[2].rnd.state[2] = 0xe017;
+	tutorial[2].player[0].supplies = 30;
+	tutorial[2].player[0].reproduction = 30;
+
+	/* Tutorial 4 */
+	tutorial[3].rnd.state[0] = 0x271b;
+	tutorial[3].rnd.state[1] = 0xd849;
+	tutorial[3].rnd.state[2] = 0xf2bb;
+	tutorial[3].player[0].supplies = 30;
+	tutorial[3].player[0].reproduction = 30;
+
+	/* Tutorial 5 */
+	tutorial[4].rnd.state[0] = 0x074b;
+	tutorial[4].rnd.state[1] = 0x505c;
+	tutorial[4].rnd.state[2] = 0x2983;
+	tutorial[4].player[0].supplies = 30;
+	tutorial[4].player[0].reproduction = 30;
+
+	/* Tutorial 6 */
+	tutorial[5].rnd.state[0] = 0x1dd9;
+	tutorial[5].rnd.state[1] = 0xa702;
+	tutorial[5].rnd.state[2] = 0xfc8a;
+	tutorial[5].player[0].supplies = 30;
+	tutorial[5].player[0].reproduction = 30;
+}
+
+const int tutorial_count = sizeof(tutorial) / sizeof(tutorial[0]);

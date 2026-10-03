@@ -2517,6 +2517,49 @@ calculate_military_score(int military, int morale)
 }
 
 /* Update statistics of the game. */
+/* Sum of a resource's production history (Amiga history_sum_120). */
+static uint
+history_sum(const player_t *player, int res)
+{
+	uint sum = 0;
+	for (int i = 0; i < 120; i++) sum += player->resource_count_history[res][i];
+	return sum;
+}
+
+/* Goals of the tutorials (Amiga update_game_stats @0x86ac). */
+static int
+tutorial_completed()
+{
+	const player_t *player = game.player[0];
+	switch (game.tutorial_level) {
+	case 1: /* Military buildings */
+		return player->completed_building_count[BUILDING_HUT] != 0 &&
+			player->completed_building_count[BUILDING_TOWER] != 0 &&
+			player->completed_building_count[BUILDING_FORTRESS] != 0;
+	case 2: /* Stone and planks */
+		return history_sum(player, RESOURCE_STONE) >= 5 &&
+			history_sum(player, RESOURCE_PLANK) >= 5;
+	case 3: /* Food */
+		return history_sum(player, RESOURCE_FISH) >= 5 &&
+			history_sum(player, RESOURCE_MEAT) >= 5 &&
+			history_sum(player, RESOURCE_BREAD) >= 5;
+	case 4: /* Steel and gold */
+		return history_sum(player, RESOURCE_STEEL) >= 5 &&
+			history_sum(player, RESOURCE_GOLDBAR) >= 5;
+	case 5: { /* Weapons and tools */
+		uint weapons = history_sum(player, RESOURCE_SWORD) +
+			history_sum(player, RESOURCE_SHIELD);
+		uint tools = 0;
+		for (int r = RESOURCE_SHOVEL; r <= RESOURCE_PINCER; r++) {
+			tools += history_sum(player, r);
+		}
+		return weapons >= 10 && tools >= 10;
+	}
+	default: /* Conquer the enemy's land */
+		return game.player[1] == NULL || game.player[1]->total_land_area == 0;
+	}
+}
+
 static void
 update_game_stats()
 {
@@ -2621,11 +2664,17 @@ update_game_stats()
 				building_total += game.player[i]->total_building_score;
 			}
 		}
-		if (building_total > 49 && game.winning_player < 0) {
+		if (game.game_type == GAME_TYPE_TUTORIAL) {
+			if (game.winning_player < 0 && tutorial_completed()) {
+				game.winning_player = 0;
+				game.game_end_pending = 1;
+			}
+		} else if (building_total > 49 && game.winning_player < 0) {
 			for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
 				int mask = BIT(i) | BIT(i + 4);
 				if ((game.player_score_leader & mask) == mask) {
 					game.winning_player = i;
+					game.game_end_pending = 1;
 					break;
 				}
 			}
@@ -2671,6 +2720,7 @@ emergency_building_ready(int index)
 static void
 player_update_emergency_program(player_t *player)
 {
+	if (!PLAYER_IN_GAME(player)) return;
 	if (BIT_TEST(player->emergency_flags, 0)) return;
 	if (!PLAYER_HAS_CASTLE(player)) return;
 	/* Original bug: after the castle is lost the original keeps
@@ -2773,7 +2823,7 @@ game_update()
 
 	/* Update players */
 	for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
-		if (PLAYER_IS_ACTIVE(game.player[i])) {
+		if (PLAYER_IN_GAME(game.player[i])) {
 			update_player(game.player[i]);
 		}
 	}
@@ -2789,7 +2839,7 @@ game_update()
 	if (game.next_index < 32) {
 		if (game.game_speed != 0 && game.max_flag_index < 50) {
 			player_t *player = game.player[game.next_index & 3];
-			if (PLAYER_IS_ACTIVE(player) && PLAYER_IS_AI(player)) {
+			if (PLAYER_IN_GAME(player) && PLAYER_IS_AI(player)) {
 				ai_scan_sites(player);
 			}
 		}
@@ -2806,7 +2856,7 @@ game_update()
 		   the intelligence roll, passes on to the next slot. */
 		while (1) {
 			player_t *player = game.player[(game.next_index - 33) & 3];
-			if (PLAYER_IS_ACTIVE(player) && PLAYER_IS_AI(player) &&
+			if (PLAYER_IN_GAME(player) && PLAYER_IS_AI(player) &&
 			    game_random_int() < (uint16_t)player->ai_intelligence) {
 				ai_update(player);
 				break;
@@ -4179,9 +4229,12 @@ game_can_build_building(map_pos_t pos, building_type_t type, const player_t *pla
 	return 1;
 }
 
-/* Build building at position. */
-int
-game_build_building(map_pos_t pos, building_type_t type, player_t *player)
+/* Build building at position. Without check the site is not tested,
+   like the original's game_build_building which relies on the cursor
+   type (used for the tutorial set-up). */
+static int
+build_building(map_pos_t pos, building_type_t type, player_t *player,
+	       int check)
 {
 	const int construction_cost[] = {
 		0, 0, 2, 0, 2, 0, 3, 0, 2, 0,
@@ -4218,7 +4271,7 @@ game_build_building(map_pos_t pos, building_type_t type, player_t *player)
 		MAP_OBJ_CASTLE,         // BUILDING_CASTLE
 	};
 
-	if (!game_can_build_building(pos, type, player)) return -1;
+	if (check && !game_can_build_building(pos, type, player)) return -1;
 
 	if (type == BUILDING_STOCK) {
 		/* The original limits stocks to a quarter of the inventories. */
@@ -4308,6 +4361,13 @@ game_build_building(map_pos_t pos, building_type_t type, player_t *player)
 	if (split_path) build_flag_split_path(MAP_MOVE_DOWN_RIGHT(pos));
 
 	return 0;
+}
+
+/* Build building at position. */
+int
+game_build_building(map_pos_t pos, building_type_t type, player_t *player)
+{
+	return build_building(pos, type, player, 1);
 }
 
 /* Create the initial serfs that occupies the castle. */
@@ -4517,8 +4577,32 @@ game_build_castle(map_pos_t pos, player_t *player)
 		inventory->resources[i] = t1 + (n >> 16);
 	}
 
-	if (0/*game.game_type == GAME_TYPE_TUTORIAL*/) {
-		/* TODO ... */
+	/* Tutorial supplies (Amiga game_build_castle @0x15574). */
+	if (game.game_type == GAME_TYPE_TUTORIAL) {
+		switch (game.tutorial_level) {
+		case 1:
+			break;
+		case 2:
+			inventory->resources[RESOURCE_LUMBER] = 0;
+			break;
+		case 3:
+			inventory->resources[RESOURCE_PIG] = 0;
+			inventory->resources[RESOURCE_WHEAT] = 0;
+			inventory->resources[RESOURCE_FLOUR] = 0;
+			break;
+		case 4:
+			inventory->resources[RESOURCE_IRONORE] = 0;
+			inventory->resources[RESOURCE_COAL] = 0;
+			inventory->resources[RESOURCE_GOLDORE] = 0;
+			break;
+		case 5:
+			inventory->resources[RESOURCE_STEEL] = 200;
+			inventory->resources[RESOURCE_COAL] = 200;
+			break;
+		default:
+			inventory->resources[RESOURCE_GOLDBAR] = 30;
+			break;
+		}
 	}
 
 	/* Emergency reserve: 7 planks and 2 stones are kept back from the
@@ -5581,6 +5665,7 @@ player_init(uint number, uint face, uint color, uint supplies,
 	player->flags = 0;
 
 	if (face == 0) return;
+	player->flags |= BIT(6); /* In game (Amiga player_init_all @0x54c4). */
 
 	if (face < 12) { /* AI player */
 		player->flags |= BIT(7); /* Set AI bit */
@@ -5815,6 +5900,7 @@ game_init_map()
 	map_init_minimap();
 
 	game.winning_player = -1;
+	game.game_end_pending = 0;
 	game_reset_save_reminders();
 	/* game.show_game_end = 0; */
 	game.max_next_index = 33;
@@ -5895,6 +5981,7 @@ game_load_mission_map(int level)
 	memcpy(&game.init_map_rnd, &mission[level].rnd,
 	       sizeof(random_state_t));
 
+	game.game_type = GAME_TYPE_MISSION;
 	game.mission_level = level;
 	game.map_size = 3;
 	game.map_preserve_bugs = 1;
@@ -5937,11 +6024,162 @@ game_load_mission_map(int level)
 	return 0;
 }
 
+/* Build a finished military building of the passive enemy in tutorial 6
+   with knights of level 4 (Amiga tutorial_build_military_building
+   @0x4b58). */
+static void
+tutorial_build_military_building(player_t *player, int col, int row,
+				 building_type_t type)
+{
+	map_pos_t pos = MAP_POS(col, row);
+	if (build_building(pos, type, player, 0) < 0) return;
+
+	building_t *building = game_get_building(MAP_OBJ_INDEX(pos));
+	building->bld &= ~BIT(7); /* Finished */
+	building->serf |= BIT(4); /* Occupied */
+	building->progress = 0;
+	player->incomplete_building_count[type] -= 1;
+	player->completed_building_count[type] += 1;
+
+	flag_t *flag = game_get_flag(building->flag);
+	flag->bld_flags = 0;
+	flag->bld2_flags = 0;
+
+	int knights = 0;
+	int max_gold = 0;
+	serf_state_t state = SERF_STATE_DEFENDING_HUT;
+	switch (type) {
+	case BUILDING_HUT:
+		knights = 3; max_gold = 2; state = SERF_STATE_DEFENDING_HUT;
+		break;
+	case BUILDING_TOWER:
+		knights = 6; max_gold = 4; state = SERF_STATE_DEFENDING_TOWER;
+		break;
+	case BUILDING_FORTRESS:
+		knights = 12; max_gold = 8; state = SERF_STATE_DEFENDING_FORTRESS;
+		break;
+	default:
+		NOT_REACHED();
+		break;
+	}
+
+	/* The original's stock bytes imply the knight and gold stocks;
+	   set them up like a building occupied by its first knight. */
+	building->stock[0].type = RESOURCE_NONE;
+	building->stock[0].available = 0;
+	building->stock[0].requested = 0;
+	building->stock[1].type = RESOURCE_GOLDBAR;
+	building->stock[1].prio = 0;
+	building->stock[1].maximum = max_gold;
+	building->stock[1].available = 0;
+	building->stock[1].requested = 0;
+
+	for (int i = 0; i < knights; i++) {
+		serf_t *serf;
+		int index;
+		if (game_alloc_serf(&serf, &index) < 0) break;
+
+		serf->type = (SERF_KNIGHT_4 << 2) | player->player_num;
+		serf->state = state;
+		serf->pos = pos;
+		serf->counter = 6000;
+		serf->tick = game.tick;
+		player->serf_count[SERF_KNIGHT_4] += 1;
+		player->total_military_score += 1;
+
+		serf->s.defending.next_knight = building->serf_index;
+		building->serf_index = index;
+		building->stock[0].available += 1;
+	}
+
+	game_update_land_ownership(pos);
+}
+
+/* Tutorial 6: the passive enemy (player 1) with four military buildings
+   on a small piece of land (Amiga game_init_start_castles @0x49ca). */
+static void
+tutorial_6_setup()
+{
+	player_t *human = game.player[0];
+	for (int i = 0; i < 4; i++) human->knight_occupation[i] = 0x40;
+
+	if (game.player[1] != NULL) free(game.player[1]);
+	game.player[1] = (player_t*)calloc(1, sizeof(player_t));
+	if (game.player[1] == NULL) abort();
+
+	player_t *enemy = game.player[1];
+	enemy->player_num = 1;
+	enemy->color = 72;
+	enemy->face = 0;
+	enemy->flags = BIT(0); /* Has castle, but not in game (bit 6). */
+	enemy->total_land_area = 7;
+	enemy->total_building_score = 0x1d;
+	enemy->total_military_score = 0;
+	for (int i = 0; i < 4; i++) enemy->knight_occupation[i] = 0x44;
+	enemy->castle_knights_wanted = 3;
+	enemy->knight_morale = 1024;
+	enemy->emergency_flags = BIT(0);
+
+	/* Mark the seven tiles around (20,26) as land of player 1. */
+	map_tile_t *tiles = game.map.tiles;
+	map_pos_t pos = MAP_POS(20, 26);
+	const dir_t steps[] = {
+		DIR_RIGHT, DIR_DOWN, DIR_LEFT, DIR_UP_LEFT, DIR_UP, DIR_RIGHT
+	};
+	tiles[pos].height = (tiles[pos].height & 0x1f) | BIT(7) | (1 << 5);
+	for (int i = 0; i < 6; i++) {
+		pos = MAP_MOVE(pos, steps[i]);
+		tiles[pos].height = (tiles[pos].height & 0x1f) | BIT(7) | (1 << 5);
+	}
+
+	tutorial_build_military_building(enemy, 20, 26, BUILDING_HUT);
+	tutorial_build_military_building(enemy, 21, 33, BUILDING_FORTRESS);
+	tutorial_build_military_building(enemy, 25, 34, BUILDING_TOWER);
+	tutorial_build_military_building(enemy, 30, 38, BUILDING_HUT);
+}
+
+/* Load tutorial 1-6 (Amiga menu_setup_players @0x28512: mission_table
+   entry tutorial_level - 1, the human player only). */
+int
+game_load_tutorial_map(int level)
+{
+	const uint default_player_colors[] = {
+		64, 72, 68, 76
+	};
+
+	if (level < 1 || level > tutorial_count) return -1;
+	const mission_t *t = &tutorial[level-1];
+
+	memcpy(&game.init_map_rnd, &t->rnd, sizeof(random_state_t));
+
+	game.game_type = GAME_TYPE_TUTORIAL;
+	game.tutorial_level = level;
+	game.map_size = 3;
+	game.map_preserve_bugs = 1;
+
+	game.init_map_rnd.state[0] ^= 0x5a5a;
+	game.init_map_rnd.state[1] ^= 0xa5a5;
+	game.init_map_rnd.state[2] ^= 0xc3c3;
+
+	game_init_map();
+	game_allocate_objects();
+
+	int n = game_add_player(12, default_player_colors[0],
+				t->player[0].supplies,
+				t->player[0].reproduction, 40);
+	if (n < 0) return -1;
+
+	if (level == 6) tutorial_6_setup();
+
+	return 0;
+}
+
 int
 game_load_random_map(int size, const random_state_t *rnd)
 {
 	if (size < 3 || size > 10) return -1;
 
+	game.game_type = GAME_TYPE_1_PLAYER;
 	game.map_size = size;
 	game.map_preserve_bugs = 0;
 

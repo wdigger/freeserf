@@ -30,6 +30,7 @@
 BEGIN_EXT_C
   #include "src/game.h"
   #include "src/debug.h"
+  #include "src/mission.h"
 END_EXT_C
 #include "src/data.h"
 #include "src/audio.h"
@@ -2626,6 +2627,52 @@ popup_box_t::draw_demolish_box() {
   draw_green_string(0, 86, "      sure");
 }
 
+/* End of the game: winner and result (Amiga popup case 53 @0x1d6e8). */
+void
+popup_box_t::draw_game_end_box() {
+  draw_box_background(129);
+
+  int winner = game.winning_player >= 0 ? game.winning_player : 0;
+  draw_player_face(6, 60, winner);
+  draw_popup_icon(14, 128, 60); /* Exit */
+
+  if (game.game_type == GAME_TYPE_MISSION) {
+    if (winner == 0) {
+      draw_green_string(0, 4, "CONGRATULATIONS.");
+      draw_green_string(0, 16, "  YOUR ENEMIES");
+      draw_green_string(0, 26, "  RESIGN. YOU");
+      draw_green_string(0, 36, " HAVE WON THIS");
+      draw_green_string(0, 46, "    MISSION.");
+
+      /* The password is the name of the next mission. */
+      int next = game.mission_level + 1;
+      if (next < mission_count) {
+        draw_green_string(0, 126, "  NEW PASSWORD:");
+        draw_green_string(4, 135, mission_name[next]);
+      }
+    } else {
+      draw_green_string(0, 6, "SORRY, ONLY ONE OF");
+      draw_green_string(0, 16, "YOUR ENEMIES HAS");
+      draw_green_string(0, 26, "   GAINED THE");
+      draw_green_string(0, 36, " SUPERIORITY IN");
+      draw_green_string(0, 46, "  THIS MISSION");
+    }
+  } else if (game.game_type == GAME_TYPE_TUTORIAL) {
+    draw_green_string(0, 4, "   WELL DONE.");
+    draw_green_string(0, 16, " YOU COMPLETED");
+    draw_green_string(0, 26, " THIS TUTORIAL");
+    draw_green_string(0, 36, "     GAME.");
+  } else {
+    const char *const color[] = {
+      "    THE BLUE", "    THE RED", "   THE VIOLET", "   THE YELLOW"
+    };
+    draw_green_string(0, 6, color[winner & 3]);
+    draw_green_string(0, 16, " SETTLERS HAVE");
+    draw_green_string(0, 26, "   GAINED THE");
+    draw_green_string(0, 36, "  SUPERIORITY");
+  }
+}
+
 void
 popup_box_t::internal_draw() {
   draw_popup_box_frame();
@@ -2773,6 +2820,9 @@ popup_box_t::internal_draw() {
     break;
   case BOX_DEMOLISH:
     draw_demolish_box();
+    break;
+  case BOX_GAME_END:
+    draw_game_end_box();
     break;
   default:
     break;
@@ -4338,6 +4388,9 @@ popup_box_t::handle_click_left(int x, int y) {
     break;
   case BOX_DEMOLISH:
     handle_box_demolish_clk(x, y);
+    break;
+  case BOX_GAME_END:
+    handle_box_close_clk(x, y);
     break;
   default:
     LOGD("popup", "unhandled box: %i", box);
