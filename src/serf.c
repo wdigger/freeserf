@@ -257,6 +257,15 @@ serf_set_type(serf_t *serf, serf_type_t type)
 	}
 }
 
+/* A knight killed in a fight only changes its type: serf_set_fight_outcome
+   has already removed it from serf_count and total_military_score
+   (Amiga handle_knight_attacking: andi #0x83 / ori #0x6c). */
+static void
+serf_set_type_dead(serf_t *serf)
+{
+	serf->type = (serf->type & 0x83) | (SERF_DEAD << 2);
+}
+
 /* Change serf state to lost, but make necessary clean up
    from any earlier state first. */
 void
@@ -491,11 +500,16 @@ serf_change_direction(serf_t *serf, int dir, int alt_end)
 	} else {
 		/* Direction is occupied. */
 		serf_t *other_serf = game_get_serf(MAP_SERF_INDEX(new_pos));
-		dir_t other_dir;
 
-		if (serf_is_waiting(other_serf, &other_dir) &&
-		    (other_dir == DIR_REVERSE(dir) || other_dir == DIR_NONE) &&
-		    serf_switch_waiting(other_serf, DIR_REVERSE(dir))) {
+		/* Only moves right, down-right and down may switch places, and
+		   only with a WALKING/TRANSPORTING serf waiting in the opposite
+		   direction (Amiga walking/transporting tables 0x11652 /
+		   0x12178..0x12650). */
+		if (dir < DIR_LEFT &&
+		    (other_serf->state == SERF_STATE_WALKING ||
+		     other_serf->state == SERF_STATE_TRANSPORTING) &&
+		    other_serf->s.walking.dir == DIR_REVERSE(dir) - 6) {
+			other_serf->s.walking.dir = dir;
 			/* Do the switch */
 			other_serf->pos = serf->pos;
 			map_set_serf_index(other_serf->pos, SERF_INDEX(other_serf));
@@ -648,6 +662,11 @@ serf_enter_building(serf_t *serf, int field_B, int join_pos)
 	serf_log_state_change(serf, SERF_STATE_ENTERING_BUILDING);
 	serf->state = SERF_STATE_ENTERING_BUILDING;
 
+	/* The original assigns the walking counter and restarts the tick
+	   instead of adding to a stale counter (Amiga ready_to_enter
+	   @0x1288e, inline enter-building @0xd316/0xd61a/0xe12c). */
+	serf->counter = 0;
+	serf->tick = game.tick;
 	serf_start_walking(serf, DIR_UP_LEFT, 32, !join_pos);
 	if (join_pos) map_set_serf_index(serf->pos, SERF_INDEX(serf));
 
@@ -724,10 +743,11 @@ handle_serf_walking_state_waiting(serf_t *serf)
 	/* Waiting for other serf. */
 	dir_t dir = (dir_t)(serf->s.walking.dir + 6);
 
-	/* Only check for loops once in a while. */
+	/* Only check for loops once in a while: after 10 waits at a flag,
+	   50 elsewhere (Amiga walking @0x115c2..0x115dc). */
 	serf->s.walking.wait_counter += 1;
-	if ((!MAP_HAS_FLAG(serf->pos) && serf->s.walking.wait_counter >= 10) ||
-	    serf->s.walking.wait_counter >= 50) {
+	if ((MAP_HAS_FLAG(serf->pos) && serf->s.walking.wait_counter >= 10) ||
+	    (!MAP_HAS_FLAG(serf->pos) && serf->s.walking.wait_counter >= 50)) {
 		map_pos_t pos = serf->pos;
 
 		/* Follow the chain of serfs waiting for each other and
@@ -757,10 +777,12 @@ handle_serf_walking_state_waiting(serf_t *serf)
 
 			dir = (dir_t)(other_serf->s.walking.dir + 6);
 		}
+
+		/* The counter is only reset after a check (Amiga @0x11642). */
+		serf->s.walking.wait_counter = 0;
 	}
 
 	/* Stick to the same direction */
-	serf->s.walking.wait_counter = 0;
 	serf_change_direction(serf, serf->s.walking.dir + 6, 0);
 }
 
@@ -850,8 +872,14 @@ handle_serf_walking_state(serf_t *serf)
 			flag_t *flag = game_get_flag(serf->s.walking.dest);
 			building_t *building = flag->other_endpoint.b[DIR_UP_LEFT];
 
-			building->serf &= ~BIT(7);
-			if (!BUILDING_HAS_INVENTORY(building)) building->stock[0].requested -= 1;
+			/* Only a building whose serf request was already
+			   satisfied gives back a requested material
+			   (Amiga walking @0x11864..0x1188e). */
+			if (BUILDING_SERF_REQUESTED(building)) {
+				building->serf &= ~BIT(7);
+			} else if (!BUILDING_HAS_INVENTORY(building)) {
+				building->stock[0].requested -= 1;
+			}
 		} else if (serf->s.walking.res != 6) {
 			flag_t *flag = game_get_flag(serf->s.walking.dest);
 			dir_t d = (dir_t)serf->s.walking.res;
@@ -1604,29 +1632,11 @@ handle_serf_digging_state(serf_t *serf)
 			map_pos_t new_pos = MAP_MOVE(serf->pos, dir);
 
 			if (MAP_SERF_INDEX(new_pos) != 0) {
-				serf_t *other_serf = game_get_serf(MAP_SERF_INDEX(new_pos));
-				dir_t other_dir;
-
-				if (serf_is_waiting(other_serf, &other_dir) &&
-				    other_dir == DIR_REVERSE(dir) &&
-				    serf_switch_waiting(other_serf, other_dir)) {
-					/* Do the switch */
-					other_serf->pos = serf->pos;
-					map_set_serf_index(other_serf->pos, SERF_INDEX(other_serf));
-					other_serf->animation = get_walking_animation(MAP_HEIGHT(other_serf->pos) - MAP_HEIGHT(new_pos),
-										      DIR_REVERSE(dir), 1);
-					other_serf->counter = counter_from_animation[other_serf->animation];
-
-					if (d != 0) {
-						serf->animation = get_walking_animation(MAP_HEIGHT(new_pos) - MAP_HEIGHT(serf->pos), dir, 1);
-					} else {
-						serf->animation = MAP_HEIGHT(new_pos) - MAP_HEIGHT(serf->pos);
-					}
-				} else {
-					serf->counter = 127;
-					serf->s.digging.substate = 0;
-					return;
-				}
+				/* Occupied: just wait, no switching places
+				   (Amiga digging @0x134c6). */
+				serf->counter = 127;
+				serf->s.digging.substate = 0;
+				return;
 			} else {
 				map_set_serf_index(serf->pos, 0);
 				if (d != 0) {
@@ -2108,14 +2118,17 @@ serf_find_inventory(serf_t *serf)
 {
 	if (MAP_HAS_FLAG(serf->pos)) {
 		flag_t *flag = game_get_flag(MAP_OBJ_INDEX(serf->pos));
-		if ((FLAG_LAND_PATHS(flag) != 0 ||
-		     (FLAG_HAS_INVENTORY(flag) && FLAG_ACCEPTS_SERFS(flag))) &&
-		     MAP_OWNER(serf->pos) == SERF_PLAYER(serf)) {
+		/* Only a flag with land paths on own land
+		   (Amiga find_inventory @0x10cb2). */
+		if (FLAG_LAND_PATHS(flag) != 0 &&
+		    MAP_HAS_OWNER(serf->pos) &&
+		    MAP_OWNER(serf->pos) == SERF_PLAYER(serf)) {
 			serf_log_state_change(serf, SERF_STATE_WALKING);
 			serf->state = SERF_STATE_WALKING;
 			serf->s.walking.res = -2;
 			serf->s.walking.dest = 0;
 			serf->s.walking.dir = 0;
+			serf->s.walking.wait_counter = 0;
 			serf->counter = 0;
 			return;
 		}
@@ -2400,8 +2413,18 @@ handle_serf_free_walking_switch_with_other(serf_t *serf)
 			other_serf = game_get_serf(MAP_SERF_INDEX(new_pos));
 			dir_t other_dir;
 
-			if (serf_is_waiting(other_serf, &other_dir) &&
-			    other_dir == DIR_REVERSE(i) &&
+			/* A road serf waiting towards us, or any waiting free
+			   walker (its destination is not checked); no DELIVERING
+			   serfs (Amiga free walking @0x10514..0x10842). */
+			other_dir = DIR_REVERSE(i);
+			int road_serf = (other_serf->state == SERF_STATE_WALKING ||
+					 other_serf->state == SERF_STATE_TRANSPORTING) &&
+				other_serf->s.walking.dir == other_dir - 6;
+			int free_walker = (other_serf->state == SERF_STATE_FREE_WALKING ||
+					   other_serf->state == SERF_STATE_KNIGHT_FREE_WALKING ||
+					   other_serf->state == SERF_STATE_STONECUTTER_FREE_WALKING) &&
+				other_serf->animation == 82;
+			if ((road_serf || free_walker) &&
 			    serf_switch_waiting(other_serf, other_dir)) {
 				dir = i;
 				break;
@@ -2692,6 +2715,7 @@ handle_free_walking_common(serf_t *serf)
 				serf->s.free_walking.neg_dist1 = 0;
 				serf->s.free_walking.neg_dist2 = 0;
 				serf->s.free_walking.flags = 0;
+				serf->counter = 0; /* Amiga @0x103e0 */
 			} else {
 				serf_log_state_change(serf, SERF_STATE_LOST);
 				serf->state = SERF_STATE_LOST;
@@ -2705,37 +2729,31 @@ handle_free_walking_common(serf_t *serf)
 		    serf->s.free_walking.neg_dist1 != -128 &&
 		    MAP_SERF_INDEX(new_pos) != 0) {
 			serf_t *other_serf = game_get_serf(MAP_SERF_INDEX(new_pos));
-			dir_t other_dir;
 
-			if (serf_is_waiting(other_serf, &other_dir) &&
-			    (other_dir == DIR_REVERSE(d) || other_dir == DIR_NONE) &&
-			    serf_switch_waiting(other_serf, DIR_REVERSE(d))) {
-				/* Do the switch */
-				other_serf->pos = serf->pos;
-				map_set_serf_index(other_serf->pos, SERF_INDEX(other_serf));
-				other_serf->animation = get_walking_animation(MAP_HEIGHT(other_serf->pos) - MAP_HEIGHT(new_pos),
-									      DIR_REVERSE(d), 1);
-				other_serf->counter = counter_from_animation[other_serf->animation];
-
-				serf->animation = get_walking_animation(MAP_HEIGHT(new_pos) - MAP_HEIGHT(serf->pos), d, 1);
-				serf->counter = counter_from_animation[serf->animation];
-
-				serf->pos = new_pos;
-				map_set_serf_index(serf->pos, SERF_INDEX(serf));
-				return;
-			}
-
+			/* No switching places here; after exactly 10 tries a
+			   blocking road serf is made lost, a transporter is first
+			   taken off its road (Amiga free walking @0x1040a..0x104a8). */
 			if (other_serf->state == SERF_STATE_WALKING ||
 			    other_serf->state == SERF_STATE_TRANSPORTING) {
 				serf->s.free_walking.neg_dist2 += 1;
-				if (serf->s.free_walking.neg_dist2 >= 10) {
+				if (serf->s.free_walking.neg_dist2 == 10) {
 					serf->s.free_walking.neg_dist2 = 0;
 					if (other_serf->state == SERF_STATE_TRANSPORTING) {
 						if (MAP_HAS_FLAG(new_pos)) {
 							if (other_serf->s.walking.wait_counter != -1) {
 								int dir = other_serf->s.walking.dir;
 								if (dir < 0) dir += 6;
-								LOGD("serf", "TODO remove %i from path", SERF_INDEX(other_serf));
+								flag_t *flag = game_get_flag(MAP_OBJ_INDEX(new_pos));
+								flag->length[dir] -= 1;
+								if (FLAG_TRANSPORTER_COUNT(flag, dir) == 0) {
+									flag->transporter &= ~BIT(dir);
+								}
+								flag_t *other_flag = flag->other_endpoint.f[dir];
+								int other_dir = FLAG_OTHER_END_DIR(flag, dir);
+								other_flag->length[other_dir] -= 1;
+								if (FLAG_TRANSPORTER_COUNT(other_flag, other_dir) == 0) {
+									other_flag->transporter &= ~BIT(other_dir);
+								}
 							}
 							serf_set_lost_state(other_serf);
 						}
@@ -2835,7 +2853,7 @@ handle_serf_planning_logging_state(serf_t *serf)
 	serf->counter -= delta;
 
 	while (serf->counter < 0) {
-		int index = (game_random_int() & 0x7f) + 1;
+		int index = ((game_random_int() >> 2) & 0x7f) + 1; /* Amiga: andi #0x1fc, +4 */
 		map_pos_t pos = MAP_POS_ADD(serf->pos,
 					    game.spiral_pos_pattern[index]);
 		int obj = MAP_OBJ(pos);
@@ -2865,7 +2883,7 @@ handle_serf_planning_planting_state(serf_t *serf)
 	serf->counter -= delta;
 
 	while (serf->counter < 0) {
-		int index = (game_random_int() & 0x7f) + 1;
+		int index = ((game_random_int() >> 2) & 0x7f) + 1; /* Amiga: andi #0x1fc, +4 */
 		map_pos_t pos = MAP_POS_ADD(serf->pos,
 					    game.spiral_pos_pattern[index]);
 		if (MAP_PATHS(pos) == 0 &&
@@ -2931,13 +2949,16 @@ handle_serf_planning_stonecutting(serf_t *serf)
 	serf->counter -= delta;
 
 	while (serf->counter < 0) {
-		int index = (game_random_int() & 0x7f) + 1;
+		int index = ((game_random_int() >> 2) & 0x7f) + 1; /* Amiga: andi #0x1fc, +4 */
 		map_pos_t pos = MAP_POS_ADD(serf->pos,
 					    game.spiral_pos_pattern[index]);;
 		int obj = MAP_OBJ(MAP_MOVE_UP_LEFT(pos));
+		/* The original also rejects blocked (water) targets
+		   (Amiga planning_stonecutting @0xf90a). */
 		if (obj >= MAP_OBJ_STONE_0 &&
 		    obj <= MAP_OBJ_STONE_7 &&
-		    serf_can_pass_map_pos(pos)) {
+		    serf_can_pass_map_pos(pos) &&
+		    !MAP_IN_WATER(pos)) {
 			serf_log_state_change(serf, SERF_STATE_READY_TO_LEAVE);
 			serf->state = SERF_STATE_READY_TO_LEAVE;
 			serf->s.leaving_building.field_B = game.spiral_pattern[2*index] - 1;
@@ -3016,7 +3037,9 @@ handle_serf_stonecutting_state(serf_t *serf)
 		else map_set_object(serf->pos, MAP_OBJ_NONE, -1);
 
 		serf->counter = 0;
-		serf_start_walking(serf, DIR_DOWN_RIGHT, 24, 1);
+		serf_start_walking(serf, DIR_DOWN_RIGHT, 32, 1);
+		/* 3/4 of the step, rounded as (cfa >> 2) * 3 (Amiga @0xfa0c). */
+		serf->counter = (serf->counter >> 2) * 3;
 		serf->tick = game.tick;
 
 		serf->s.free_walking.neg_dist1 = 2;
@@ -3072,8 +3095,8 @@ handle_serf_lost_state(serf_t *serf)
 
 			if (MAP_HAS_FLAG(dest)) {
 				flag_t *flag = game_get_flag(MAP_OBJ_INDEX(dest));
-				if ((FLAG_LAND_PATHS(flag) != 0 ||
-				     (FLAG_HAS_INVENTORY(flag) && FLAG_ACCEPTS_SERFS(flag))) &&
+				/* Only flags with land paths (Amiga @0xf674). */
+				if (FLAG_LAND_PATHS(flag) != 0 &&
 				    MAP_HAS_OWNER(dest) && MAP_OWNER(dest) == SERF_PLAYER(serf)) {
 					if (SERF_TYPE(serf) >= SERF_KNIGHT_0 &&
 					    SERF_TYPE(serf) <= SERF_KNIGHT_4) {
@@ -3095,31 +3118,38 @@ handle_serf_lost_state(serf_t *serf)
 			}
 		}
 
-		/* Choose a random destination */
+		/* Choose a random destination (Amiga @0xf6b4). While tries are
+		   left, only free tiles of the serf's own land are accepted;
+		   after 10 tries the area grows 16 -> 32 -> 64 (19 tries each),
+		   then it stays at 16 and any free land tile is accepted. */
 		uint size = 16;
 		int tries = 10;
+		int final_phase = 0;
 
 		while (1) {
-			tries -= 1;
-			if (tries < 0) {
-				if (size < 64) {
-					tries = 19;
-					size *= 2;
-				} else {
-					tries = -1;
-					size = 16;
+			if (!final_phase) {
+				tries -= 1;
+				if (tries < 0) {
+					if (size < 64) {
+						tries = 19;
+						size *= 2;
+					} else {
+						final_phase = 1;
+						size = 16;
+					}
 				}
 			}
 
 			int r = game_random_int();
-			int col = ((r & (size-1)) - (size/2)) & game.map.col_mask;
-			int row = (((r >> 8) & (size-1)) - (size/2)) & game.map.row_mask;
+			int col = (r & (size-1)) - (size/2);
+			int row = ((r >> 8) & (size-1)) - (size/2);
 
 			map_pos_t dest = MAP_POS_ADD(serf->pos,
-						     MAP_POS(col, row));
-			if ((MAP_OBJ(dest) == 0 &&
-			     MAP_HEIGHT(dest) > 0) ||
-			    (MAP_HAS_FLAG(dest) &&
+						     MAP_POS(col & game.map.col_mask,
+							     row & game.map.row_mask));
+			if (MAP_OBJ(dest) == 0 &&
+			    MAP_HEIGHT(dest) > 0 &&
+			    (final_phase ||
 			     (MAP_HAS_OWNER(dest) &&
 			      MAP_OWNER(dest) == SERF_PLAYER(serf)))) {
 				if (SERF_TYPE(serf) >= SERF_KNIGHT_0 &&
@@ -3151,8 +3181,9 @@ handle_lost_sailor(serf_t *serf)
 	serf->counter -= delta;
 
 	while (serf->counter < 0) {
-		/* Try to find a suitable destination. */
-		for (int i = 0; i < 258; i++) {
+		/* Try to find a suitable destination
+		   (Amiga handle_lost_sailor @0xf4f2: spiral index 1..258). */
+		for (int i = 1; i <= 258; i++) {
 			map_pos_t dest = MAP_POS_ADD(serf->pos,
 						     game.spiral_pos_pattern[i]);
 
@@ -3177,11 +3208,13 @@ handle_lost_sailor(serf_t *serf)
 		/* Choose a random, empty destination */
 		while (1) {
 			int r = game_random_int();
-			int col = ((r & 0x1f) - 16) & game.map.col_mask;
-			int row = (((r >> 8) & 0x1f) - 16) & game.map.row_mask;
+			/* Signed offsets (Amiga @0xf578), wrapped only for the lookup. */
+			int col = (r & 0x1f) - 16;
+			int row = ((r >> 8) & 0x1f) - 16;
 
 			map_pos_t dest = MAP_POS_ADD(serf->pos,
-						     MAP_POS(col, row));
+						     MAP_POS(col & game.map.col_mask,
+							     row & game.map.row_mask));
 			if (MAP_OBJ(dest) == 0) {
 				serf_log_state_change(serf, SERF_STATE_FREE_SAILING);
 				serf->state = SERF_STATE_FREE_SAILING;
@@ -3246,11 +3279,12 @@ handle_serf_mining_state(serf_t *serf)
 		switch (serf->s.mining.substate) {
 		case 0:
 		{
-			/* There is a small chance that the miner will
-			   not require food and skip to state 2. */
+			/* There is a small chance (1/8) that the miner
+			   requires food (state 1); otherwise skip to state 2
+			   (Amiga mining @0xefa6). */
 			int r = game_random_int();
-			if ((r & 7) == 0) serf->s.mining.substate = 2;
-			else serf->s.mining.substate = 1;
+			if ((r & 7) == 0) serf->s.mining.substate = 1;
+			else serf->s.mining.substate = 2;
 			serf->counter += 100 + (r & 0x1ff);
 		}
 		break;
@@ -3279,12 +3313,16 @@ handle_serf_mining_state(serf_t *serf)
 			serf->s.mining.substate = 4;
 			building->serf &= ~BIT(4);
 			serf->animation = 126;
-			serf->counter = 304; /* TODO counter_from_animation[126] == 303 */
+			serf->counter += 304; /* Amiga @0xf04e adds 0x130 */
 			break;
 		case 4:
 		{
 			building->serf |= BIT(3);
 			map_set_serf_index(serf->pos, 0);
+			/* Amiga @0xf05a increments here and again in the
+			   shared search below, so the searches happen in
+			   substates 4, 6 and 7 only. */
+			serf->s.mining.substate += 1;
 			/* fall through */
 		}
 		case 5:
@@ -3341,7 +3379,7 @@ handle_serf_mining_state(serf_t *serf)
 			if (serf->s.mining.res > 0) building->progress += 1;
 
 			serf->animation = 128;
-			serf->counter = 384; /* TODO counter_from_animation[128] == 383 */
+			serf->counter += 384; /* Amiga @0xf1a6 adds 0x180 */
 			break;
 		case 10:
 			map_set_serf_index(serf->pos, 0);
@@ -3500,7 +3538,8 @@ handle_serf_fishing_state(serf_t *serf)
 		}
 
 		int res = MAP_RES_FISH(MAP_MOVE(serf->pos, dir));
-		if (res > 0 && (game_random_int() & 0x3f) + 4 < res) {
+		/* Amiga fishing @0xed68: catch when (random & 0x3f) < fish + 4. */
+		if (res > 0 && (game_random_int() & 0x3f) < res + 4) {
 			/* Caught a fish. */
 			map_remove_fish(MAP_MOVE(serf->pos, dir), 1);
 			serf->s.free_walking.neg_dist2 = 1+RESOURCE_FISH;
@@ -3900,10 +3939,14 @@ handle_serf_making_tool_state(serf_t *serf)
 				int res = -1;
 				if (total_tool_prio > 0) {
 					/* Use defined tool priorities. */
+					/* Compare against the running sum shifted once
+					   (Amiga making_tool @0xe684), so truncation
+					   cannot leave res unset. */
 					int prio_offset = (total_tool_prio*game_random_int()) >> 16;
+					int sum = 0;
 					for (int i = 0; i < 9; i++) {
-						prio_offset -= player->tool_prio[i] >> 4;
-						if (prio_offset < 0) {
+						sum += player->tool_prio[i];
+						if ((sum >> 4) > prio_offset) {
 							res = RESOURCE_SHOVEL + i;
 							break;
 						}
@@ -4107,6 +4150,8 @@ handle_serf_knight_engaging_building_state(serf_t *serf)
 			    BUILDING_PLAYER(building) != SERF_PLAYER(serf) &&
 			    building->serf_index != 0) {
 				if (BIT_TEST(building->progress, 0)) {
+					/* The "notify" bit is consumed (Amiga @0xdc8c bclr). */
+					building->progress &= ~BIT(0);
 					player_add_notification(game.player[BUILDING_PLAYER(building)],
 								(SERF_PLAYER(serf) << 5) | 1, building->pos);
 				}
@@ -4159,7 +4204,9 @@ serf_set_fight_outcome(serf_t *attacker, serf_t *defender)
 	/* Calculate "morale" for attacker. */
 	int exp_factor = 1 << (SERF_TYPE(attacker) - SERF_KNIGHT_0);
 	int land_factor = 0x1000;
-	if (SERF_PLAYER(attacker) != MAP_OWNER(attacker->pos)) {
+	/* Own land needs the owner bit too (Amiga serf_set_fight_outcome @0xddd8). */
+	if (!MAP_HAS_OWNER(attacker->pos) ||
+	    SERF_PLAYER(attacker) != MAP_OWNER(attacker->pos)) {
 		land_factor = game.player[SERF_PLAYER(attacker)]->knight_morale;
 	}
 
@@ -4168,7 +4215,8 @@ serf_set_fight_outcome(serf_t *attacker, serf_t *defender)
 	/* Calculate "morale" for defender. */
 	int def_exp_factor = 1 << (SERF_TYPE(defender) - SERF_KNIGHT_0);
 	int def_land_factor = 0x1000;
-	if (SERF_PLAYER(defender) != MAP_OWNER(defender->pos)) {
+	if (!MAP_HAS_OWNER(defender->pos) ||
+	    SERF_PLAYER(defender) != MAP_OWNER(defender->pos)) {
 		def_land_factor = game.player[SERF_PLAYER(defender)]->knight_morale;
 	}
 
@@ -4214,6 +4262,10 @@ handle_serf_knight_prepare_attacking(serf_t *serf)
 		def_serf->counter = 0;
 
 		serf_set_fight_outcome(serf, def_serf);
+	} else {
+		/* The attacker drives the defender's update while it waits
+		   (Amiga handle_serf_knight_prepare_attacking @0xddb2). */
+		update_serf(def_serf);
 	}
 }
 
@@ -4285,7 +4337,7 @@ handle_knight_attacking(serf_t *serf)
 					serf->state = SERF_STATE_KNIGHT_ATTACKING_DEFEAT_FREE;
 					serf->animation = 152 + SERF_TYPE(serf);
 					serf->counter = 255;
-					serf_set_type(serf, SERF_DEAD);
+					serf_set_type_dead(serf);
 				} else {
 					/* Defender returns to building. */
 					serf_enter_building(def_serf, -1, 1);
@@ -4295,7 +4347,7 @@ handle_knight_attacking(serf_t *serf)
 					serf->state = SERF_STATE_KNIGHT_ATTACKING_DEFEAT;
 					serf->animation = 152 + SERF_TYPE(serf);
 					serf->counter = 255;
-					serf_set_type(serf, SERF_DEAD);
+					serf_set_type_dead(serf);
 				}
 			} else {
 				/* Attacker won. */
@@ -4321,9 +4373,9 @@ handle_knight_attacking(serf_t *serf)
 
 				/* Defender dies. */
 				def_serf->tick = game.tick;
-				def_serf->animation = 147 + SERF_TYPE(serf);
+				def_serf->animation = 147 + SERF_TYPE(def_serf); /* Amiga @0xe03c: 0x93 + defender type */
 				def_serf->counter = 255;
-				serf_set_type(def_serf, SERF_DEAD);
+				serf_set_type_dead(def_serf);
 			}
 		} else {
 			/* Go to next move in fight sequence. */
@@ -4336,7 +4388,8 @@ handle_knight_attacking(serf_t *serf)
 
 			serf->animation = 146 + ((a >> 4) & 0xf);
 			def_serf->animation = 156 + (a & 0xf);
-			serf->counter = 72 + (game_random_int() & 0x18);
+			/* Added, not set (Amiga handle_knight_attacking @0xe238). */
+			serf->counter += 72 + (game_random_int() & 0x18);
 			def_serf->counter = serf->counter;
 		}
 	}
@@ -4411,10 +4464,9 @@ handle_knight_occupy_enemy_building(serf_t *serf)
 							building->stock[0].requested += 1;
 							return;
 						}
-					} else {
-						serf_enter_building(serf, -2, 0);
-						return;
 					}
+					/* An own castle is not entered: the knight becomes
+					   lost (Amiga occupy_enemy_building @0xd2b8). */
 				} else if (building->serf_index == 0) {
 					/* Occupy the building. */
 					game_occupy_enemy_building(building, SERF_PLAYER(serf));
@@ -4581,6 +4633,9 @@ handle_state_knight_engage_attacking_free_join(serf_t *serf)
 		}
 
 		serf_start_walking(other, d, 32, 0);
+		/* Defender: counter cfa - 1, tick restarted (Amiga @0xfe86). */
+		other->counter -= 1;
+		other->tick = game.tick;
 		map_set_serf_index(other_pos, 0);
 		return;
 	}
@@ -4594,12 +4649,16 @@ handle_state_knight_prepare_attacking_free(serf_t *serf)
 		serf_log_state_change(serf, SERF_STATE_KNIGHT_ATTACKING_FREE);
 		serf->state = SERF_STATE_KNIGHT_ATTACKING_FREE;
 		serf->counter = 0;
+		serf->tick = game.tick; /* Amiga @0xfed0 */
 
 		serf_log_state_change(other, SERF_STATE_KNIGHT_DEFENDING_FREE);
 		other->state = SERF_STATE_KNIGHT_DEFENDING_FREE;
 		other->counter = 0;
 
 		serf_set_fight_outcome(serf, other);
+	} else {
+		/* Amiga handle_state_knight_prepare_attacking_free @0xfeb4. */
+		update_serf(other);
 	}
 }
 
@@ -4702,6 +4761,9 @@ handle_knight_attacking_free_wait(serf_t *serf)
 
 	while (serf->counter < 0) {
 		if (serf->s.free_walking.flags != 0) {
+			/* flags are cleared so free walking starts by moving
+			   forwards (Amiga attacking_free_wait @0xffee). */
+			serf->s.free_walking.flags = 0;
 			serf_log_state_change(serf, SERF_STATE_KNIGHT_FREE_WALKING);
 			serf->state = SERF_STATE_KNIGHT_FREE_WALKING;
 		} else {
@@ -4753,34 +4815,37 @@ handle_serf_state_knight_leave_for_walk_to_fight(serf_t *serf)
 			serf->animation = 82;
 			serf->counter = 0;
 		} else {
-			/* Go back to defending the building. */
+			/* Go back to defending the building, but only if it is not
+			   full; otherwise wait (Amiga @0x1321c). A non-military
+			   building ends in the NULL state. */
 			int max_capacity = -1;
+			serf_state_t state = SERF_STATE_NULL;
 			switch (BUILDING_TYPE(building)) {
 			case BUILDING_HUT:
-				serf_log_state_change(serf, SERF_STATE_DEFENDING_HUT);
-				serf->state = SERF_STATE_DEFENDING_HUT;
+				state = SERF_STATE_DEFENDING_HUT;
 				max_capacity = 3;
 				break;
 			case BUILDING_TOWER:
-				serf_log_state_change(serf, SERF_STATE_DEFENDING_TOWER);
-				serf->state = SERF_STATE_DEFENDING_TOWER;
+				state = SERF_STATE_DEFENDING_TOWER;
 				max_capacity = 6;
 				break;
 			case BUILDING_FORTRESS:
-				serf_log_state_change(serf, SERF_STATE_DEFENDING_FORTRESS);
-				serf->state = SERF_STATE_DEFENDING_FORTRESS;
+				state = SERF_STATE_DEFENDING_FORTRESS;
 				max_capacity = 12;
 				break;
 			default:
-				NOT_REACHED();
-				break;
+				serf_log_state_change(serf, SERF_STATE_NULL);
+				serf->state = SERF_STATE_NULL;
+				return;
 			}
 
 			int total_knights = building->stock[0].requested + building->stock[0].available;
-			if (total_knights < max_capacity) {
+			if (total_knights != max_capacity) {
 				building->stock[0].available += 1;
 				serf->s.defending.next_knight = building->serf_index;
 				building->serf_index = SERF_INDEX(serf);
+				serf_log_state_change(serf, state);
+				serf->state = state;
 			} else {
 				serf->animation = 82;
 				serf->counter = 0;
@@ -4799,7 +4864,9 @@ handle_serf_idle_on_path_state(serf_t *serf)
 
 	/* Set walking dir in field_E. */
 	if (FLAG_IS_SCHEDULED(flag, rev_dir)) {
-		serf->s.idle_on_path.field_E = (serf->tick & 0xff) + 6;
+		/* The stored walking dir is dir - 6 (signed byte); read it back
+		   as 0..5 (Amiga idle_on_path @0xd14c). */
+		serf->s.idle_on_path.field_E = (int8_t)(serf->tick & 0xff) + 6;
 	} else {
 		flag_t *other_flag = flag->other_endpoint.f[rev_dir];
 		int other_dir = FLAG_OTHER_END_DIR(flag, rev_dir);
@@ -4857,17 +4924,18 @@ handle_scatter_state(serf_t *serf)
 	/* Choose a random, empty destination */
 	while (1) {
 		int r = game_random_int();
+		/* 0..7 maps to -15..-8 (Amiga scatter @0xf7b6). */
 		int col = (r & 0xf);
-		if (col < 8) col -= 16;
+		if (col < 8) col -= 15;
 		int row = ((r >> 8) & 0xf);
-		if (row < 8) row -= 16;
+		if (row < 8) row -= 15;
 
 		map_pos_t dest = MAP_POS_ADD(serf->pos,
 					     MAP_POS(col & game.map.col_mask,
 						     row & game.map.row_mask));
 		if (MAP_OBJ(dest) == 0 && MAP_HEIGHT(dest) > 0) {
 			if (SERF_TYPE(serf) >= SERF_KNIGHT_0 &&
-			    SERF_TYPE(serf) >= SERF_KNIGHT_4) {
+			    SERF_TYPE(serf) <= SERF_KNIGHT_4) {
 				serf_log_state_change(serf, SERF_STATE_KNIGHT_FREE_WALKING);
 				serf->state = SERF_STATE_KNIGHT_FREE_WALKING;
 			} else {
@@ -4932,12 +5000,17 @@ handle_serf_wake_on_path_state(serf_t *serf)
 	serf_log_state_change(serf, SERF_STATE_WAIT_IDLE_ON_PATH);
 	serf->state = SERF_STATE_WAIT_IDLE_ON_PATH;
 
+	/* -1 when there is no path; then continue in the new state in the
+	   same update (Amiga wake_on_path @0xd1e4..0xd1f2). */
+	serf->s.idle_on_path.field_E = -1;
 	for (int d = DIR_UP; d >= DIR_RIGHT; d--) {
 		if (BIT_TEST(MAP_PATHS(serf->pos), d)) {
 			serf->s.idle_on_path.field_E = d;
 			break;
 		}
 	}
+
+	handle_serf_wait_idle_on_path_state(serf);
 }
 
 static void

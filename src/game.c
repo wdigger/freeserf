@@ -170,7 +170,7 @@ game_free_flag(int index)
 	game.flag_bitmap[index/8] &= ~BIT(7-(index&7));
 
 	/* Decrement max_flag_index as much as possible. */
-	if (index == game.max_flag_index + 1) {
+	if (index + 1 == game.max_flag_index) { /* Amiga game_free_*: shrink when the last one is freed */
 		while (--game.max_flag_index > 0) {
 			index -= 1;
 			if (FLAG_ALLOCATED(index)) break;
@@ -231,7 +231,7 @@ game_free_building(int index)
 	game.building_bitmap[index/8] &= ~BIT(7-(index&7));
 
 	/* Decrement max_building_index as much as possible. */
-	if (index == game.max_building_index + 1) {
+	if (index + 1 == game.max_building_index) { /* Amiga game_free_*: shrink when the last one is freed */
 		while (--game.max_building_index > 0) {
 			index -= 1;
 			if (BUILDING_ALLOCATED(index)) break;
@@ -282,7 +282,7 @@ game_free_inventory(int index)
 	game.inventory_bitmap[index/8] &= ~BIT(7-(index&7));
 
 	/* Decrement max_inventory_index as much as possible. */
-	if (index == game.max_inventory_index + 1) {
+	if (index + 1 == game.max_inventory_index) { /* Amiga game_free_*: shrink when the last one is freed */
 		while (--game.max_inventory_index > 0) {
 			index -= 1;
 			if (INVENTORY_ALLOCATED(index)) break;
@@ -329,7 +329,7 @@ game_free_serf(int index)
 	game.serf_bitmap[index/8] &= ~BIT(7-(index&7));
 
 	/* Decrement max_serf_index as much as possible. */
-	if (index == game.max_serf_index + 1) {
+	if (index + 1 == game.max_serf_index) { /* Amiga game_free_*: shrink when the last one is freed */
 		while (--game.max_serf_index > 0) {
 			index -= 1;
 			if (SERF_ALLOCATED(index)) break;
@@ -2759,6 +2759,56 @@ game_build_road(map_pos_t source, const dir_t dirs[], uint length,
 	return 0;
 }
 
+/* Cancel flag slots and inventory out queues with resources destined for
+   this flag (second half of Amiga flag_reset_transport @0xda00, also run by
+   inventory_cancel_resource_deliveries). */
+static void
+flag_reset_transport_resources(flag_t *flag)
+{
+	/* Flag. */
+	for (uint i = 1; i < game.max_flag_index; i++) {
+		if (FLAG_ALLOCATED(i)) {
+			flag_t *other = game_get_flag(i);
+
+			for (int slot = 0; slot < FLAG_MAX_RES_COUNT; slot++) {
+				if (other->slot[slot].type != RESOURCE_NONE &&
+				    other->slot[slot].dest == FLAG_INDEX(flag)) {
+					other->slot[slot].dest = 0;
+					other->endpoint |= BIT(7);
+
+					if (other->slot[slot].dir != DIR_NONE) {
+						dir_t dir = other->slot[slot].dir;
+						/* The slot is no longer scheduled in that
+						   direction (Amiga @0xda4c). */
+						other->slot[slot].dir = DIR_NONE;
+						player_t *player = game.player[FLAG_PLAYER(other)];
+						flag_prioritize_pickup(other, dir, player->flag_prio);
+					}
+				}
+			}
+		}
+	}
+
+	/* Inventories. */
+	for (uint i = 0; i < game.max_inventory_index; i++) {
+		if (INVENTORY_ALLOCATED(i)) {
+			inventory_t *inventory = game_get_inventory(i);
+			if (inventory->out_queue[1].type != RESOURCE_NONE &&
+			    inventory->out_queue[1].dest == FLAG_INDEX(flag)) {
+				inventory->resources[inventory->out_queue[1].type] += 1;
+				inventory->out_queue[1].type = RESOURCE_NONE;
+			}
+			if (inventory->out_queue[0].type != RESOURCE_NONE &&
+			    inventory->out_queue[0].dest == FLAG_INDEX(flag)) {
+				inventory->resources[inventory->out_queue[0].type] += 1;
+				inventory->out_queue[0].type = inventory->out_queue[1].type;
+				inventory->out_queue[0].dest = inventory->out_queue[1].dest;
+				inventory->out_queue[1].type = RESOURCE_NONE;
+			}
+		}
+	}
+}
+
 static void
 flag_reset_transport(flag_t *flag)
 {
@@ -2767,7 +2817,10 @@ flag_reset_transport(flag_t *flag)
 		if (SERF_ALLOCATED(i)) {
 			serf_t *serf = game_get_serf(i);
 
-			if (serf->state == SERF_STATE_WALKING &&
+			/* IDLE_IN_STOCK is handled like WALKING
+			   (Amiga flag_reset_transport @0xd988). */
+			if ((serf->state == SERF_STATE_WALKING ||
+			     serf->state == SERF_STATE_IDLE_IN_STOCK) &&
 			    serf->s.walking.dest == FLAG_INDEX(flag) &&
 			    serf->s.walking.res < 0) {
 				serf->s.walking.res = -2;
@@ -2802,45 +2855,7 @@ flag_reset_transport(flag_t *flag)
 		}
 	}
 
-	/* Flag. */
-	for (uint i = 1; i < game.max_flag_index; i++) {
-		if (FLAG_ALLOCATED(i)) {
-			flag_t *other = game_get_flag(i);
-
-			for (int slot = 0; slot < FLAG_MAX_RES_COUNT; slot++) {
-				if (other->slot[slot].type != RESOURCE_NONE &&
-				    other->slot[slot].dest == FLAG_INDEX(flag)) {
-					other->slot[slot].dest = 0;
-					other->endpoint |= BIT(7);
-
-					if (other->slot[slot].dir != DIR_NONE) {
-						dir_t dir = other->slot[slot].dir;
-						player_t *player = game.player[FLAG_PLAYER(other)];
-						flag_prioritize_pickup(other, dir, player->flag_prio);
-					}
-				}
-			}
-		}
-	}
-
-	/* Inventories. */
-	for (uint i = 0; i < game.max_inventory_index; i++) {
-		if (INVENTORY_ALLOCATED(i)) {
-			inventory_t *inventory = game_get_inventory(i);
-			if (inventory->out_queue[1].type != RESOURCE_NONE &&
-			    inventory->out_queue[1].dest == FLAG_INDEX(flag)) {
-				inventory->resources[inventory->out_queue[1].type] += 1;
-				inventory->out_queue[1].type = RESOURCE_NONE;
-			}
-			if (inventory->out_queue[0].type != RESOURCE_NONE &&
-			    inventory->out_queue[0].dest == FLAG_INDEX(flag)) {
-				inventory->resources[inventory->out_queue[0].type] += 1;
-				inventory->out_queue[0].type = inventory->out_queue[1].type;
-				inventory->out_queue[0].dest = inventory->out_queue[1].dest;
-				inventory->out_queue[1].type = RESOURCE_NONE;
-			}
-		}
-	}
+	flag_reset_transport_resources(flag);
 }
 
 static void
@@ -4818,7 +4833,10 @@ game_occupy_enemy_building(building_t *building, int player_num)
 	player_add_notification(def_player, 2 + (player_num << 5), building->pos);
 
 	player_t *player = game.player[player_num];
-	player_add_notification(player, 3 + (player_num << 5), building->pos);
+	/* The attacker is told the position of the knight, i.e. the flag
+	   (Amiga occupy_enemy_building @0xd3ca). */
+	player_add_notification(player, 3 + (player_num << 5),
+				MAP_MOVE_DOWN_RIGHT(building->pos));
 
 	if (BUILDING_TYPE(building) == BUILDING_CASTLE) {
 		player->castle_score += 1;
@@ -4944,6 +4962,10 @@ game_set_inventory_resource_mode(inventory_t *inventory, int mode)
 				}
 			}
 		}
+
+		/* Amiga inventory_cancel_resource_deliveries @0xd95c continues
+		   with the flag slot / out queue part of flag_reset_transport. */
+		flag_reset_transport_resources(flag);
 	} else {
 		flag->bld2_flags |= BIT(7);
 	}
@@ -4974,6 +4996,7 @@ game_set_inventory_serf_mode(inventory_t *inventory, int mode)
 
 				switch (serf->state) {
 				case SERF_STATE_WALKING:
+				case SERF_STATE_IDLE_IN_STOCK: /* Amiga @0xd8b8 */
 					if (serf->s.walking.dest == dest &&
 					    serf->s.walking.res < 0) {
 						serf->s.walking.res = -2;
