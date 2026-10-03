@@ -1155,6 +1155,12 @@ handle_serf_entering_building_state(serf_t *serf)
 				building_t *building = game_get_building(MAP_OBJ_INDEX(serf->pos));
 				building_type_t bld_type = BUILDING_TYPE(building);
 
+				/* A working stone mine ends the stone part of the
+				   emergency program (Amiga entering_building @0x12bf0). */
+				if (bld_type == BUILDING_STONEMINE) {
+					game.player[SERF_PLAYER(serf)]->emergency_flags |= BIT(5);
+				}
+
 				if (serf->s.entering_building.field_B != 0) {
 					building->serf |= BIT(4);
 					building->serf &= ~BIT(3);

@@ -412,13 +412,14 @@ update_player(player_t *player)
 		/*if (player->field_1B0 != 0) player->field_1B0 -= 1;*/
 	}
 
+	/* Counted once per update, not by ticks (Amiga update_player @0xa562):
+	   phase 2 starts at exactly 0x3ff, the cycle ends at 0. */
 	if (PLAYER_CYCLING_KNIGHTS(player)) {
-		player->knight_cycle_counter -= delta;
-		if (player->knight_cycle_counter < 1) {
+		player->knight_cycle_counter -= 1;
+		if (player->knight_cycle_counter == 0) {
 			player->flags &= ~BIT(5);
 			player->flags &= ~BIT(2);
-		} else if (player->knight_cycle_counter < 2048 &&
-			   PLAYER_REDUCED_KNIGHT_LEVEL(player)) {
+		} else if (player->knight_cycle_counter == 0x3ff) {
 			player->flags |= BIT(5);
 			player->flags &= ~BIT(4);
 		}
@@ -459,24 +460,52 @@ update_player(player_t *player)
 	}
 }
 
-/* Clear the serf request bit of all flags and buildings.
+/* Clear the serf request bit of flags and buildings.
    This allows the flag or building to try and request a
-   serf again. */
+   serf again. Like the original, only a batch of objects
+   (depending on map size) is processed per update, and
+   processing stops after ten bits were cleared. */
 static void
 clear_serf_request_failure()
 {
-	for (uint i = 1; i < game.max_building_index; i++) {
-		if (BUILDING_ALLOCATED(i)) {
+	static const int batch_size[] = {
+		16, 30, 55, 90, 150, 220, 350, 500
+	};
+	int size = game.map_size;
+	if (size < 1) size = 1;
+	if (size > 8) size = 8;
+	uint batch = batch_size[size-1];
+
+	if (game.max_building_index != 0) {
+		uint i = game.clear_req_building_cursor;
+		if (i >= game.max_building_index) i = 0;
+		uint n = min(batch, game.max_building_index - i);
+		int cleared = 10;
+		for (; n > 0; n--, i++) {
+			if (!BUILDING_ALLOCATED(i)) continue;
 			building_t *building = game_get_building(i);
-			building->serf &= ~BIT(2);
+			if (building->serf & BIT(2)) {
+				building->serf &= ~BIT(2);
+				if (--cleared == 0) break;
+			}
 		}
+		game.clear_req_building_cursor = i;
 	}
 
-	for (uint i = 1; i < game.max_flag_index; i++) {
-		if (FLAG_ALLOCATED(i)) {
+	if (game.max_flag_index != 0) {
+		uint i = game.clear_req_flag_cursor;
+		if (i >= game.max_flag_index) i = 0;
+		uint n = min(batch, game.max_flag_index - i);
+		int cleared = 10;
+		for (; n > 0; n--, i++) {
+			if (!FLAG_ALLOCATED(i)) continue;
 			flag_t *flag = game_get_flag(i);
-			flag->transporter &= ~BIT(7);
+			if (flag->transporter & BIT(7)) {
+				flag->transporter &= ~BIT(7);
+				if (--cleared == 0) break;
+			}
 		}
+		game.clear_req_flag_cursor = i;
 	}
 }
 
@@ -499,6 +528,10 @@ update_knight_morale()
 	for (uint i = 1; i < game.max_building_index; i++) {
 		if (BUILDING_ALLOCATED(i)) {
 			building_t *building = game_get_building(i);
+			/* Only occupied, non-burning military buildings count
+			   (Amiga handle_military_building_update @0xccd6). */
+			if (!BUILDING_HAS_SERF(building) ||
+			    BUILDING_IS_BURNING(building)) continue;
 			if (BUILDING_TYPE(building) == BUILDING_HUT ||
 			    BUILDING_TYPE(building) == BUILDING_TOWER ||
 			    BUILDING_TYPE(building) == BUILDING_FORTRESS) {
@@ -517,7 +550,7 @@ update_knight_morale()
 		if (!PLAYER_IS_ACTIVE(player)) continue;
 
 		uint depot = inventory_gold[i] + military_gold[i];
-		player->gold_deposited = depot;
+		player->gold_deposited = min(depot, 0xffff);
 
 		/* Calculate according to gold collected. */
 		uint map_gold = game.map_gold_deposit;
@@ -527,7 +560,11 @@ update_knight_morale()
 				depot >>= 1;
 			}
 			depot = min(depot, map_gold-1);
-			player->knight_morale = 1024 + (game.map_gold_morale_factor * depot)/map_gold;
+			/* 1024 + ((depot << 16) / map_gold * factor >> 16)
+			   (Amiga player_update_knight_morale @0xb446). */
+			player->knight_morale = 1024 +
+				(int)((((uint64_t)depot << 16) / map_gold *
+				       (uint32_t)game.map_gold_morale_factor) >> 16);
 		} else {
 			player->knight_morale = 4096;
 		}
@@ -578,6 +615,76 @@ typedef struct {
 	int *max_prio;
 	flag_t **flags;
 } update_inventories_data_t;
+
+/* Layered search of update_inventories (Amiga update_scheduled
+   @0xab8e..0xad78). Flags are expanded along paths with transporters, a
+   neighbour is tested as a destination when it is discovered, and after
+   every layer each source's best priority found so far is raised by
+   p/4 + 1 (max 255), so a farther consumer must beat a growing threshold.
+   A source at 255 stops expanding; a layer stops after 994 new flags. */
+static void
+update_inventories_search(inventory_t *invs[], int n, int resource,
+			  int max_prio[], flag_t *flags[])
+{
+	flag_search_t search;
+	flag_search_init(&search);
+	int id = search.id;
+
+	flag_t **cur = (flag_t **)malloc(game.max_flag_index * sizeof(flag_t *));
+	flag_t **next = (flag_t **)malloc(game.max_flag_index * sizeof(flag_t *));
+	if (cur == NULL || next == NULL) abort();
+
+	int ncur = 0;
+	for (int i = 0; i < n; i++) {
+		max_prio[i] = 0;
+		flags[i] = NULL;
+		flag_t *flag = game_get_flag(invs[i]->flag);
+		flag->search_num = id;
+		flag->search_dir = (dir_t)i;
+		cur[ncur++] = flag;
+	}
+
+	while (ncur > 0) {
+		int nnext = 0;
+		for (int k = 0; k < ncur && nnext < 994; k++) {
+			flag_t *flag = cur[k];
+			int inv = flag->search_dir;
+			if (max_prio[inv] == 255) continue;
+
+			for (int d = DIR_UP; d >= DIR_RIGHT; d--) {
+				if (!FLAG_HAS_TRANSPORTER(flag, d)) continue;
+				flag_t *other = flag->other_endpoint.f[d];
+				if (other->search_num == id) continue;
+				other->search_num = id;
+				other->search_dir = (dir_t)inv;
+				next[nnext++] = other;
+
+				if (!FLAG_HAS_BUILDING(other)) continue;
+				building_t *building = other->other_endpoint.b[DIR_UP_LEFT];
+				for (int j = 0; j < BUILDING_MAX_STOCK; j++) {
+					if (building->stock[j].type == resource &&
+					    building->stock[j].prio >= 16 &&
+					    building->stock[j].prio > max_prio[inv]) {
+						max_prio[inv] = building->stock[j].prio;
+						flags[inv] = other;
+					}
+				}
+			}
+		}
+
+		for (int i = 0; i < n; i++) {
+			if (max_prio[i] == 0) continue;
+			max_prio[i] += (max_prio[i] >> 2) + 1;
+			if (max_prio[i] > 255) max_prio[i] = 255;
+		}
+
+		flag_t **t = cur; cur = next; next = t;
+		ncur = nnext;
+	}
+
+	free(cur);
+	free(next);
+}
 
 static int
 update_inventories_cb(flag_t *flag, update_inventories_data_t *data)
@@ -710,7 +817,8 @@ update_inventories()
 	}
 
 	while (arr[0] >= 0) {
-		for (int p = 0; p < GAME_MAX_PLAYER_COUNT; p++) {
+		/* Players 3..0 (Amiga update_inventories). */
+		for (int p = GAME_MAX_PLAYER_COUNT-1; p >= 0; p--) {
 			inventory_t *invs[256];
 			int n = 0;
 			for (uint i = 0; i < game.max_inventory_index; i++) {
@@ -735,11 +843,13 @@ update_inventories()
 					} else { /* Out mode */
 						player_t *player = game.player[p];
 
+						/* Highest inventory_prio, scanned 25..0 with a
+						   strict compare, only if above 0 (Amiga @0xaab6). */
 						int prio = 0;
 						resource_type_t type = RESOURCE_NONE;
-						for (int i = 0; i < 26; i++) {
+						for (int i = 25; i >= 0; i--) {
 							if (inventory->resources[i] != 0 &&
-							    player->inventory_prio[i] >= prio) {
+							    player->inventory_prio[i] > prio) {
 								prio = player->inventory_prio[i];
 								type = (resource_type_t)i;
 							}
@@ -754,25 +864,9 @@ update_inventories()
 
 			if (n == 0) continue;
 
-			flag_search_t search;
-			flag_search_init(&search);
-
 			int max_prio[256];
 			flag_t *flags[256];
-
-			for (int i = 0; i < n; i++) {
-				max_prio[i] = 0;
-				flags[i] = NULL;
-				flag_t *flag = game_get_flag(invs[i]->flag);
-				flag->search_dir = (dir_t)i;
-				flag_search_add_source(&search, flag);
-			}
-
-			update_inventories_data_t data;
-			data.resource = arr[0];
-			data.max_prio = max_prio;
-			data.flags = flags;
-			flag_search_execute(&search, (flag_search_func *)update_inventories_cb, 0, 1, &data);
+			update_inventories_search(invs, n, arr[0], max_prio, flags);
 
 			for (int i = 0; i < n; i++) {
 				if (max_prio[i] > 0) {
@@ -794,17 +888,16 @@ update_inventories()
 
 					resource_type_t res = (resource_type_t)arr[0];
 					if (res == RESOURCE_GROUP_FOOD) {
-						/* Select the food resource with highest amount available */
-						if (src_inv->resources[RESOURCE_MEAT] > src_inv->resources[RESOURCE_BREAD]) {
-							if (src_inv->resources[RESOURCE_MEAT] > src_inv->resources[RESOURCE_FISH]) {
-								res = RESOURCE_MEAT;
-							} else {
-								res = RESOURCE_FISH;
-							}
-						} else if (src_inv->resources[RESOURCE_BREAD] > src_inv->resources[RESOURCE_FISH]) {
-							res = RESOURCE_BREAD;
+						/* The food with the most available (Amiga @0xadce):
+						   fish < meat ? (meat < bread ? bread : meat)
+						   : (fish < bread ? bread : fish). */
+						int fish = src_inv->resources[RESOURCE_FISH];
+						int meat = src_inv->resources[RESOURCE_MEAT];
+						int bread = src_inv->resources[RESOURCE_BREAD];
+						if (fish < meat) {
+							res = (meat < bread) ? RESOURCE_BREAD : RESOURCE_MEAT;
 						} else {
-							res = RESOURCE_FISH;
+							res = (fish < bread) ? RESOURCE_BREAD : RESOURCE_FISH;
 						}
 					}
 
@@ -821,7 +914,27 @@ typedef struct {
 	inventory_t *inventory;
 	int serf_index;
 	int water;
+	int countdown;
 } send_serf_to_road_data_t;
+
+/* Once a generic serf is available as a fallback, the search for a ready
+   specialist only continues for cont_search_after_non_optimal_find more
+   layers (Amiga send_serf_to_road / send_serf_to_flag, game+0x340). */
+static int
+send_serf_countdown_layer(int *countdown)
+{
+	if (*countdown > 0) {
+		*countdown -= 1;
+		if (*countdown == 0) return 1;
+	}
+	return 0;
+}
+
+static int
+send_serf_to_road_layer_cb(send_serf_to_road_data_t *data)
+{
+	return send_serf_countdown_layer(&data->countdown);
+}
 
 static int
 send_serf_to_road_search_cb(flag_t *flag, send_serf_to_road_data_t *data)
@@ -849,8 +962,8 @@ send_serf_to_road_search_cb(flag_t *flag, send_serf_to_road_data_t *data)
 		if (data->inventory == NULL && inventory->serfs[SERF_GENERIC] != 0 &&
 		    (!data->water || inventory->resources[RESOURCE_BOAT] > 0)) {
 			data->inventory = inventory;
-			/*player_t *player = game.player[inventory->player_num];
-			game.field_340 = player->cont_search_after_non_optimal_find;*/
+			player_t *player = game.player[inventory->player_num];
+			data->countdown = player->cont_search_after_non_optimal_find;
 		}
 	}
 
@@ -875,11 +988,15 @@ send_serf_to_road(flag_t *src, dir_t dir, int water)
 	data.inventory = NULL;
 	data.serf_index = -1;
 	data.water = water;
+	data.countdown = 0;
 
-	int r = flag_search_execute(&search, (flag_search_func *)send_serf_to_road_search_cb, 1, 0, &data);
+	int r = flag_search_execute_layered(&search,
+					    (flag_search_func *)send_serf_to_road_search_cb,
+					    1, 0, &data,
+					    (flag_search_layer_func *)send_serf_to_road_layer_cb);
 	inventory_t *inventory = data.inventory;
 	int serf_index = data.serf_index;
-	if (r < 0) {
+	if (r != 0) {
 		if (inventory == NULL) return -1;
 
 		serf_index = inventory->serfs[SERF_GENERIC];
@@ -966,8 +1083,10 @@ schedule_known_dest_cb(flag_t *flag, schedule_known_dest_data_t *data)
 					/* This item has the highest priority now */
 					src->other_end_dir[flag->search_dir] = (src->other_end_dir[flag->search_dir] & 0xf8) | data->slot;
 				}
-				src->slot[data->slot].dir = flag->search_dir;
 			}
+			/* The slot direction is set in both cases
+			   (Amiga update_flags @0x27036). */
+			src->slot[data->slot].dir = flag->search_dir;
 		}
 		return 1;
 	}
@@ -1123,7 +1242,7 @@ schedule_slot_to_unknown_dest(flag_t *flag, int slot)
 	if (routable[res]) {
 		flag_search_t search;
 		flag_search_init(&search);
-		flag_search_add_source(&search, flag);
+		flag->search_num = search.id;
 
 		/* Handle food as one resource group */
 		if (res == RESOURCE_MEAT ||
@@ -1132,14 +1251,54 @@ schedule_slot_to_unknown_dest(flag_t *flag, int slot)
 			res = RESOURCE_GROUP_FOOD;
 		}
 
+		/* Layered search (Amiga update_flags @0x26cc2..0x26dd6): the
+		   source flag is not a candidate, a neighbour is tested when it
+		   is discovered, and after each layer with a candidate the
+		   threshold grows by p/4 + 1; the search ends when it passes
+		   255 or no flags are left. */
 		schedule_unknown_dest_data_t data;
 		data.resource = res;
 		data.flag = NULL;
 		data.max_prio = 0;
 
-		flag_search_execute(&search,
-				    (flag_search_func *)schedule_unknown_dest_cb,
-				    0, 1, &data);
+		int id = search.id;
+		flag_t **cur = (flag_t **)malloc(game.max_flag_index * sizeof(flag_t *));
+		flag_t **next = (flag_t **)malloc(game.max_flag_index * sizeof(flag_t *));
+		if (cur == NULL || next == NULL) abort();
+		int ncur = 0;
+		cur[ncur++] = flag;
+		while (ncur > 0) {
+			int nnext = 0;
+			for (int k = 0; k < ncur && nnext < 994; k++) {
+				flag_t *f = cur[k];
+				for (int d = DIR_UP; d >= DIR_RIGHT; d--) {
+					if (!FLAG_HAS_TRANSPORTER(f, d)) continue;
+					flag_t *other = f->other_endpoint.f[d];
+					if (other->search_num == id) continue;
+					other->search_num = id;
+					next[nnext++] = other;
+					if (!FLAG_HAS_BUILDING(other)) continue;
+					building_t *building = other->other_endpoint.b[DIR_UP_LEFT];
+					for (int j = 0; j < BUILDING_MAX_STOCK; j++) {
+						if (building->stock[j].type == res &&
+						    building->stock[j].prio > data.max_prio) {
+							data.max_prio = building->stock[j].prio;
+							data.flag = other;
+						}
+					}
+				}
+			}
+			if (nnext == 0) break;
+			if (data.max_prio != 0) {
+				data.max_prio += (data.max_prio >> 2) + 1;
+				if (data.max_prio > 255) break;
+			}
+			flag_t **t = cur; cur = next; next = t;
+			ncur = nnext;
+		}
+		free(cur);
+		free(next);
+
 		if (data.flag != NULL) {
 			LOGV("game", "dest for flag %u res %i found: flag %u",
 			     FLAG_INDEX(flag), slot, FLAG_INDEX(data.flag));
@@ -1206,7 +1365,12 @@ update_flags()
 {
 	const int max_transporters[] = { 1, 2, 3, 4, 6, 8, 11, 15 };
 
+	/* Only the flags with (index >> 5) & 31 == next_index are handled in
+	   this update (Amiga update_flags @0x26b3e). */
+	if (game.next_index >= 32) return;
+
 	for (uint i = 1; i < game.max_flag_index; i++) {
+		if (((i >> 5) & 31) != game.next_index) continue;
 		if (FLAG_ALLOCATED(i)) {
 			flag_t *flag = game_get_flag(i);
 
@@ -1258,7 +1422,7 @@ update_flags()
 					if (FLAG_SERF_REQUESTED(flag, 5-j)) {
 						if (BIT_TEST(res_waiting[2], 5-j)) {
 							if (waiting_count >= 7) {
-								flag->transporter &= BIT(5-j);
+								flag->transporter &= ~BIT(5-j); /* Amiga @0x270c4: clear this direction only */
 							}
 						} else if (FLAG_TRANSPORTER_COUNT(flag, 5-j) != 0) {
 							flag->transporter |= BIT(5-j);
@@ -1266,14 +1430,16 @@ update_flags()
 					} else if (FLAG_TRANSPORTER_COUNT(flag, 5-j) == 0 ||
 						   BIT_TEST(res_waiting[2], 5-j)) {
 						int max_tr = max_transporters[FLAG_LENGTH_CATEGORY(flag, 5-j)];
-						if (FLAG_TRANSPORTER_COUNT(flag, 5-j) < (uint)max_tr &&
+						/* Request unless the count equals the maximum
+						   (Amiga @0x27084). */
+						if (FLAG_TRANSPORTER_COUNT(flag, 5-j) != (uint)max_tr &&
 						    !FLAG_SERF_REQUEST_FAIL(flag)) {
 							int r = send_serf_to_road(flag, (dir_t)(5-j),
 										  FLAG_IS_WATER_PATH(flag, 5-j));
 							if (r < 0) flag->transporter |= BIT(7);
 						}
 						if (waiting_count >= 7) {
-							flag->transporter &= BIT(5-j);
+							flag->transporter &= ~BIT(5-j); /* Amiga @0x270c4: clear this direction only */
 						}
 					} else {
 						flag->transporter |= BIT(5-j);
@@ -1291,7 +1457,14 @@ typedef struct {
 	int dest_index;
 	resource_type_t res1;
 	resource_type_t res2;
+	int countdown;
 } send_serf_to_flag_data_t;
+
+static int
+send_serf_to_flag_layer_cb(send_serf_to_flag_data_t *data)
+{
+	return send_serf_countdown_layer(&data->countdown);
+}
 
 static int
 send_serf_to_flag_search_cb(flag_t *flag, send_serf_to_flag_data_t *data)
@@ -1330,13 +1503,13 @@ send_serf_to_flag_search_cb(flag_t *flag, send_serf_to_flag_data_t *data)
 				return 1;
 			} else if (type == -1) {
 				/* See if a knight can be created here. */
-				if (/*game.field_342 == 0*/1 &&
+				if (data->inventory == NULL &&
 				    inv->serfs[SERF_GENERIC] != 0 &&
 				    inv->resources[RESOURCE_SWORD] > 0 &&
 				    inv->resources[RESOURCE_SHIELD] > 0) {
 					data->inventory = inv;
-					/* player_t *player = globals->player[SERF_PLAYER(serf)]; */
-					/* game.field_340 = player->cont_search_after_non_optimal_find; */
+					player_t *player = game.player[inv->player_num];
+					data->countdown = player->cont_search_after_non_optimal_find;
 				}
 			}
 		} else {
@@ -1370,8 +1543,8 @@ send_serf_to_flag_search_cb(flag_t *flag, send_serf_to_flag_data_t *data)
 				    (data->res1 == -1 || inv->resources[data->res1] > 0) &&
 				    (data->res2 == -1 || inv->resources[data->res2] > 0)) {
 					data->inventory = inv;
-					/* player_t *player = globals->player[SERF_PLAYER(serf)]; */
-					/* game.field_340 = player->cont_search_after_non_optimal_find; */
+					player_t *player = game.player[inv->player_num];
+					data->countdown = player->cont_search_after_non_optimal_find;
 				}
 			}
 		}
@@ -1404,8 +1577,15 @@ send_serf_to_flag(flag_t *dest, int type, resource_type_t res1, resource_type_t 
 	data.dest_index = FLAG_INDEX(dest);
 	data.res1 = res1;
 	data.res2 = res2;
+	data.countdown = 0;
 
-	int r = flag_search_single(dest, (flag_search_func *)send_serf_to_flag_search_cb, 1, 0, &data);
+	flag_search_t search;
+	flag_search_init(&search);
+	flag_search_add_source(&search, dest);
+	int r = flag_search_execute_layered(&search,
+					    (flag_search_func *)send_serf_to_flag_search_cb,
+					    1, 0, &data,
+					    (flag_search_layer_func *)send_serf_to_flag_layer_cb);
 	if (r == 0) {
 		return 0;
 	} else if (data.inventory != NULL) {
@@ -1478,18 +1658,31 @@ update_unfinished_building(building_t *building)
 {
 	player_t *player = game.player[BUILDING_PLAYER(building)];
 
+	/* During an emergency only the designated buildings get a builder
+	   and planks/stone (Amiga update_unfinished_building @0xc01e). */
+	int index = BUILDING_INDEX(building);
+	int designated = (index == player->lumberjack_index ||
+			  index == player->sawmill_index ||
+			  index == player->stonecutter_index);
+
 	/* Request builder serf */
 	if (!BUILDING_SERF_REQUEST_FAIL(building) &&
 	    !BUILDING_HAS_SERF(building) &&
 	    !BUILDING_SERF_REQUESTED(building)) {
 		building->progress = 1;
+		if (BIT_TEST(player->emergency_flags, 6) && !designated) {
+			building->serf |= BIT(2);
+			return;
+		}
 		int r = send_serf_to_building(building, SERF_BUILDER, RESOURCE_HAMMER, (resource_type_t)-1);
 		if (r < 0) building->serf |= BIT(2);
 	}
 
 	/* Request planks */
 	int total_planks = building->stock[0].requested + building->stock[0].available;
-	if (total_planks < building->stock[0].maximum) {
+	if (BIT_TEST(player->emergency_flags, 1) && !designated) {
+		building->stock[0].prio = 0;
+	} else if (total_planks < building->stock[0].maximum) {
 		int planks_prio = player->planks_construction >> (8 + total_planks);
 		if (!BUILDING_HAS_SERF(building)) planks_prio >>= 2;
 		building->stock[0].prio = planks_prio & ~BIT(0);
@@ -1499,7 +1692,9 @@ update_unfinished_building(building_t *building)
 
 	/* Request stone */
 	int total_stone = building->stock[1].requested + building->stock[1].available;
-	if (total_stone < building->stock[1].maximum) {
+	if (BIT_TEST(player->emergency_flags, 2) && !designated) {
+		building->stock[1].prio = 0;
+	} else if (total_stone < building->stock[1].maximum) {
 		int stone_prio = 0xff >> total_stone;
 		if (!BUILDING_HAS_SERF(building)) stone_prio >>= 2;
 		building->stock[1].prio = stone_prio & ~BIT(0);
@@ -1541,8 +1736,17 @@ update_unfinished_adv_building(building_t *building)
 		return;
 	}
 
-	/* Request digger */
+	/* Request digger; during an emergency only for lumberjack,
+	   stonecutter and sawmill sites (Amiga @0xbfc0). */
 	if (!BUILDING_SERF_REQUEST_FAIL(building)) {
+		player_t *player = game.player[BUILDING_PLAYER(building)];
+		building_type_t type = BUILDING_TYPE(building);
+		if (BIT_TEST(player->emergency_flags, 6) &&
+		    type != BUILDING_LUMBERJACK && type != BUILDING_STONECUTTER &&
+		    type != BUILDING_SAWMILL) {
+			building->serf |= BIT(2);
+			return;
+		}
 		int r = send_serf_to_building(building, SERF_DIGGER, RESOURCE_SHOVEL, (resource_type_t)-1);
 		if (r < 0) building->serf |= BIT(2);
 	}
@@ -1554,33 +1758,34 @@ update_building_castle(building_t *building)
 {
 	player_t *player = game.player[BUILDING_PLAYER(building)];
 	if (player->castle_knights == player->castle_knights_wanted) {
+		/* Swap the strongest defender with the weakest idle knight
+		   of a lower level in the castle inventory. */
 		serf_t *best_knight = NULL;
-		serf_t *last_knight = NULL;
 		int serf_index = building->serf_index;
 		while (serf_index != 0) {
 			serf_t *serf = game_get_serf(serf_index);
 			if (best_knight == NULL ||
-			    SERF_TYPE(serf) < SERF_TYPE(best_knight)) {
+			    SERF_TYPE(serf) > SERF_TYPE(best_knight)) {
 				best_knight = serf;
 			}
-			last_knight = serf;
 			serf_index = serf->s.defending.next_knight;
 		}
 
 		if (best_knight != NULL) {
 			inventory_t *inventory = building->u.inventory;
 			int type = SERF_TYPE(best_knight);
-			for (int t = SERF_KNIGHT_0; t <= SERF_KNIGHT_4; t++) {
-				if (type > t &&
-				    inventory->serfs[t] == SERF_INDEX(best_knight)) {
+			for (int t = SERF_KNIGHT_0; t < type; t++) {
+				if (inventory->serfs[t] != 0) {
+					serf_t *idle = game_get_serf(inventory->serfs[t]);
 					inventory->serfs[t] = 0;
+
+					/* Switch types */
+					int tmp = best_knight->type;
+					best_knight->type = idle->type;
+					idle->type = tmp;
+					break;
 				}
 			}
-
-			/* Switch types */
-			int tmp = best_knight->type;
-			best_knight->type = last_knight->type;
-			last_knight->type = tmp;
 		}
 	} else if (player->castle_knights < player->castle_knights_wanted) {
 		inventory_t *inventory = building->u.inventory;
@@ -1801,7 +2006,9 @@ handle_building_update(building_t *building)
 				player_t *player = game.player[BUILDING_PLAYER(building)];
 				int total_tree = building->stock[0].requested + building->stock[0].available;
 				if (total_tree < building->stock[0].maximum) {
-					building->stock[0].prio = player->planks_boatbuilder >> (8 + total_tree);
+					/* No planks during a planks emergency (Amiga @0xc6c0). */
+					building->stock[0].prio = BIT_TEST(player->emergency_flags, 1) ? 0 :
+						player->planks_boatbuilder >> (8 + total_tree);
 				} else {
 					building->stock[0].prio = 0;
 				}
@@ -1916,8 +2123,8 @@ handle_building_update(building_t *building)
 				player_add_notification(game.player[BUILDING_PLAYER(building)],
 							7, building->pos);
 			} else {
-				if (!BUILDING_SERF_REQUEST_FAIL(building) &&
-				    !BUILDING_HAS_SERF(building) &&
+				/* The original ignores the request-failed bit here. */
+				if (!BUILDING_HAS_SERF(building) &&
 				    !BUILDING_SERF_REQUESTED(building)) {
 					send_serf_to_building(building, SERF_TRANSPORTER, (resource_type_t)-1, (resource_type_t)-1);
 				}
@@ -2084,7 +2291,9 @@ handle_building_update(building_t *building)
 				player_t *player = game.player[BUILDING_PLAYER(building)];
 				int total_tree = building->stock[0].requested + building->stock[0].available;
 				if (total_tree < building->stock[0].maximum) {
-					building->stock[0].prio = player->planks_toolmaker >> (8 + total_tree);
+					/* No planks during a planks emergency (Amiga @0xc72c). */
+					building->stock[0].prio = BIT_TEST(player->emergency_flags, 1) ? 0 :
+						player->planks_toolmaker >> (8 + total_tree);
 				} else {
 					building->stock[0].prio = 0;
 				}
@@ -2202,7 +2411,11 @@ handle_building_update(building_t *building)
 static void
 update_buildings()
 {
+	/* Chunked like update_flags (Amiga update_buildings @0xbc2e). */
+	if (game.next_index >= 32) return;
+
 	for (uint i = 1; i < game.max_building_index; i++) {
+		if (((i >> 5) & 31) != game.next_index) continue;
 		if (BUILDING_ALLOCATED(i)) {
 			building_t *building = game_get_building(i);
 			if (BUILDING_IS_BURNING(building)) {
@@ -2234,47 +2447,57 @@ update_serfs()
 }
 
 /* Update historical player statistics for one measure. */
-static void
-record_player_history(player_t *player[], int pl_count, int max_level, int aspect,
-		      const int history_index[], const uint values[])
+static int
+record_player_history(player_t *player[], int max_level, int aspect,
+		      const int history_index[], const uint values_in[])
 {
+	/* All four player slots take part, inactive ones as 0. The totals
+	   are scaled down to at most 0xfffe and the stored value is
+	   (100*v - 1)/total; a value above 74 is a clear lead
+	   (Amiga record_player_history @0x895e). Returns the leader mask. */
+	uint values[GAME_MAX_PLAYER_COUNT];
 	uint total = 0;
-	for (int i = 0; i < pl_count; i++) total += values[i];
-	total = max(1, total);
+	for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
+		values[i] = PLAYER_IS_ACTIVE(player[i]) ? values_in[i] : 0;
+		total += values[i];
+	}
+	if (total == 0) total = 1;
+	while (total > 0xfffe) {
+		total >>= 1;
+		for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) values[i] >>= 1;
+	}
+
+	int leader = 0;
+	int percent[GAME_MAX_PLAYER_COUNT];
+	for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
+		uint v = values[i] * 100;
+		if (v != 0) v -= 1;
+		percent[i] = (uint8_t)(v / total);
+		if (percent[i] > 74) leader |= BIT(i);
+	}
 
 	for (int i = 0; i < max_level+1; i++) {
 		int mode = (aspect << 2) | i;
 		int index = history_index[i];
-		for (int j = 0; j < pl_count; j++) {
-			uint64_t value = values[j];
-			player[j]->player_stat_history[mode][index] = (int)((100*value)/total);
+		for (int j = 0; j < GAME_MAX_PLAYER_COUNT; j++) {
+			if (!PLAYER_IS_ACTIVE(player[j])) continue;
+			player[j]->player_stat_history[mode][index] = percent[j];
 		}
 	}
-}
 
-/* Calculate whether one player has enough advantage to be
-   considered a clear winner regarding one aspect.
-   Return -1 if there is no clear winner. */
-static int
-calculate_clear_winner(int pl_count, const uint values[])
-{
-	int total = 0;
-	for (int i = 0; i < pl_count; i++) total += values[i];
-	total = max(1, total);
-
-	for (int i = 0; i < pl_count; i++) {
-		uint64_t value = values[i];
-		if ((100*value)/total >= 75) return i;
-	}
-
-	return -1;
+	return leader;
 }
 
 /* Calculate condensed score from military score and knight morale. */
 static int
 calculate_military_score(int military, int morale)
 {
-	return (2048 + (morale >> 1)) * (military << 6);
+	/* ((military << 6) * (0x800 + (morale >> 1))) >> 16, at least 1 when
+	   military != 0 (Amiga calculate_military_score @0x8940). */
+	uint64_t v = ((uint64_t)((uint32_t)military << 6) *
+		      (uint32_t)(0x800 + (morale >> 1))) >> 16;
+	if (v == 0 && military != 0) v = 1;
+	return (int)v;
 }
 
 /* Update statistics of the game. */
@@ -2329,19 +2552,17 @@ update_game_stats()
 			}
 		}
 
-		uint values[GAME_MAX_PLAYER_COUNT];
+		uint values[GAME_MAX_PLAYER_COUNT] = { 0 };
 
 		/* Store land area stats in history. */
-		int pl_count = 0;
 		for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
 			if (PLAYER_IS_ACTIVE(game.player[i])) {
 				values[i] = game.player[i]->total_land_area;
-				pl_count += 1;
 			}
 		}
-		record_player_history(game.player, pl_count, update_level, 1,
-				      game.player_history_index, values);
-		game.player_score_leader |= BIT(calculate_clear_winner(pl_count, values));
+		game.player_score_leader |=
+			record_player_history(game.player, update_level, 1,
+					      game.player_history_index, values);
 
 		/* Store building stats in history. */
 		for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
@@ -2349,7 +2570,7 @@ update_game_stats()
 				values[i] = game.player[i]->total_building_score;
 			}
 		}
-		record_player_history(game.player, pl_count, update_level, 2,
+		record_player_history(game.player, update_level, 2,
 				      game.player_history_index, values);
 
 		/* Store military stats in history. */
@@ -2359,9 +2580,9 @@ update_game_stats()
 								     game.player[i]->knight_morale);
 			}
 		}
-		record_player_history(game.player, pl_count, update_level, 3,
-				      game.player_history_index, values);
-		game.player_score_leader |= BIT(calculate_clear_winner(pl_count, values)) << 4;
+		game.player_score_leader |=
+			record_player_history(game.player, update_level, 3,
+					      game.player_history_index, values) << 4;
 
 		/* Store condensed score of all aspects in history. */
 		for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
@@ -2372,10 +2593,27 @@ update_game_stats()
 					((game.player[i]->total_land_area + mil_score) >> 4);
 			}
 		}
-		record_player_history(game.player, pl_count, update_level, 0,
+		record_player_history(game.player, update_level, 0,
 				      game.player_history_index, values);
 
-		/* TODO Determine winner based on game.player_score_leader */
+		/* A player leading both in land and in military wins once the
+		   players have more than 49 building points in total
+		   (Amiga update_game_stats @0x869a). */
+		uint building_total = 0;
+		for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
+			if (PLAYER_IS_ACTIVE(game.player[i])) {
+				building_total += game.player[i]->total_building_score;
+			}
+		}
+		if (building_total > 49 && game.winning_player < 0) {
+			for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
+				int mask = BIT(i) | BIT(i + 4);
+				if ((game.player_score_leader & mask) == mask) {
+					game.winning_player = i;
+					break;
+				}
+			}
+		}
 	}
 
 	if ((int)game.history_counter > game.tick_diff) {
@@ -2383,7 +2621,11 @@ update_game_stats()
 	} else {
 		game.history_counter += 6000 - game.tick_diff;
 
-		int index = game.resource_history_index;
+		/* The index is advanced first, then the counts are stored at the
+		   new index (Amiga update_resource_history @0x87ee). */
+		int index = game.resource_history_index+1 < 120 ?
+			game.resource_history_index+1 : 0;
+		game.resource_history_index = index;
 
 		for (int res = 0; res < 26; res++) {
 			for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
@@ -2395,7 +2637,101 @@ update_game_stats()
 			}
 		}
 
-		game.resource_history_index = index+1 < 120 ? index+1 : 0;
+	}
+}
+
+/* A designated building counts as ready when it is finished or has all
+   its construction material (Amiga @0xb31a). */
+static int
+emergency_building_ready(int index)
+{
+	building_t *building = game_get_building(index);
+	if (BUILDING_IS_DONE(building)) return 1;
+	return building->stock[0].available + building->stock[1].available ==
+		building->stock[0].maximum + building->stock[1].maximum;
+}
+
+/* Emergency program (Amiga player_update_emergency_program @0xb23c). */
+static void
+player_update_emergency_program(player_t *player)
+{
+	if (BIT_TEST(player->emergency_flags, 0)) return;
+	if (!PLAYER_HAS_CASTLE(player)) return;
+
+	inventory_t *inventory = game_get_inventory(player->castle_inventory);
+
+	if (!BIT_TEST(player->emergency_flags, 1) &&
+	    inventory->resources[RESOURCE_PLANK] == 0) {
+		player->emergency_flags |= BIT(1);
+		if (!BIT_TEST(player->emergency_flags, 2)) {
+			player->emergency_flags |= BIT(6);
+			player_add_notification(player, 10 /* EMERGENCY_ACTIVE */, 0);
+		}
+		player->emergency_counter = 2;
+	}
+
+	if (!BIT_TEST(player->emergency_flags, 2) &&
+	    inventory->resources[RESOURCE_STONE] == 0) {
+		player->emergency_flags |= BIT(2);
+		if (!BIT_TEST(player->emergency_flags, 1)) {
+			player->emergency_flags |= BIT(6);
+			player_add_notification(player, 10 /* EMERGENCY_ACTIVE */, 0);
+		}
+		player->emergency_counter = 2;
+	}
+
+	/* After two cycles the reserve of the missing material is released. */
+	if (player->emergency_counter != 0) {
+		player->emergency_counter -= 1;
+		if (player->emergency_counter == 0) {
+			if (BIT_TEST(player->emergency_flags, 1) && player->extra_planks != 0) {
+				inventory->resources[RESOURCE_PLANK] += player->extra_planks;
+				player->extra_planks = 0;
+			}
+			if (BIT_TEST(player->emergency_flags, 2) && player->extra_stone != 0) {
+				inventory->resources[RESOURCE_STONE] += player->extra_stone;
+				player->extra_stone = 0;
+			}
+		}
+	}
+
+	if (!BIT_TEST(player->emergency_flags, 3) && player->lumberjack_index != 0 &&
+	    emergency_building_ready(player->lumberjack_index)) {
+		player->emergency_flags |= BIT(3);
+		player->lumberjack_index = 0;
+	}
+	if (!BIT_TEST(player->emergency_flags, 4) && player->sawmill_index != 0 &&
+	    emergency_building_ready(player->sawmill_index)) {
+		player->emergency_flags |= BIT(4);
+		player->sawmill_index = 0;
+	}
+	if (!BIT_TEST(player->emergency_flags, 5) && player->stonecutter_index != 0 &&
+	    emergency_building_ready(player->stonecutter_index)) {
+		player->emergency_flags |= BIT(5);
+		player->stonecutter_index = 0;
+	}
+
+	if ((player->emergency_flags & 0x38) == 0x38) {
+		player->emergency_flags |= BIT(0);
+		if (player->emergency_flags & 0x06) {
+			player->emergency_flags &= ~BIT(6);
+			player_add_notification(player, 11 /* EMERGENCY_NEUTRAL */, 0);
+		}
+		player->emergency_flags &= ~0x06;
+		inventory->resources[RESOURCE_PLANK] += player->extra_planks;
+		player->extra_planks = 0;
+		inventory->resources[RESOURCE_STONE] += player->extra_stone;
+		player->extra_stone = 0;
+	}
+}
+
+static void
+update_emergency_programs()
+{
+	for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
+		if (PLAYER_IS_ACTIVE(game.player[i])) {
+			player_update_emergency_program(game.player[i]);
+		}
 	}
 }
 
@@ -2421,47 +2757,53 @@ game_update()
 		}
 	}
 
-	/* Update knight morale */
-	game.knight_morale_counter -= game.tick_diff;
-	if (game.knight_morale_counter < 0) {
-		update_knight_morale();
-		game.knight_morale_counter += 256;
-	}
-
-	/* Schedule resources to go out of inventories */
-	game.inventory_schedule_counter -= game.tick_diff;
-	if (game.inventory_schedule_counter < 0) {
-		update_inventories();
-		game.inventory_schedule_counter += 64;
-	}
-
-#if 0
-	/* AI related updates */	
+	/* Scheduler of the original (Amiga update_scheduled @0xa864):
+	   next_index cycles 0..max_next_index-1 once per update. Slots 0..31
+	   select the chunk of flags and buildings handled this update; slot
+	   32 runs knight morale and, unless paused, the inventories. Slots
+	   0..31 / 33..48 also run the AI, which legacy does not have. */
 	game.next_index = (game.next_index + 1) % game.max_next_index;
-	if (game.next_index > 32) {
-		for (int i = 0; i < game.max_next_index) {
-			int i = 33 - game.next_index;
-			player_t *player = game.player[i & 3];
-			if (PLAYER_IS_ACTIVE(player) && PLAYER_IS_AI(player)) {
-				/* AI */
-				/* TODO */
-			}
-			game.next_index += 1;
-		}
-	} else if (game.game_speed > 0 &&
-		   game.max_flag_index < 50) {
-		player_t *player = game.player[game.next_index & 3];
-		if (PLAYER_IS_ACTIVE(player) && PLAYER_IS_AI(player)) {
-			/* AI */
-			/* TODO */
+	if (game.next_index == 32) {
+		update_knight_morale();
+		if (game.game_speed != 0) {
+			update_emergency_programs();
+			update_inventories();
 		}
 	}
-#endif
+
+	/* Save reminders (Amiga update_ticks @0x8c72). */
+	if (game.save_reminder_30m >= 0) {
+		game.save_reminder_30m -= game.tick_diff;
+		if (game.save_reminder_30m < 0) {
+			if (game.player[0] != NULL) {
+				player_add_notification(game.player[0],
+							17 /* NOTIFICATION_30M_SINCE_SAVE */, 0);
+			}
+		}
+	}
+	if (game.save_reminder_1h >= 0) {
+		game.save_reminder_1h -= game.tick_diff;
+		if (game.save_reminder_1h < 0) {
+			if (game.player[0] != NULL) {
+				player_add_notification(game.player[0],
+							18 /* NOTIFICATION_1H_SINCE_SAVE */, 0);
+			}
+		}
+	}
 
 	update_flags();
 	update_buildings();
 	update_serfs();
 	update_game_stats();
+}
+
+/* Restart the save reminders: 180000 / 360000 ticks
+   (Amiga game_loop / action_close_disk_msg). */
+void
+game_reset_save_reminders()
+{
+	game.save_reminder_30m = 180000;
+	game.save_reminder_1h = 360000;
 }
 
 /* Pause or unpause the game. */
@@ -3827,6 +4169,20 @@ game_build_building(map_pos_t pos, building_type_t type, player_t *player)
 
 	/* Amiga game_build_building @0x1887c: before the object is set. */
 	map_move_deposit_to_neighbours(pos);
+	/* Until the emergency program is over the first lumberjack, sawmill
+	   and stonecutter are designated (Amiga game_build_building @0x18752). */
+	if (!BIT_TEST(player->emergency_flags, 0)) {
+		if (player->lumberjack_index == 0 && type == BUILDING_LUMBERJACK) {
+			player->lumberjack_index = bld_index;
+		}
+		if (player->sawmill_index == 0 && type == BUILDING_SAWMILL) {
+			player->sawmill_index = bld_index;
+		}
+		if (player->stonecutter_index == 0 && type == BUILDING_STONECUTTER) {
+			player->stonecutter_index = bld_index;
+		}
+	}
+
 	map_set_object(pos, obj_types[type], bld_index);
 	tiles[pos].paths |= BIT(1);
 
@@ -4043,13 +4399,29 @@ game_build_castle(map_pos_t pos, player_t *player)
 	for (int i = 0; i < 26; i++) {
 		int t1 = template_1[i];
 		int n = (template_2[i] - template_1[i]) * (supplies * 6554);
-		if (n >= 0x8000) t1 += 1;
+		/* Round on the fractional (low) word only
+		   (Amiga game_build_castle @0x15546). */
+		if ((n & 0xffff) >= 0x8000) t1 += 1;
 		inventory->resources[i] = t1 + (n >> 16);
 	}
 
 	if (0/*game.game_type == GAME_TYPE_TUTORIAL*/) {
 		/* TODO ... */
 	}
+
+	/* Emergency reserve: 7 planks and 2 stones are kept back from the
+	   castle (Amiga game_build_castle @0x155de). */
+	int planks = min(7, inventory->resources[RESOURCE_PLANK]);
+	int stone = min(2, inventory->resources[RESOURCE_STONE]);
+	inventory->resources[RESOURCE_PLANK] -= planks;
+	inventory->resources[RESOURCE_STONE] -= stone;
+	player->extra_planks = planks;
+	player->extra_stone = stone;
+	player->emergency_flags &= ~0x3f;
+	player->lumberjack_index = 0;
+	player->sawmill_index = 0;
+	player->stonecutter_index = 0;
+	player->emergency_counter = 0;
 
 	game.map_gold_deposit += inventory->resources[RESOURCE_GOLDBAR];
 	game.map_gold_deposit += inventory->resources[RESOURCE_GOLDORE];
@@ -5064,7 +5436,9 @@ player_init(uint number, uint face, uint color, uint supplies,
 	if (face < 12) { /* AI player */
 		player->flags |= BIT(7); /* Set AI bit */
 		/* TODO ... */
-		/*game.max_next_index = 49;*/
+		/* With an AI player the scheduler cycle is 49 updates
+		   (Amiga player_init_all @0x54e2). */
+		game.max_next_index = 49;
 	}
 
 	player->player_num = number;
@@ -5288,6 +5662,7 @@ game_init_map()
 	map_init_minimap();
 
 	game.winning_player = -1;
+	game_reset_save_reminders();
 	/* game.show_game_end = 0; */
 	game.max_next_index = 33;
 }
@@ -5333,6 +5708,8 @@ game_allocate_objects()
 
 	game.max_flag_index = 0;
 	game.max_building_index = 0;
+	game.clear_req_building_cursor = 0;
+	game.clear_req_flag_cursor = 0;
 	game.max_serf_index = 0;
 	game.max_inventory_index = 0;
 
@@ -5430,6 +5807,7 @@ game_load_save_game(const char *path)
 	init_spiral_pos_pattern();
 	game_init_land_ownership();
 	map_init_minimap();
+	game_reset_save_reminders();
 
 	return 0;
 }

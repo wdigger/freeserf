@@ -423,5 +423,5 @@ void
 player_cycle_knights(player_t *player)
 {
 	player->flags |= BIT(2) | BIT(4);
-	player->knight_cycle_counter = 2400;
+	player->knight_cycle_counter = 1200; /* Amiga action_sett_8_cycle @0x17898 */
 }

@@ -115,6 +115,63 @@ flag_search_execute(flag_search_t *search, flag_search_func *callback, int land,
 	return -1;
 }
 
+/* As flag_search_execute, but layer_callback(data) is called after each
+   breadth-first layer; a non-zero return ends the search (as the
+   original's per-layer counters do). Returns 0 if callback ended the
+   search, 1 if layer_callback did, -1 otherwise. */
+int
+flag_search_execute_layered(flag_search_t *search, flag_search_func *callback,
+			    int land, int transporter, void *data,
+			    flag_search_layer_func *layer_callback)
+{
+	/* Count the sources: they form layer 0. */
+	int in_layer = 0;
+	list_elm_t *e;
+	list_foreach(&search->queue, e) in_layer += 1;
+	int next_layer = 0;
+	int result = -1;
+
+	for (int i = 0; i < SEARCH_MAX_DEPTH && !list_is_empty(&search->queue); i++) {
+		flag_proxy_t *proxy = (flag_proxy_t *)list_remove_head(&search->queue);
+		flag_t *flag = proxy->flag;
+		free(proxy);
+
+		if (callback(flag, data)) {
+			result = 0;
+			break;
+		}
+
+		for (int i = 0; i < 6; i++) {
+			if ((!land || !FLAG_IS_WATER_PATH(flag, 5-i)) &&
+			    (!transporter || FLAG_HAS_TRANSPORTER(flag, 5-i)) &&
+			    flag->other_endpoint.f[5-i]->search_num != search->id) {
+				flag->other_endpoint.f[5-i]->search_num = search->id;
+				flag->other_endpoint.f[5-i]->search_dir = flag->search_dir;
+				flag_proxy_t *other_flag_proxy = flag_proxy_alloc(flag->other_endpoint.f[5-i]);
+				list_append(&search->queue, (list_elm_t *)other_flag_proxy);
+				next_layer += 1;
+			}
+		}
+
+		in_layer -= 1;
+		if (in_layer == 0) {
+			if (layer_callback(data)) {
+				result = 1;
+				break;
+			}
+			in_layer = next_layer;
+			next_layer = 0;
+		}
+	}
+
+	/* Clean up */
+	while (!list_is_empty(&search->queue)) {
+		free(list_remove_head(&search->queue));
+	}
+
+	return result;
+}
+
 int
 flag_search_single(flag_t *src, flag_search_func *callback,
 		   int land, int transporter, void *data)

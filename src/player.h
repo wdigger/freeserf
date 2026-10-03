@@ -129,12 +129,17 @@ typedef struct {
 	/* 160 */
 	int send_generic_delay;
 	int initial_supplies;
-	/*int emergency_flags;
+	/* Emergency program (Amiga player ptr+0x163..0x16c):
+	   bit 0 program over, 1 out of planks, 2 out of stone,
+	   3/4/5 designated lumberjack/sawmill/stonecutter ready,
+	   6 emergency active. */
+	int emergency_flags;
 	int extra_planks;
 	int extra_stone;
 	int lumberjack_index;
 	int sawmill_index;
-	int stonecutter_index;*/
+	int stonecutter_index;
+	int emergency_counter;
 	/* 16E */
 	int serf_index;
 	/* 170 */

@@ -329,6 +329,16 @@ load_v0_player_state(FILE *f)
 
 		/* TODO */
 
+		/* The emergency program fields are not decoded from v0 saves;
+		   treat the program as over so it cannot block construction. */
+		player->emergency_flags = BIT(0);
+		player->extra_planks = 0;
+		player->extra_stone = 0;
+		player->lumberjack_index = 0;
+		player->sawmill_index = 0;
+		player->stonecutter_index = 0;
+		player->emergency_counter = 0;
+
 		player->timers_count = 0;
 	}
 
@@ -1063,6 +1073,13 @@ save_text_player_state(FILE *f)
 		save_text_write_value(f, "wheat_mill", player->wheat_mill);
 
 		save_text_write_value(f, "castle_score", player->castle_score);
+		save_text_write_value(f, "emergency_flags", player->emergency_flags);
+		save_text_write_value(f, "extra_planks", player->extra_planks);
+		save_text_write_value(f, "extra_stone", player->extra_stone);
+		save_text_write_value(f, "lumberjack_index", player->lumberjack_index);
+		save_text_write_value(f, "sawmill_index", player->sawmill_index);
+		save_text_write_value(f, "stonecutter_index", player->stonecutter_index);
+		save_text_write_value(f, "emergency_counter", player->emergency_counter);
 
 		save_text_write_value(f, "castle_knights", player->castle_knights);
 		save_text_write_value(f, "castle_knights_wanted", player->castle_knights_wanted);
@@ -1991,6 +2008,20 @@ load_text_player_section(section_t *section)
 			player->wheat_mill = atoi(s->value);
 		} else if (!strcmp(s->key, "castle_score")) {
 			player->castle_score = atoi(s->value);
+		} else if (!strcmp(s->key, "emergency_flags")) {
+			player->emergency_flags = atoi(s->value);
+		} else if (!strcmp(s->key, "extra_planks")) {
+			player->extra_planks = atoi(s->value);
+		} else if (!strcmp(s->key, "extra_stone")) {
+			player->extra_stone = atoi(s->value);
+		} else if (!strcmp(s->key, "lumberjack_index")) {
+			player->lumberjack_index = atoi(s->value);
+		} else if (!strcmp(s->key, "sawmill_index")) {
+			player->sawmill_index = atoi(s->value);
+		} else if (!strcmp(s->key, "stonecutter_index")) {
+			player->stonecutter_index = atoi(s->value);
+		} else if (!strcmp(s->key, "emergency_counter")) {
+			player->emergency_counter = atoi(s->value);
 		} else if (!strcmp(s->key, "castle_knights")) {
 			player->castle_knights = atoi(s->value);
 		} else if (!strcmp(s->key, "castle_knights_wanted")) {
@@ -2912,6 +2943,8 @@ save_state(const char *path)
 
 	int r = save_text_state(f);
 	fclose(f);
+
+	if (r == 0) game_reset_save_reminders();
 
 	return r;
 }

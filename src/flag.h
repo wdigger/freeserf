@@ -115,6 +115,10 @@ void flag_search_init(flag_search_t *search);
 void flag_search_add_source(flag_search_t *search, flag_t *flag);
 int flag_search_execute(flag_search_t *search, flag_search_func *callback,
 			int land, int transporter, void *data);
+typedef int flag_search_layer_func(void *data);
+int flag_search_execute_layered(flag_search_t *search, flag_search_func *callback,
+				int land, int transporter, void *data,
+				flag_search_layer_func *layer_callback);
 int flag_search_single(flag_t *src, flag_search_func *callback,
 		       int land, int transporter, void *data);
 

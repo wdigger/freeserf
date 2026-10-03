@@ -68,6 +68,10 @@ typedef struct {
 	int map_gold_morale_factor;
 	/* 5E */
 	int winning_player;
+	/* Reminders after the last save (Amiga game+0x3d6/0x3da):
+	   counted down by tick_diff, notification 17/18 at 0. */
+	int save_reminder_30m;
+	int save_reminder_1h;
 	/* 60 */
 	/* uint16_t map_move_left_2; MOVED to map_t */
 	/* 64 */
@@ -155,6 +159,8 @@ typedef struct {
 	uint max_flag_index;
 	/* 260 */
 	uint max_building_index;
+	uint clear_req_building_cursor;
+	uint clear_req_flag_cursor;
 	uint max_serf_index;
 	uint inventory_limit;
 	uint max_inventory_index;
@@ -218,6 +224,7 @@ int game_add_player(uint face, uint color, uint supplies,
 int game_load_mission_map(int m);
 int game_load_random_map(int size, const random_state_t *rnd);
 int game_load_save_game(const char *path);
+void game_reset_save_reminders();
 void game_allocate_objects();
 
 void game_update();
