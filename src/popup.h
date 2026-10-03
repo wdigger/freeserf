@@ -231,6 +231,7 @@ class popup_box_t : public gui_object_t {
 
   virtual void internal_draw();
   virtual bool handle_click_left(int x, int y);
+  virtual bool handle_click_right(int x, int y);
 };
 
 #endif  // SRC_POPUP_H_

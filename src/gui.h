@@ -47,6 +47,7 @@ class gui_object_t : public event_handler_t {
   virtual void layout();
 
   virtual bool handle_click_left(int x, int y) { return 0; }
+  virtual bool handle_click_right(int x, int y) { return 0; }
   virtual bool handle_dbl_click(int x, int y, event_button_t button) {
     return 0; }
   virtual bool handle_drag(int dx, int dy) { return 0; }

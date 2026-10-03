@@ -111,6 +111,9 @@ typedef struct {
 	building_stock_t stock[BUILDING_MAX_STOCK];
 	int serf_index; /* Also used for burning building counter. */
 	int progress;
+	/* Type to build on the site once this burning building is gone
+	   (replace building, Amiga building +0x10). */
+	building_type_t queued_type;
 	union {
 		inventory_t *inventory;
 		uint16_t tick; /* Used for burning building. */

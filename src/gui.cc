@@ -134,6 +134,8 @@ gui_object_t::handle_event(const event_t *event) {
     case EVENT_TYPE_CLICK:
       if (event->button == EVENT_BUTTON_LEFT) {
         result = handle_click_left(event_x, event_y);
+      } else if (event->button == EVENT_BUTTON_RIGHT) {
+        result = handle_click_right(event_x, event_y);
       }
       break;
     case EVENT_TYPE_DRAG:

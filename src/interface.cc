@@ -206,6 +206,14 @@ interface_t::get_map_cursor_type(const player_t *player, map_pos_t pos,
     building_t *bld = game_get_building(MAP_OBJ_INDEX(pos));
     if (!BUILDING_IS_BURNING(bld)) {
       *cursor_type = MAP_CURSOR_TYPE_BUILDING;
+      /* The build button offers the site's size for replacing the
+         building (Amiga determine_map_cursor_type @0x19490). */
+      switch (game_get_replace_site_class(pos, player)) {
+      case 0: *bld_possibility = CAN_BUILD_MINE; break;
+      case 1: *bld_possibility = CAN_BUILD_SMALL; break;
+      case 2: *bld_possibility = CAN_BUILD_LARGE; break;
+      default: break;
+      }
     } else {
       *cursor_type = MAP_CURSOR_TYPE_NONE;
     }
@@ -544,6 +552,20 @@ interface_t::build_flag() {
 /* Build a new building. */
 void
 interface_t::build_building(building_type_t type) {
+  if (map_cursor_type == MAP_CURSOR_TYPE_BUILDING) {
+    /* Only a special click replaces a building (Amiga @0x185c0). */
+    if (!special_click) return;
+    int r = game_replace_building(map_cursor_pos, type, player);
+    if (r < 0) {
+      play_sound(SFX_NOT_ACCEPTED);
+      return;
+    }
+    play_sound(SFX_ACCEPTED);
+    close_popup();
+    determine_map_cursor_type();
+    return;
+  }
+
   int r = game_build_building(map_cursor_pos, type, player);
   if (r < 0) {
     play_sound(SFX_NOT_ACCEPTED);
@@ -662,6 +684,7 @@ interface_t::interface_t() {
   map_cursor_pos = MAP_POS(0, 0);
   map_cursor_type = (map_cursor_type_t)0;
   build_possibility = CAN_BUILD_NONE;
+  special_click = false;
 
   building_road = false;
 

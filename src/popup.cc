@@ -4251,6 +4251,25 @@ popup_box_t::handle_box_bld_4(int x, int y) {
   handle_clickmap(x, y, clkmap);
 }
 
+/* A right click on a build button is the original's special click:
+   it replaces the building at the cursor. */
+bool
+popup_box_t::handle_click_right(int x, int y) {
+  switch (box) {
+  case BOX_MINE_BUILDING:
+  case BOX_BASIC_BLD:
+  case BOX_BASIC_BLD_FLIP:
+  case BOX_ADV_1_BLD:
+  case BOX_ADV_2_BLD:
+    interface->set_special_click(true);
+    handle_click_left(x, y);
+    interface->set_special_click(false);
+    return true;
+  default:
+    return false;
+  }
+}
+
 bool
 popup_box_t::handle_click_left(int x, int y) {
   x -= 8;

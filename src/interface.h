@@ -84,6 +84,9 @@ class interface_t : public gui_object_t {
   map_pos_t map_cursor_pos;
   map_cursor_type_t map_cursor_type;
   build_possibility_t build_possibility;
+  /* Special click (right button) on a build button: replace the
+     building at the cursor (Amiga panel click bit 3). */
+  bool special_click;
 
   uint last_const_tick;
 
@@ -172,6 +175,7 @@ class interface_t : public gui_object_t {
 
   void build_flag();
   void build_building(building_type_t type);
+  void set_special_click(bool special) { special_click = special; }
   void build_castle();
   void build_road();
 

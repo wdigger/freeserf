@@ -750,6 +750,12 @@ load_v0_building_state(FILE *f, const v0_map_t *map)
 			building->u.level = *(uint16_t *)&building_data[14];
 		}
 
+		/* A burning building keeps the type that replaces it here. */
+		building->queued_type = BUILDING_NONE;
+		if (BUILDING_IS_BURNING(building)) {
+			building->queued_type = (building_type_t)(building_data[16] & 0x1f);
+		}
+
 		if (!BUILDING_IS_DONE(building)) {
 			building->stock[0].type = RESOURCE_PLANK;
 			building->stock[0].maximum = building_data[16];
@@ -1197,6 +1203,9 @@ save_text_building_state(FILE *f)
 
 			save_text_write_value(f, "serf_index", building->serf_index);
 			save_text_write_value(f, "progress", building->progress);
+			if (building->queued_type != BUILDING_NONE) {
+				save_text_write_value(f, "queued_type", building->queued_type);
+			}
 
 			if (!BUILDING_IS_BURNING(building) &&
 			    (BUILDING_IS_DONE(building) ||
@@ -2289,6 +2298,8 @@ load_text_building_section(section_t *section)
 			building->serf_index = atoi(s->value);
 		} else if (!strcmp(s->key, "progress")) {
 			building->progress = atoi(s->value);
+		} else if (!strcmp(s->key, "queued_type")) {
+			building->queued_type = (building_type_t)atoi(s->value);
 		} else if (!strcmp(s->key, "inventory") ||
 			   !strcmp(s->key, "flag") ||
 			   !strcmp(s->key, "level") ||

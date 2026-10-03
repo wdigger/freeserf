@@ -275,6 +275,8 @@ int game_build_castle(map_pos_t pos, player_t *player);
 int game_demolish_road(map_pos_t pos, player_t *player);
 int game_demolish_flag(map_pos_t pos, player_t *player);
 int game_demolish_building(map_pos_t pos, player_t *player);
+int game_replace_building(map_pos_t pos, building_type_t type, player_t *player);
+int game_get_replace_site_class(map_pos_t pos, const player_t *player);
 
 void game_set_inventory_resource_mode(inventory_t *inventory, int mode);
 void game_set_inventory_serf_mode(inventory_t *inventory, int mode);

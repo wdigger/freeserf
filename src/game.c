@@ -195,6 +195,7 @@ game_alloc_building(building_t **building, int *index)
 
 		building_t *b = &game.buildings[i];
 		b->type = BUILDING_NONE;
+		b->queued_type = BUILDING_NONE;
 		b->bld = 0;
 		b->flag = 0;
 		b->serf = 0;
@@ -2424,6 +2425,57 @@ handle_building_update(building_t *building)
 }
 
 /* Update buildings as part of the game progression. */
+/* Site class needed by a building type: 0 mine, 1 small, 2 large
+   (Amiga table @0xbe84). */
+static int
+building_site_class(building_type_t type)
+{
+	switch (type) {
+	case BUILDING_STONEMINE:
+	case BUILDING_COALMINE:
+	case BUILDING_IRONMINE:
+	case BUILDING_GOLDMINE:
+		return 0;
+	case BUILDING_FISHER:
+	case BUILDING_LUMBERJACK:
+	case BUILDING_BOATBUILDER:
+	case BUILDING_STONECUTTER:
+	case BUILDING_FORESTER:
+	case BUILDING_HUT:
+	case BUILDING_MILL:
+		return 1;
+	default:
+		return 2;
+	}
+}
+
+/* A burned down building is removed; a building queued by replacing
+   it is built on the site (Amiga building_burned_down @0xbdc4). */
+static void
+building_burned_down(building_t *building)
+{
+	map_pos_t pos = building->pos;
+	building_type_t type = building->queued_type;
+	player_t *player = game.player[BUILDING_PLAYER(building)];
+
+	map_set_object(pos, MAP_OBJ_NONE, 0);
+	game_free_building(BUILDING_INDEX(building));
+
+	if (type == BUILDING_NONE || player == NULL) return;
+
+	/* Remove the link to the flag kept while the old one burned. */
+	map_tile_t *tiles = game.map.tiles;
+	tiles[pos].paths &= ~BIT(DIR_DOWN_RIGHT);
+	tiles[MAP_MOVE_DOWN_RIGHT(pos)].paths &= ~BIT(DIR_UP_LEFT);
+
+	if ((type == BUILDING_HUT || type == BUILDING_TOWER ||
+	     type == BUILDING_FORTRESS) && !game_can_build_military(pos)) {
+		return;
+	}
+
+	game_build_building(pos, type, player);
+}
+
 static void
 update_buildings()
 {
@@ -2440,8 +2492,7 @@ update_buildings()
 				if (building->serf_index >= delta) {
 					building->serf_index -= delta;
 				} else {
-					map_set_object(building->pos, MAP_OBJ_NONE, 0);
-					game_free_building(i);
+					building_burned_down(building);
 				}
 			} else {
 				handle_building_update(building);
@@ -4351,11 +4402,13 @@ build_building(map_pos_t pos, building_type_t type, player_t *player,
 	map_set_object(pos, obj_types[type], bld_index);
 	tiles[pos].paths |= BIT(1);
 
+	/* The flag's path to the building, also for an existing flag
+	   (Amiga game_build_building @0x188a4). */
+	tiles[MAP_MOVE_DOWN_RIGHT(pos)].paths |= BIT(4);
 	if (MAP_OBJ(MAP_MOVE_DOWN_RIGHT(pos)) != MAP_OBJ_FLAG) {
 		map_set_object(MAP_MOVE_DOWN_RIGHT(pos), MAP_OBJ_FLAG, flg_index);
 		/* Amiga game_build_building @0x188c8: after the flag is set. */
 		map_move_deposit_to_neighbours(MAP_MOVE_DOWN_RIGHT(pos));
-		tiles[MAP_MOVE_DOWN_RIGHT(pos)].paths |= BIT(4);
 	}
 
 	if (split_path) build_flag_split_path(MAP_MOVE_DOWN_RIGHT(pos));
@@ -4368,6 +4421,69 @@ int
 game_build_building(map_pos_t pos, building_type_t type, player_t *player)
 {
 	return build_building(pos, type, player, 1);
+}
+
+/* Site class of the position as the build button sees it, ignoring an
+   own building standing there: 0 mine, 1 small, 2 large, -1 none
+   (Amiga determine_possible_building @0x19660). */
+int
+game_get_replace_site_class(map_pos_t pos, const player_t *player)
+{
+	if (!PLAYER_HAS_CASTLE(player)) return -1;
+
+	/* Own land around the site (the building's path to its flag is
+	   not in the way, unlike game_can_player_build). */
+	for (int i = 0; i < 7; i++) {
+		map_pos_t p = MAP_POS_ADD(pos, game.spiral_pos_pattern[i]);
+		if (!MAP_HAS_OWNER(p) || MAP_OWNER(p) != player->player_num) {
+			return -1;
+		}
+	}
+
+	if (game_can_build_mine(pos)) return 0;
+	if (game_can_build_large(pos)) return 2;
+	if (game_can_build_small(pos)) return 1;
+	return -1;
+}
+
+/* Replace an own building: it is demolished and the new type is built
+   on the site when the old one has burned down (special click on a
+   build button, Amiga build actions @0x185c0 / 0x18636 / 0x186aa and
+   building_link_site_to_flag @0x1923c). */
+int
+game_replace_building(map_pos_t pos, building_type_t type, player_t *player)
+{
+	if ((MAP_OBJ(pos) != MAP_OBJ_SMALL_BUILDING &&
+	     MAP_OBJ(pos) != MAP_OBJ_LARGE_BUILDING) ||
+	    !MAP_HAS_OWNER(pos) || MAP_OWNER(pos) != player->player_num) {
+		return -1;
+	}
+
+	building_t *building = game_get_building(MAP_OBJ_INDEX(pos));
+	if (BUILDING_IS_BURNING(building)) return -1;
+
+	if ((type == BUILDING_HUT || type == BUILDING_TOWER ||
+	     type == BUILDING_FORTRESS) && !game_can_build_military(pos)) {
+		return -1;
+	}
+
+	/* The mine button needs a mine site, the others a site of at
+	   least their size. */
+	int site = game_get_replace_site_class(pos, player);
+	int need = building_site_class(type);
+	if (site < 0) return -1;
+	if (need == 0 ? site != 0 : (site == 0 || site < need)) return -1;
+
+	if (demolish_building(pos) < 0) return -1;
+
+	building->queued_type = type;
+
+	/* Keep the site linked to its flag while the old building burns. */
+	map_tile_t *tiles = game.map.tiles;
+	tiles[pos].paths |= BIT(DIR_DOWN_RIGHT);
+	tiles[MAP_MOVE_DOWN_RIGHT(pos)].paths |= BIT(DIR_UP_LEFT);
+
+	return 0;
 }
 
 /* Create the initial serfs that occupies the castle. */
