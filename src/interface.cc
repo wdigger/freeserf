@@ -266,6 +266,12 @@ interface_t::determine_map_cursor_type_road() {
       } else {
         sprite = 44;
       }
+    } else if (game_can_join_road(pos, (dir_t)d, player)) {
+      /* An existing road can be joined by a special click, which places
+         a flag there (Amiga determine_map_cursor_type_road @0x19a3a). */
+      int h_diff = MAP_HEIGHT(MAP_MOVE(pos, d)) - h;
+      sprite = 39 + h_diff;
+      valid_dir |= BIT(d);
     } else {
       sprite = 44; /* striped */
     }
@@ -423,13 +429,26 @@ interface_t::build_road_segment(dir_t dir) {
     return -1;
   }
 
+  /* A step onto an existing road (paths, no flag) joins it with a
+     special click: a flag is placed there, which splits that road, and
+     the new road is connected to it (Amiga road step @0x16054). A plain
+     click is refused. */
+  map_pos_t target = MAP_MOVE(map_cursor_pos, dir);
+  if (MAP_PATHS(target) != 0 && !MAP_HAS_FLAG(target)) {
+    if (!special_click ||
+        !game_can_join_road(map_cursor_pos, dir, player)) {
+      return -1;
+    }
+    if (game_build_flag(target, player) < 0) return -1;
+  }
+
   building_road_dirs[building_road_length] = dir;
   building_road_length += 1;
 
   map_pos_t dest;
   int r = game_can_build_road(building_road_source, building_road_dirs,
                               building_road_length, player, &dest, NULL);
-  if (!r) {
+  if (r <= 0) {
     /* Invalid construction, undo. */
     return remove_road_segment();
   }
@@ -447,12 +466,22 @@ interface_t::build_road_segment(dir_t dir) {
       return 1;
     }
   } else if (MAP_PATHS(dest) == 0) {
-    /* No existing paths at destination, build segment. */
+    /* No existing paths at destination, build segment. A special
+       click also places a flag there and finishes the road
+       (Amiga road step @0x160da). */
+    if (special_click && game_can_build_flag(dest, player) &&
+        game_build_flag(dest, player) == 0) {
+      int r = game_build_road(building_road_source, building_road_dirs,
+                              building_road_length, player);
+      build_road_end();
+      update_map_cursor_pos(dest);
+      return r < 0 ? -1 : 1;
+    }
+
     update_map_cursor_pos(dest);
 
     /* TODO Pathway scrolling */
   } else {
-    /* TODO fast split path and connect on double click */
     return -1;
   }
 
@@ -466,7 +495,7 @@ interface_t::remove_road_segment() {
   map_pos_t dest;
   int r = game_can_build_road(building_road_source, building_road_dirs,
                               building_road_length, player, &dest, NULL);
-  if (!r) {
+  if (r <= 0) {
     /* Road construction is no longer valid, abort. */
     build_road_end();
     return -1;
@@ -739,6 +768,19 @@ void
 interface_t::update() {
   int tick_diff = game.const_tick - last_const_tick;
   last_const_tick = game.const_tick;
+
+  /* A road being built that has become impossible (land lost, objects
+     placed on its way) ends at once; the original draws roads into the
+     map, and losing it cancels the road building (Amiga demolish_road
+     @0x26566). */
+  if (building_road) {
+    map_pos_t dest;
+    if (game_can_build_road(building_road_source, building_road_dirs,
+                            building_road_length, player, &dest,
+                            NULL) <= 0) {
+      build_road_end();
+    }
+  }
 
   /* Show the end of the game unless a file or quit dialog is open
      (Amiga clear_serf_request_failure @0xa3aa). */

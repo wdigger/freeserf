@@ -124,6 +124,8 @@ class viewport_t : public gui_object_t {
   virtual void internal_draw();
   virtual void layout();
   virtual bool handle_click_left(int x, int y);
+  virtual bool handle_click_right(int x, int y);
+  void road_click(map_pos_t clk_pos);
   virtual bool handle_dbl_click(int x, int y, event_button_t button);
   virtual bool handle_drag(int x, int y);
 

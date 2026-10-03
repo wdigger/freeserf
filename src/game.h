@@ -251,6 +251,7 @@ void init_spiral_pos_pattern();
 int game_get_leveling_height(map_pos_t pos);
 
 int game_road_segment_valid(map_pos_t pos, dir_t dir);
+int game_can_join_road(map_pos_t pos, dir_t dir, const player_t *player);
 
 int game_can_build_military(map_pos_t pos);
 int game_can_build_small(map_pos_t pos);

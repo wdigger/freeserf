@@ -3050,13 +3050,13 @@ game_prepare_ground_analysis(map_pos_t pos, int estimates[5])
 
 /* Return non-zero if the road segment from pos in direction dir
    can be successfully constructed at the current time. */
-int
-game_road_segment_valid(map_pos_t pos, dir_t dir)
+static int
+road_segment_valid(map_pos_t pos, dir_t dir, int join)
 {
 	map_pos_t other_pos = MAP_MOVE(pos, dir);
 
 	map_obj_t obj = MAP_OBJ(other_pos);
-	if ((MAP_PATHS(other_pos) != 0 && obj != MAP_OBJ_FLAG) ||
+	if ((MAP_PATHS(other_pos) != 0 && obj != MAP_OBJ_FLAG && !join) ||
 	    map_space_from_obj[obj] >= MAP_SPACE_SEMIPASSABLE) {
 		return 0;
 	}
@@ -3072,6 +3072,25 @@ game_road_segment_valid(map_pos_t pos, dir_t dir)
 	}
 
 	return 1;
+}
+
+int
+game_road_segment_valid(map_pos_t pos, dir_t dir)
+{
+	return road_segment_valid(pos, dir, 0);
+}
+
+/* Whether a road being built may join the existing road at the segment's
+   end by placing a flag there (Amiga determine_map_cursor_type_road
+   @0x19a3a, road step @0x16054): the tile has paths but no flag and a
+   flag can be built on it. */
+int
+game_can_join_road(map_pos_t pos, dir_t dir, const player_t *player)
+{
+	map_pos_t other_pos = MAP_MOVE(pos, dir);
+	if (MAP_PATHS(other_pos) == 0 || MAP_HAS_FLAG(other_pos)) return 0;
+	if (!road_segment_valid(pos, dir, 1)) return 0;
+	return game_can_build_flag(other_pos, player);
 }
 
 /* Get road length category value for real length.

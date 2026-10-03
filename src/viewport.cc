@@ -2270,6 +2270,70 @@ viewport_t::internal_draw() {
   }
 }
 
+/* Click on a neighbour of the cursor while a road is being built. */
+void
+viewport_t::road_click(map_pos_t clk_pos) {
+  int clk_col = MAP_POS_COL(clk_pos);
+  int clk_row = MAP_POS_ROW(clk_pos);
+
+  int x = (clk_col - MAP_POS_COL(interface->get_map_cursor_pos()) + 1) &
+          game.map.col_mask;
+  int y = (clk_row - MAP_POS_ROW(interface->get_map_cursor_pos()) + 1) &
+          game.map.row_mask;
+  int dir = -1;
+
+  if (x == 0) {
+    if (y == 1) dir = DIR_LEFT;
+    else if (y == 0) dir = DIR_UP_LEFT;
+  } else if (x == 1) {
+    if (y == 2) dir = DIR_DOWN;
+    else if (y == 0) dir = DIR_UP;
+  } else if (x == 2) {
+    if (y == 1) dir = DIR_RIGHT;
+    else if (y == 2) dir = DIR_DOWN_RIGHT;
+  }
+
+  if (interface->build_roid_is_valid_dir((dir_t)dir)) {
+    int length = interface->get_building_road_length();
+    dir_t last_dir = DIR_RIGHT;
+    if (length > 0) last_dir = interface->get_building_road_dir(length-1);
+
+    if (length > 0 && DIR_REVERSE(last_dir) == dir) {
+      /* Delete existing path */
+      int r = interface->remove_road_segment();
+      if (r < 0) {
+        play_sound(SFX_NOT_ACCEPTED);
+      } else {
+        play_sound(SFX_CLICK);
+      }
+    } else {
+      /* Build new road segment */
+      int r = interface->build_road_segment((dir_t)dir);
+      if (r < 0) {
+        play_sound(SFX_NOT_ACCEPTED);
+      } else if (r == 0) {
+        play_sound(SFX_CLICK);
+      } else {
+        play_sound(SFX_ACCEPTED);
+      }
+    }
+  }
+}
+
+/* A right click while building a road is the original's special click
+   (right button held): it joins an existing road or ends the road with
+   a new flag. */
+bool
+viewport_t::handle_click_right(int x, int y) {
+  if (!interface->is_building_road()) return false;
+
+  set_redraw();
+  interface->set_special_click(true);
+  road_click(map_pos_from_screen_pix(x, y));
+  interface->set_special_click(false);
+  return true;
+}
+
 bool
 viewport_t::handle_click_left(int x, int y) {
   set_redraw();
@@ -2279,48 +2343,7 @@ viewport_t::handle_click_left(int x, int y) {
   int clk_row = MAP_POS_ROW(clk_pos);
 
   if (interface->is_building_road()) {
-    int x = (clk_col - MAP_POS_COL(interface->get_map_cursor_pos()) + 1) &
-            game.map.col_mask;
-    int y = (clk_row - MAP_POS_ROW(interface->get_map_cursor_pos()) + 1) &
-            game.map.row_mask;
-    int dir = -1;
-
-    if (x == 0) {
-      if (y == 1) dir = DIR_LEFT;
-      else if (y == 0) dir = DIR_UP_LEFT;
-    } else if (x == 1) {
-      if (y == 2) dir = DIR_DOWN;
-      else if (y == 0) dir = DIR_UP;
-    } else if (x == 2) {
-      if (y == 1) dir = DIR_RIGHT;
-      else if (y == 2) dir = DIR_DOWN_RIGHT;
-    }
-
-    if (interface->build_roid_is_valid_dir((dir_t)dir)) {
-      int length = interface->get_building_road_length();
-      dir_t last_dir = DIR_RIGHT;
-      if (length > 0) last_dir = interface->get_building_road_dir(length-1);
-
-      if (length > 0 && DIR_REVERSE(last_dir) == dir) {
-        /* Delete existing path */
-        int r = interface->remove_road_segment();
-        if (r < 0) {
-          play_sound(SFX_NOT_ACCEPTED);
-        } else {
-          play_sound(SFX_CLICK);
-        }
-      } else {
-        /* Build new road segment */
-        int r = interface->build_road_segment((dir_t)dir);
-        if (r < 0) {
-          play_sound(SFX_NOT_ACCEPTED);
-        } else if (r == 0) {
-          play_sound(SFX_CLICK);
-        } else {
-          play_sound(SFX_ACCEPTED);
-        }
-      }
-    }
+    road_click(clk_pos);
   } else {
     interface->update_map_cursor_pos(clk_pos);
     play_sound(SFX_CLICK);
@@ -2338,7 +2361,17 @@ viewport_t::handle_dbl_click(int x, int y, event_button_t button) {
   map_pos_t clk_pos = map_pos_from_screen_pix(x, y);
 
   if (interface->is_building_road()) {
-    if (clk_pos != interface->get_map_cursor_pos()) {
+    map_pos_t cursor = interface->get_map_cursor_pos();
+    int adjacent = 0;
+    for (int d = DIR_RIGHT; d <= DIR_UP; d++) {
+      if (MAP_MOVE(cursor, d) == clk_pos) adjacent = 1;
+    }
+    if (adjacent && MAP_PATHS(clk_pos) != 0 && !MAP_HAS_FLAG(clk_pos)) {
+      /* Double click on the next road tile joins that road. */
+      interface->set_special_click(true);
+      road_click(clk_pos);
+      interface->set_special_click(false);
+    } else if (clk_pos != interface->get_map_cursor_pos()) {
       map_pos_t pos = interface->get_building_road_source();
       uint length;
       dir_t *dirs = pathfinder_map(pos, clk_pos, &length);
