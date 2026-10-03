@@ -17,26 +17,8 @@
 *.app
 
 # freeserf specific
-.deps
-Makefile
-Makefile.in
 *.PA
-aclocal.m4
-autom4te.cache
-config.h
-config.h.in
-config.h.in~
-config.log
-config.status
-configure
-depcomp
 freeserf
-install-sh
-missing
-src/version-vcs.h
-stamp-h1
-compile
-src/.dirstamp
 
 # mac specific
 *.xcworkspace

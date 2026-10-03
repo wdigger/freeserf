@@ -23,10 +23,6 @@
 #define _FREESERF_ENDIAN_H
 
 
-#ifdef HAVE_CONFIG_H
-# include <config.h>
-#endif
-
 #ifdef HAVE_SYS_ENDIAN_H
 # include <sys/endian.h>
 #elif HAVE_ENDIAN_H

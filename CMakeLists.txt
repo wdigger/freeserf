@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(freeserf C CXX)
+project(freeserf VERSION 0.1 LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_EXTENSIONS ON)
@@ -46,7 +46,7 @@ else()
   list(APPEND SOURCES src/audio-dummy.cc)
 endif()
 
-# Version from git, like the gitversion rule of Makefile.am.
+# Version from git, shown in the log and the game start box.
 find_package(Git QUIET)
 set(VCS_VERSION "${PROJECT_VERSION}")
 if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")

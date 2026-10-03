@@ -2,34 +2,17 @@
 Build from repository
 ----------------------------
 
-### GNU like systems
-
-``` shell
-$ ./bootstrap
-$ ./configure
-```
-
-The bootstrap script will use autotools to set up the build environment
-and create the `configure` script.
-
-Run `./configure --help` for options. Use the `--enable-debug` option to
-enable some features that make debugging easier. If you are going to
-report bugs this should be enabled.
-
-Now compile by running
-
-``` shell
-$ make
-```
-
-The project can be rebuilt at any time by running `make` again.
-
-### CMake (any platform, including Windows)
-
 ``` shell
 $ cmake -S . -B build
 $ cmake --build build
 ```
+
+Use `-DCMAKE_BUILD_TYPE=Debug` to enable some features that make debugging
+easier. If you are going to report bugs this should be enabled. Audio
+needs SDL3_mixer; it is used when found (option `ENABLE_SDL3_MIXER`).
+
+The project can be rebuilt at any time by running `cmake --build build`
+again.
 
 
 Dependencies
@@ -116,10 +99,10 @@ Creating a new release
    use previous release tag as base (e.g. for 1.9.1 use 1.9 as base)
 2. Create release branch `release-X.Y`
 3. Apply any bugfixes for release
-4. Update version in `configure.ac`
-5. Run `make distcheck`
+4. Update version in `CMakeLists.txt`
+5. Check that a clean CMake build works
 7. Commit and tag release (`vX.Y` or `vX.Y.Z`)
-8. Push tag to Github and also upload source dist file to Github
+8. Push tag to Github and also upload a source archive (`git archive`) to Github
 
 Also remember to check before release that
 

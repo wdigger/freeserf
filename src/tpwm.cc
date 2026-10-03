@@ -23,10 +23,6 @@
 
 #include <cstring>
 
-#ifdef HAVE_CONFIG_H
-# include "config.h"
-#endif
-
 #ifdef HAVE_STDINT_H
 # include <stdint.h>
 #endif
