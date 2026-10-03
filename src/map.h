@@ -292,6 +292,7 @@ void map_init_minimap();
 void map_init();
 void map_deinit();
 void map_update();
+void map_move_deposit_to_neighbours(map_pos_t pos);
 
 
 #endif /* _MAP_H */

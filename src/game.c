@@ -3428,6 +3428,7 @@ game_build_flag(map_pos_t pos, player_t *player)
 
 	flag->pos = pos;
 	map_set_object(pos, MAP_OBJ_FLAG, flg_index);
+	map_move_deposit_to_neighbours(pos); /* Amiga game_build_flag @0x152c0 */
 
 	if (MAP_PATHS(pos) != 0) {
 		build_flag_split_path(pos);
@@ -3809,11 +3810,15 @@ game_build_building(map_pos_t pos, building_type_t type, player_t *player)
 
 	tiles[pos].obj &= ~BIT(7);
 
+	/* Amiga game_build_building @0x1887c: before the object is set. */
+	map_move_deposit_to_neighbours(pos);
 	map_set_object(pos, obj_types[type], bld_index);
 	tiles[pos].paths |= BIT(1);
 
 	if (MAP_OBJ(MAP_MOVE_DOWN_RIGHT(pos)) != MAP_OBJ_FLAG) {
 		map_set_object(MAP_MOVE_DOWN_RIGHT(pos), MAP_OBJ_FLAG, flg_index);
+		/* Amiga game_build_building @0x188c8: after the flag is set. */
+		map_move_deposit_to_neighbours(MAP_MOVE_DOWN_RIGHT(pos));
 		tiles[MAP_MOVE_DOWN_RIGHT(pos)].paths |= BIT(4);
 	}
 
@@ -5158,6 +5163,12 @@ game_add_player(uint face, uint color, uint supplies,
 
 	game.map_gold_morale_factor = 10 * 1024 * active_players;
 
+	/* Amiga map_init_dimensions @0x5e0c: each active player is guaranteed
+	   1/8 of the serf limit, the rest is shared by land area. */
+	game.max_serfs_per_player = game.serf_limit >> 3;
+	game.max_serfs_from_land = game.serf_limit -
+		(game.serf_limit >> 3) * active_players;
+
 	return number;
 }
 
@@ -5374,6 +5385,12 @@ game_load_random_map(int size, const random_state_t *rnd)
 	game.map_preserve_bugs = 0;
 
 	memcpy(&game.init_map_rnd, rnd, sizeof(random_state_t));
+
+	/* The original XORs the seed for free games too
+	   (Amiga menu_setup_players @0x286be). */
+	game.init_map_rnd.state[0] ^= 0x5a5a;
+	game.init_map_rnd.state[1] ^= 0xa5a5;
+	game.init_map_rnd.state[2] ^= 0xc3c3;
 
 	game_init_map();
 	game_allocate_objects();

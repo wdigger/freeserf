@@ -1400,6 +1400,70 @@ map_set_serf_index(map_pos_t pos, int index)
 	/* TODO Mark dirty in viewport. */
 }
 
+/* Add up to `*amount` of deposit `type` (type << 5) to the tile at pos
+   (Amiga map_add_deposit_to_tile @0x189b8). Tiles with a flag or building
+   and tiles holding another deposit type are skipped; a tile holds at most
+   31. `*amount` is reduced by what was placed. */
+static void
+map_add_deposit_to_tile(map_pos_t pos, int type, int *amount)
+{
+	map_tile_t *tiles = game.map.tiles;
+
+	int obj = MAP_OBJ(pos);
+	if (obj >= MAP_OBJ_FLAG && obj <= MAP_OBJ_CASTLE) return;
+
+	int res = tiles[pos].resource;
+	if (res == 0) {
+		tiles[pos].resource = type | *amount;
+		*amount = 0;
+	} else if ((res & 0xe0) == type) {
+		int sum = (res & 0x1f) + *amount;
+		if (sum >= 32) {
+			tiles[pos].resource = type | 0x1f;
+			*amount = sum - 0x1f;
+		} else {
+			tiles[pos].resource = type | sum;
+			*amount = 0;
+		}
+	}
+}
+
+/* In the original the deposit of a tile shares its byte with the index of
+   a flag or building on it. Before the index is written, the deposit is
+   handed to nearby tiles (Amiga map_move_deposit_to_neighbours @0x18938),
+   in the step order right, up, left, down, down, right from pos; what does
+   not fit is lost (and leaves map_gold_deposit if it is gold). The tile's
+   own deposit byte is overwritten by the object index afterwards. For a
+   flag the object is already set when this runs (so pos itself is skipped);
+   for a building it is not, so the step back onto pos can refill pos before
+   its deposit is lost. */
+void
+map_move_deposit_to_neighbours(map_pos_t pos)
+{
+	map_tile_t *tiles = game.map.tiles;
+
+	int res = tiles[pos].resource;
+	if (res == 0) return;
+
+	int type = res & 0xe0;
+	int amount = res & 0x1f;
+
+	const dir_t steps[] = {
+		DIR_RIGHT, DIR_UP, DIR_LEFT, DIR_DOWN, DIR_DOWN, DIR_RIGHT
+	};
+	map_pos_t p = pos;
+	for (int i = 0; i < 6 && amount > 0; i++) {
+		p = MAP_MOVE(p, steps[i]);
+		map_add_deposit_to_tile(p, type, &amount);
+	}
+
+	if (amount > 0 && type == (GROUND_DEPOSIT_GOLD << 5)) {
+		game.map_gold_deposit -= amount;
+	}
+
+	tiles[pos].resource = 0;
+}
+
 /* Update public parts of the map data. */
 static void
 map_update_public(map_pos_t pos)
@@ -1468,18 +1532,21 @@ map_update_hidden(map_pos_t pos)
 	    tiles[pos].resource > 0) {
 		int r = game_random_int();
 
-		if (tiles[pos].resource < 10 && (r & 0x3f00)) {
+		/* Original (Amiga map_update @0xa69c): a fish is added only when
+		   (r & 0x3f00) == 0, i.e. with probability 1/64. */
+		if (tiles[pos].resource < 10 && !(r & 0x3f00)) {
 			/* Spawn more fish. */
 			tiles[pos].resource += 1;
 		}
 
-		/* Move in a random direction of: right, down right, left, up left */
+		/* Move in a random direction of: down right, down, up left, up
+		   (Amiga map_update @0xa6ae: dirs[1], dirs[2], dirs[4], dirs[5]). */
 		map_pos_t adj_pos = pos;
 		switch ((r >> 2) & 3) {
-		case 0: adj_pos = MAP_MOVE_RIGHT(adj_pos); break;
-		case 1: adj_pos = MAP_MOVE_DOWN_RIGHT(adj_pos); break;
-		case 2: adj_pos = MAP_MOVE_LEFT(adj_pos); break;
-		case 3: adj_pos = MAP_MOVE_UP_LEFT(adj_pos); break;
+		case 0: adj_pos = MAP_MOVE_DOWN_RIGHT(adj_pos); break;
+		case 1: adj_pos = MAP_MOVE_DOWN(adj_pos); break;
+		case 2: adj_pos = MAP_MOVE_UP_LEFT(adj_pos); break;
+		case 3: adj_pos = MAP_MOVE_UP(adj_pos); break;
 		default: NOT_REACHED(); break;
 		}
 
