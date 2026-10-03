@@ -98,6 +98,8 @@ class popup_box_t : public gui_object_t {
   minimap_t *minimap;
 
   box_t box;
+  /* Game end: 0 result picture, 1 result text, 2 mission picture. */
+  int game_end_stage;
 
  public:
   explicit popup_box_t(interface_t *interface);
@@ -180,6 +182,7 @@ class popup_box_t : public gui_object_t {
   void draw_player_faces_box();
   void draw_demolish_box();
   void draw_game_end_box();
+  int get_game_end_picture() const;
   void activate_sett_5_6_item(int index);
   void move_sett_5_6_item(int up, int to_end);
   void handle_send_geologist();
@@ -221,6 +224,7 @@ class popup_box_t : public gui_object_t {
   void handle_message_clk(int x, int y);
   void handle_player_faces_click(int x, int y);
   void handle_box_demolish_clk(int x, int y);
+  void handle_game_end_clk(int x, int y);
   void handle_minimap_clk(int x, int y);
   void handle_box_bld_1(int x, int y);
   void handle_box_bld_2(int x, int y);

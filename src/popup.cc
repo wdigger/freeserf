@@ -2627,9 +2627,43 @@ popup_box_t::draw_demolish_box() {
   draw_green_string(0, 86, "      sure");
 }
 
+/* Picture of the current game end stage (DATA_ART_BOX_BASE index), or -1.
+   Amiga @0x1d6e8 loads these from gfxpics: 0 = player 0 won, 1 = player 2
+   won a two player game, 2 = lost; after a won mission the picture of
+   the mission from the table @0x1d943 (by 1-based mission level). */
+int
+popup_box_t::get_game_end_picture() const {
+  int winner = game.winning_player >= 0 ? game.winning_player : 0;
+  if (game_end_stage == 0) {
+    if (winner == 0) return 0;
+    if (game.game_type == GAME_TYPE_2_PLAYERS && winner == 1) return 1;
+    return 2;
+  } else if (game_end_stage == 2) {
+    const int mission_picture[] = {
+      -1, 3, -1, -1, 4, -1, -1, 5, -1, -1, 6, -1, -1, 7, -1, -1,
+      8, -1, -1, 9, -1, -1, 10, -1, -1, 11, -1, -1, 12, -1, 13
+    };
+    int level = game.mission_level + 1;
+    if (game.game_type != GAME_TYPE_MISSION || winner != 0 ||
+        level < 0 || level > 30) {
+      return -1;
+    }
+    return mission_picture[level];
+  }
+  return -1;
+}
+
 /* End of the game: winner and result (Amiga popup case 53 @0x1d6e8). */
 void
 popup_box_t::draw_game_end_box() {
+  if (game_end_stage != 1) {
+    int picture = get_game_end_picture();
+    if (picture >= 0) {
+      frame->draw_sprite(8, 9, DATA_ART_BOX_BASE + picture);
+    }
+    return;
+  }
+
   draw_box_background(129);
 
   int winner = game.winning_player >= 0 ? game.winning_player : 0;
@@ -2651,9 +2685,11 @@ popup_box_t::draw_game_end_box() {
         draw_green_string(4, 135, mission_name[next]);
       }
     } else {
-      draw_green_string(0, 6, "SORRY, ONLY ONE OF");
-      draw_green_string(0, 16, "YOUR ENEMIES HAS");
-      draw_green_string(0, 26, "   GAINED THE");
+      /* The Amiga line (@0x1da31) squeezes this into 16 characters;
+         spelled out it needs a reflow to fit the box. */
+      draw_green_string(0, 6, "SORRY, ONLY ONE");
+      draw_green_string(0, 16, "OF YOUR ENEMIES");
+      draw_green_string(0, 26, "HAS GAINED THE");
       draw_green_string(0, 36, " SUPERIORITY IN");
       draw_green_string(0, 46, "  THIS MISSION");
     }
@@ -4158,6 +4194,23 @@ popup_box_t::handle_player_faces_click(int x, int y) {
   handle_clickmap(x, y, clkmap);
 }
 
+/* Every click of the game end box advances to the next picture
+   (Amiga wait_for_mouse_click); the game resumes at the end. */
+void
+popup_box_t::handle_game_end_clk(int x, int y) {
+  game_end_stage += 1;
+  if (game_end_stage == 2 && get_game_end_picture() < 0) {
+    game_end_stage += 1;
+  }
+
+  if (game_end_stage > 2) {
+    interface->close_popup();
+    game_pause(0);
+  } else {
+    set_redraw();
+  }
+}
+
 void
 popup_box_t::handle_box_demolish_clk(int x, int y) {
   const int clkmap[] = {
@@ -4409,7 +4462,7 @@ popup_box_t::handle_click_left(int x, int y) {
     handle_box_demolish_clk(x, y);
     break;
   case BOX_GAME_END:
-    handle_box_close_clk(x, y);
+    handle_game_end_clk(x, y);
     break;
   default:
     LOGD("popup", "unhandled box: %i", box);
@@ -4421,6 +4474,7 @@ popup_box_t::handle_click_left(int x, int y) {
 
 popup_box_t::popup_box_t(interface_t *interface) {
   this->interface = interface;
+  game_end_stage = 1;
 
   /* Initialize minimap */
   minimap = new minimap_t(interface);
@@ -4438,6 +4492,10 @@ popup_box_t::~popup_box_t() {
 }
 
 void popup_box_t::show(box_t box) {
+  if (box == BOX_GAME_END) {
+    /* No result picture in a demo game. */
+    game_end_stage = (game.game_type == GAME_TYPE_DEMO) ? 1 : 0;
+  }
   set_box(box);
   set_displayed(true);
 }
