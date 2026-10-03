@@ -155,70 +155,21 @@ void
 interface_t::get_map_cursor_type(const player_t *player, map_pos_t pos,
                                  build_possibility_t *bld_possibility,
                                  map_cursor_type_t *cursor_type) {
-  if (game_can_build_castle(pos, player)) {
-    *bld_possibility = CAN_BUILD_CASTLE;
-  } else if (game_can_player_build(pos, player) &&
-       map_space_from_obj[MAP_OBJ(pos)] == MAP_SPACE_OPEN &&
-       (game_can_build_flag(MAP_MOVE_DOWN_RIGHT(pos), player) ||
-        MAP_HAS_FLAG(MAP_MOVE_DOWN_RIGHT(pos)))) {
-    if (game_can_build_mine(pos)) {
-      *bld_possibility = CAN_BUILD_MINE;
-    } else if (game_can_build_large(pos)) {
-      *bld_possibility = CAN_BUILD_LARGE;
-    } else if (game_can_build_small(pos)) {
-      *bld_possibility = CAN_BUILD_SMALL;
-    } else if (game_can_build_flag(pos, player)) {
-      *bld_possibility = CAN_BUILD_FLAG;
-    } else {
-      *bld_possibility = CAN_BUILD_NONE;
-    }
-  } else if (game_can_build_flag(pos, player)) {
-    *bld_possibility = CAN_BUILD_FLAG;
-  } else {
-    *bld_possibility = CAN_BUILD_NONE;
-  }
+  /* The same determination as the original's panel and build actions
+     (determine_map_cursor_type @0x19368). */
+  game_map_cursor_t c;
+  game_get_map_cursor(player, pos, &c);
+  *cursor_type = (map_cursor_type_t)c.cursor_type;
+  *bld_possibility = (build_possibility_t)c.possibility;
 
-  if (MAP_OBJ(pos) == MAP_OBJ_FLAG &&
-      MAP_OWNER(pos) == player->player_num) {
-    if (game_can_demolish_flag(pos, player)) {
-      *cursor_type = MAP_CURSOR_TYPE_REMOVABLE_FLAG;
-    } else {
-      *cursor_type = MAP_CURSOR_TYPE_FLAG;
-    }
-  } else if (!MAP_HAS_BUILDING(pos) && !MAP_HAS_FLAG(pos)) {
-    int paths = MAP_PATHS(pos);
-    if (paths == 0) {
-      if (MAP_OBJ(MAP_MOVE_DOWN_RIGHT(pos)) == MAP_OBJ_FLAG) {
-        *cursor_type = MAP_CURSOR_TYPE_CLEAR_BY_FLAG;
-      } else if (MAP_PATHS(MAP_MOVE_DOWN_RIGHT(pos)) == 0) {
-        *cursor_type = MAP_CURSOR_TYPE_CLEAR;
-      } else {
-        *cursor_type = MAP_CURSOR_TYPE_CLEAR_BY_PATH;
-      }
-    } else if (MAP_OWNER(pos) == player->player_num) {
-      *cursor_type = MAP_CURSOR_TYPE_PATH;
-    } else {
-      *cursor_type = MAP_CURSOR_TYPE_NONE;
-    }
-  } else if ((MAP_OBJ(pos) == MAP_OBJ_SMALL_BUILDING ||
-              MAP_OBJ(pos) == MAP_OBJ_LARGE_BUILDING) &&
-             MAP_OWNER(pos) == player->player_num) {
-    building_t *bld = game_get_building(MAP_OBJ_INDEX(pos));
-    if (!BUILDING_IS_BURNING(bld)) {
-      *cursor_type = MAP_CURSOR_TYPE_BUILDING;
-      /* The build button offers the site's size for replacing the
-         building (Amiga determine_map_cursor_type @0x19490). */
-      switch (game_get_replace_site_class(pos, player)) {
-      case 0: *bld_possibility = CAN_BUILD_MINE; break;
-      case 1: *bld_possibility = CAN_BUILD_SMALL; break;
-      case 2: *bld_possibility = CAN_BUILD_LARGE; break;
-      default: break;
-      }
-    } else {
-      *cursor_type = MAP_CURSOR_TYPE_NONE;
-    }
-  } else {
-    *cursor_type = MAP_CURSOR_TYPE_NONE;
+  /* Like the original, keep the result in the player's build bits:
+     bit 1 no flag here, bit 0 no military building here. */
+  player_t *p = game.player[player->player_num];
+  if (c.no_flag) p->build |= BIT(1);
+  else p->build &= ~BIT(1);
+  if (c.military_known) {
+    if (c.no_military) p->build |= BIT(0);
+    else p->build &= ~BIT(0);
   }
 }
 

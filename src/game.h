@@ -254,14 +254,43 @@ int game_road_segment_valid(map_pos_t pos, dir_t dir);
 int game_can_join_road(map_pos_t pos, dir_t dir, const player_t *player);
 
 int game_can_build_military(map_pos_t pos);
-int game_can_build_small(map_pos_t pos);
-int game_can_build_mine(map_pos_t pos);
-int game_can_build_large(map_pos_t pos);
 int game_can_build_building(map_pos_t pos, building_type_t type,
 			    const player_t *player);
+/* Map cursor of the original (determine_map_cursor_type): the cursor
+   type (same values as map_cursor_type_t) and what can be built
+   (same values as build_possibility_t), plus the player build bits it
+   sets: no_flag (bit 1) and no_military (bit 0, set only when
+   military_known). */
+#define GAME_CURSOR_NONE            0
+#define GAME_CURSOR_FLAG            1
+#define GAME_CURSOR_REMOVABLE_FLAG  2
+#define GAME_CURSOR_BUILDING        3
+#define GAME_CURSOR_PATH            4
+#define GAME_CURSOR_CLEAR_BY_FLAG   5
+#define GAME_CURSOR_CLEAR_BY_PATH   6
+#define GAME_CURSOR_CLEAR           7
+
+#define GAME_CAN_BUILD_NONE    0
+#define GAME_CAN_BUILD_FLAG    1
+#define GAME_CAN_BUILD_MINE    2
+#define GAME_CAN_BUILD_SMALL   3
+#define GAME_CAN_BUILD_LARGE   4
+#define GAME_CAN_BUILD_CASTLE  5
+
+typedef struct {
+	int cursor_type;
+	int possibility;
+	int no_flag;
+	int no_military;
+	int military_known;
+} game_map_cursor_t;
+
+void game_get_map_cursor(const player_t *player, map_pos_t pos,
+			 game_map_cursor_t *c);
+void game_get_map_cursor_clear(const player_t *player, map_pos_t pos,
+			       uint own, game_map_cursor_t *c);
 int game_can_build_castle(map_pos_t pos, const player_t *player);
 int game_can_build_flag(map_pos_t pos, const player_t *player);
-int game_can_player_build(map_pos_t pos, const player_t *player);
 
 int game_can_build_road(map_pos_t source, const dir_t dirs[], uint length,
 			const player_t *player, map_pos_t *dest, int *water);

@@ -234,18 +234,23 @@ typedef enum {
 } map_obj_t;
 
 
-/* A map space can be OPEN which means that
-   a building can be constructed in the space.
-   A FILLED space can be passed by a serf, but
-   nothing can be built in this space except roads.
-   A SEMIPASSABLE space is like FILLED but no roads
-   can be built. A IMPASSABLE space can neither be
-   used for contructions nor passed by serfs. */
+/* Space taken by a map object, in the original's encoding (table
+   @0x1f42). An OPEN space allows constructions. A FILLED space (trees)
+   allows roads but no constructions. An IMPASSABLE space (stones, water
+   objects, but also fields and seeds) allows neither. Flags and the
+   building sizes have their own values. Whether serfs can pass is the
+   stored blocked bit (MAP_BLOCKED), not this table. */
 typedef enum {
 	MAP_SPACE_OPEN = 0,
 	MAP_SPACE_FILLED,
-	MAP_SPACE_SEMIPASSABLE,
+	/* Semipassable (fields, seeds) and impassable objects share one
+	   value, as in the original (map_space_from_obj @0x1f42). */
 	MAP_SPACE_IMPASSABLE,
+	MAP_SPACE_FLAG,
+	MAP_SPACE_SMALL_BUILDING,
+	MAP_SPACE_LARGE_BUILDING,
+	MAP_SPACE_CASTLE,
+	MAP_SPACE_INVALID = 0xff	/* object 127 */
 } map_space_t;
 
 typedef enum {

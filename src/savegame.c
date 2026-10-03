@@ -2960,8 +2960,14 @@ load_text_map_state(list_t *sections)
 		for (uint y = 0; y < game.map.rows; y++) {
 			for (uint x = 0; x < game.map.cols; x++) {
 				map_pos_t pos = MAP_POS(x, y);
-				map_space_t space = map_space_from_obj[MAP_OBJ(pos)];
-				if (MAP_IN_WATER(pos) || space == MAP_SPACE_IMPASSABLE) {
+				map_obj_t obj = MAP_OBJ(pos);
+				map_space_t space = map_space_from_obj[obj];
+				int field = (obj >= MAP_OBJ_SEEDS_0 && obj <= MAP_OBJ_SEEDS_5) ||
+					(obj >= MAP_OBJ_FIELD_0 && obj <= MAP_OBJ_FIELD_5);
+				if (MAP_IN_WATER(pos) ||
+				    (space == MAP_SPACE_IMPASSABLE && !field) ||
+				    (space >= MAP_SPACE_SMALL_BUILDING &&
+				     space <= MAP_SPACE_CASTLE)) {
 					MAP_SET_BLOCKED(pos);
 				}
 			}

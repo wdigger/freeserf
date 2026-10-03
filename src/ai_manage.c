@@ -23,22 +23,9 @@
 #include "ai_internal.h"
 #include "resource.h"
 
-/* Amiga map_space_from_obj table @0x1f42 (game+0x150). Its encoding
-   differs from legacy map_space_from_obj (findings MAP-12): 0 open,
-   1 filled, 2 semipassable/impassable, 3 flag, 4/5/6 small/large
-   building/castle, 0xff for object 127. */
-static const uint8_t ai_space_from_obj[128] = {
-	0, 3, 4, 5, 6, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2,
-	2, 2, 1, 0, 0, 0, 0, 0, 2, 2, 1, 1, 1, 1, 1, 1,
-	1, 0, 1, 1, 1, 1, 0, 1, 1, 2, 2, 2, 2, 2, 2, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 255
-};
 
-#define AI_SPACE(pos)  (ai_space_from_obj[MAP_OBJ(pos)])
+/* map_space_from_obj uses the original's encoding (table @0x1f42). */
+#define AI_SPACE(pos)  (map_space_from_obj[MAP_OBJ(pos)])
 
 /* Height byte of the original: bit 7 has owner, bits 5-6 owner.
    Compared with (player + 4) << 5 by the original. */

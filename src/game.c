@@ -3056,8 +3056,11 @@ road_segment_valid(map_pos_t pos, dir_t dir, int join)
 	map_pos_t other_pos = MAP_MOVE(pos, dir);
 
 	map_obj_t obj = MAP_OBJ(other_pos);
+	/* Impassable objects and buildings are refused, flags are allowed
+	   (Amiga determine_map_cursor_type_road @0x19a16). */
+	map_space_t space = map_space_from_obj[obj];
 	if ((MAP_PATHS(other_pos) != 0 && obj != MAP_OBJ_FLAG && !join) ||
-	    map_space_from_obj[obj] >= MAP_SPACE_SEMIPASSABLE) {
+	    space == MAP_SPACE_IMPASSABLE || space >= MAP_SPACE_SMALL_BUILDING) {
 		return 0;
 	}
 
@@ -3945,39 +3948,15 @@ build_flag_split_path(map_pos_t pos)
 	restore_path_serf_info(flag, path_2_dir, &path_2_data);
 }
 
-/* Check whether player can build flag at pos. */
+/* Check whether player can build flag at pos (the original's build flag
+   action tests player build bit 1 left by determine_map_cursor_type). */
 int
 game_can_build_flag(map_pos_t pos, const player_t *player)
 {
-	/* Check owner of land */
-	if (!MAP_HAS_OWNER(pos) ||
-	    MAP_OWNER(pos) != player->player_num) {
-		return 0;
-	}
-
-	/* Check that land is clear */
-	if (map_space_from_obj[MAP_OBJ(pos)] != MAP_SPACE_OPEN) {
-		return 0;
-	}
-
-	/* Check whether cursor is in water */
-	if (MAP_TYPE_UP(pos) < 4 &&
-	    MAP_TYPE_DOWN(pos) < 4 &&
-	    MAP_TYPE_DOWN(MAP_MOVE_LEFT(pos)) < 4 &&
-	    MAP_TYPE_UP(MAP_MOVE_UP_LEFT(pos)) < 4 &&
-	    MAP_TYPE_DOWN(MAP_MOVE_UP_LEFT(pos)) < 4 &&
-	    MAP_TYPE_UP(MAP_MOVE_UP(pos)) < 4) {
-		return 0;
-	}
-
-	/* Check that no flags are nearby */
-	for (int d = DIR_RIGHT; d <= DIR_UP; d++) {
-		if (MAP_OBJ(MAP_MOVE(pos, d)) == MAP_OBJ_FLAG) {
-			return 0;
-		}
-	}
-
-	return 1;
+	if (!PLAYER_HAS_CASTLE(player)) return 0;
+	game_map_cursor_t c;
+	game_get_map_cursor(player, pos, &c);
+	return !c.no_flag;
 }
 
 /* Build flag at pos. */
@@ -4004,26 +3983,15 @@ game_build_flag(map_pos_t pos, player_t *player)
 	return 0;
 }
 
-/* Check whether military buildings are allowed at pos. */
+/* Check whether military buildings are allowed at pos: no military
+   building in the second shell (Amiga @0x196fe; the original does not
+   look at the center and the first shell). */
+static int cursor_military_near(map_pos_t pos);
+
 int
 game_can_build_military(map_pos_t pos)
 {
-	/* Check that no military buildings are nearby */
-	for (int i = 0; i < 1+6+12; i++) {
-		map_pos_t p = MAP_POS_ADD(pos, game.spiral_pos_pattern[i]);
-		if (MAP_OBJ(p) >= MAP_OBJ_SMALL_BUILDING &&
-		    MAP_OBJ(p) <= MAP_OBJ_CASTLE) {
-			building_t *bld = game_get_building(MAP_OBJ_INDEX(p));
-			if (BUILDING_TYPE(bld) == BUILDING_HUT ||
-			    BUILDING_TYPE(bld) == BUILDING_TOWER ||
-			    BUILDING_TYPE(bld) == BUILDING_FORTRESS ||
-			    BUILDING_TYPE(bld) == BUILDING_CASTLE) {
-				return 0;
-			}
-		}
-	}
-
-	return 1;
+	return !cursor_military_near(pos);
 }
 
 /* Return the height that is needed before a large building can be built.
@@ -4074,108 +4042,281 @@ game_get_leveling_height(map_pos_t pos)
 	return h_new;
 }
 
-static int
-map_types_within(map_pos_t pos, uint low, uint high)
-{
-	if ((MAP_TYPE_UP(pos) >= low &&
-	     MAP_TYPE_UP(pos) <= high) &&
-	    (MAP_TYPE_DOWN(pos) >= low &&
-	     MAP_TYPE_DOWN(pos) <= high) &&
-	    (MAP_TYPE_DOWN(MAP_MOVE_LEFT(pos)) >= low &&
-	     MAP_TYPE_DOWN(MAP_MOVE_LEFT(pos)) <= high) &&
-	    (MAP_TYPE_UP(MAP_MOVE_UP_LEFT(pos)) >= low &&
-	     MAP_TYPE_UP(MAP_MOVE_UP_LEFT(pos)) <= high) &&
-	    (MAP_TYPE_DOWN(MAP_MOVE_UP_LEFT(pos)) >= low &&
-	     MAP_TYPE_DOWN(MAP_MOVE_UP_LEFT(pos)) <= high) &&
-	    (MAP_TYPE_UP(MAP_MOVE_UP(pos)) >= low &&
-	     MAP_TYPE_UP(MAP_MOVE_UP(pos)) <= high)) {
-		return 1;
-	}
+/* ---- Map cursor of the original (determine_map_cursor_type @0x19368) ---- */
 
+#define CURSOR_SPACE(pos)  (map_space_from_obj[MAP_OBJ(pos)])
+#define CURSOR_OWNER(pos)  ((uint)(game.map.tiles[(pos)].height & 0xe0))
+#define CURSOR_TYPES(pos)  ((uint)game.map.tiles[(pos)].type)
+#define CURSOR_PATHS(pos)  ((uint)(game.map.tiles[(pos)].paths & 0x3f))
+
+static map_pos_t
+cursor_spiral(map_pos_t pos, int i)
+{
+	return MAP_POS_ADD(pos, game.spiral_pos_pattern[i]);
+}
+
+/* Owner pattern of the height byte for player: bit 7 has owner, bits
+   5-6 owner; a player without castle builds on land without owner. */
+static uint
+cursor_own(const player_t *player)
+{
+	if (!PLAYER_HAS_CASTLE(player)) return 0;
+	return 0x80 | ((player->player_num & 3) << 5);
+}
+
+/* determine_map_cursor_type_sub @0x196d8: 0 grass/desert, 1 mountain,
+   2 water or other. */
+static int
+cursor_triangle_class(uint type)
+{
+	if (type < 4) return 2;
+	if (type < 8) return 0;
+	if (type >= 11 && type < 15) return 1;
+	return 2;
+}
+
+/* Military buildings in the second shell only (spiral 7..18). */
+static int
+cursor_military_near(map_pos_t pos)
+{
+	for (int i = 7; i <= 18; i++) {
+		map_pos_t p = cursor_spiral(pos, i);
+		int obj = MAP_OBJ(p);
+		if (obj >= MAP_OBJ_SMALL_BUILDING && obj <= MAP_OBJ_CASTLE) {
+			building_t *b = game_get_building(MAP_OBJ_INDEX(p));
+			int t = BUILDING_TYPE(b);
+			if (t == BUILDING_HUT || t == BUILDING_TOWER ||
+			    t == BUILDING_FORTRESS || t == BUILDING_CASTLE) {
+				return 1;
+			}
+		}
+	}
 	return 0;
 }
 
-/* Check that the outer triangles around the building flag are land
-   (Amiga get_map_cursor_type @0x19628). */
-static int
-building_flag_on_land(map_pos_t pos)
+/* determine_possible_building @0x19660. */
+static void
+cursor_possible_building(const player_t *player, map_pos_t pos, uint own,
+			 game_map_cursor_t *c)
 {
-	map_pos_t flag_pos = MAP_MOVE_DOWN_RIGHT(pos);
-	return MAP_TYPE_UP(MAP_MOVE_RIGHT(pos)) >= 4 &&
-	       MAP_TYPE_DOWN(MAP_MOVE_DOWN(pos)) >= 4 &&
-	       MAP_TYPE_UP(flag_pos) >= 4 &&
-	       MAP_TYPE_DOWN(flag_pos) >= 4;
-}
+	int has_castle = PLAYER_HAS_CASTLE(player);
 
-/* Checks whether a small building is possible at position.*/
-int
-game_can_build_small(map_pos_t pos)
-{
-	return building_flag_on_land(pos) && map_types_within(pos, 4, 7);
-}
-
-/* Checks whether a mine is possible at position. The original allows
-   a mix of mountain and grass as long as one triangle is mountain. */
-int
-game_can_build_mine(map_pos_t pos)
-{
-	if (!building_flag_on_land(pos)) return 0;
-
-	const uint types[] = {
-		MAP_TYPE_UP(pos),
-		MAP_TYPE_DOWN(pos),
-		MAP_TYPE_DOWN(MAP_MOVE_LEFT(pos)),
-		MAP_TYPE_UP(MAP_MOVE_UP_LEFT(pos)),
-		MAP_TYPE_DOWN(MAP_MOVE_UP_LEFT(pos)),
-		MAP_TYPE_UP(MAP_MOVE_UP(pos))
-	};
-
-	int mountain = 0;
-	for (int i = 0; i < 6; i++) {
-		if (types[i] >= 11 && types[i] <= 14) mountain = 1;
-		else if (types[i] < 4 || types[i] > 7) return 0;
+	for (int i = 1; i <= 6; i++) {
+		if (CURSOR_OWNER(cursor_spiral(pos, i)) != own) return;
 	}
 
-	return mountain;
-}
+	map_pos_t p4 = cursor_spiral(pos, 4);
+	map_pos_t p5 = cursor_spiral(pos, 5);
+	map_pos_t p6 = cursor_spiral(pos, 6);
+	int cls = cursor_triangle_class(CURSOR_TYPES(pos) >> 4) |
+		cursor_triangle_class(CURSOR_TYPES(pos) & 0xf) |
+		cursor_triangle_class(CURSOR_TYPES(p4) & 0xf) |
+		cursor_triangle_class(CURSOR_TYPES(p5) >> 4) |
+		cursor_triangle_class(CURSOR_TYPES(p5) & 0xf) |
+		cursor_triangle_class(CURSOR_TYPES(p6) >> 4);
+	if (cls >= 2) return;
+	if (cls == 1) {
+		/* Some mountain, the rest grass: a mine. */
+		if (has_castle) c->possibility = GAME_CAN_BUILD_MINE;
+		return;
+	}
+	if (has_castle) c->possibility = GAME_CAN_BUILD_SMALL;
 
-/* Checks whether a large building is possible at position. */
-int
-game_can_build_large(map_pos_t pos)
-{
-	if (!building_flag_on_land(pos)) return 0;
+	c->military_known = 1;
+	c->no_military = cursor_military_near(pos);
 
-	/* Check that surroundings are passable by serfs. */
-	for (int i = 0; i < 6; i++) {
-		map_pos_t p = MAP_POS_ADD(pos, game.spiral_pos_pattern[1+i]);
-		map_space_t s = map_space_from_obj[MAP_OBJ(p)];
-		if (s >= MAP_SPACE_SEMIPASSABLE) return 0;
+	/* Large: the first shell passable (flags allowed), no large
+	   building or castle in the second, all grass, small enough
+	   height differences. */
+	for (int i = 1; i <= 6; i++) {
+		uint sp = CURSOR_SPACE(cursor_spiral(pos, i));
+		if (sp >= MAP_SPACE_IMPASSABLE && sp != MAP_SPACE_FLAG) return;
+	}
+	for (int i = 7; i <= 18; i++) {
+		if (CURSOR_SPACE(cursor_spiral(pos, i)) >= MAP_SPACE_LARGE_BUILDING) return;
 	}
 
-	/* Check that buildings in the second shell aren't large or castle. */
-	for (int i = 0; i < 12; i++) {
-		map_pos_t p = MAP_POS_ADD(pos, game.spiral_pos_pattern[7+i]);
-		if (MAP_OBJ(p) >= MAP_OBJ_LARGE_BUILDING &&
-		    MAP_OBJ(p) <= MAP_OBJ_CASTLE) {
-			return 0;
+	if (CURSOR_TYPES(pos) != 0x55) return;
+	if ((CURSOR_TYPES(p4) & 0xf) != 5) return;
+	if (CURSOR_TYPES(p5) != 0x55) return;
+	if ((CURSOR_TYPES(p6) & 0xf0) != 0x50) return;
+
+	uint h_min = 31, h_max = 0;
+	for (int i = 7; i <= 18; i++) {
+		uint h = MAP_HEIGHT(cursor_spiral(pos, i));
+		if (h <= h_min) h_min = h;
+		if (h > h_max) h_max = h;
+	}
+	for (int i = 19; i <= 36; i++) {
+		map_pos_t p = cursor_spiral(pos, i);
+		if (MAP_OBJ(p) != MAP_OBJ_LARGE_BUILDING) continue;
+		building_t *b = game_get_building(MAP_OBJ_INDEX(p));
+		if (BUILDING_IS_DONE(b) || b->progress != 0) continue;
+		uint h = b->u.level & 0xff;
+		if (h <= h_min) h_min = h;
+		if (h > h_max) h_max = h;
+	}
+	if (((h_max - h_min) & 0xffff) >= 9) return;
+
+	c->possibility = has_castle ? GAME_CAN_BUILD_LARGE : GAME_CAN_BUILD_CASTLE;
+}
+
+/* Tail of determine_map_cursor_type from 0x194ee: flag and building
+   possibilities once the cursor type is known. */
+static void
+cursor_build_possibility(const player_t *player, map_pos_t pos, uint own,
+			 game_map_cursor_t *c)
+{
+	if (CURSOR_SPACE(pos) != MAP_SPACE_OPEN) return;
+
+	/* All six triangles water? */
+	if (!(CURSOR_TYPES(pos) & 0xcc) &&
+	    !(CURSOR_TYPES(cursor_spiral(pos, 4)) & 0x0c) &&
+	    !(CURSOR_TYPES(cursor_spiral(pos, 5)) & 0xcc) &&
+	    !(CURSOR_TYPES(cursor_spiral(pos, 6)) & 0xc0)) {
+		return;
+	}
+
+	int flag_near = 0;
+	for (int i = 1; i <= 6; i++) {
+		if (CURSOR_SPACE(cursor_spiral(pos, i)) == MAP_SPACE_FLAG) {
+			flag_near = 1;
+			break;
+		}
+	}
+	if (!flag_near) {
+		c->no_flag = 0;
+		if (PLAYER_HAS_CASTLE(player)) c->possibility = GAME_CAN_BUILD_FLAG;
+	}
+	if (c->cursor_type == GAME_CURSOR_PATH) return;
+
+	for (int i = 1; i <= 6; i++) {
+		if (CURSOR_SPACE(cursor_spiral(pos, i)) >= MAP_SPACE_SMALL_BUILDING) return;
+	}
+	if (c->cursor_type != GAME_CURSOR_CLEAR_BY_FLAG &&
+	    CURSOR_SPACE(cursor_spiral(pos, 2)) != MAP_SPACE_OPEN) {
+		return;
+	}
+
+	/* No other flag next to the building's flag. */
+	static const int flag_ring[] = { 7, 8, 14, 1, 3 };
+	for (int i = 0; i < 5; i++) {
+		if (CURSOR_SPACE(cursor_spiral(pos, flag_ring[i])) == MAP_SPACE_FLAG) {
+			return;
 		}
 	}
 
-	/* Check if center hexagon is not type grass. */
-	if (MAP_TYPE_UP(pos) != 5 ||
-	    MAP_TYPE_DOWN(pos) != 5 ||
-	    MAP_TYPE_DOWN(MAP_MOVE_LEFT(pos)) != 5 ||
-	    MAP_TYPE_UP(MAP_MOVE_UP_LEFT(pos)) != 5 ||
-	    MAP_TYPE_DOWN(MAP_MOVE_UP_LEFT(pos)) != 5 ||
-	    MAP_TYPE_UP(MAP_MOVE_UP(pos)) != 5) {
-		return 0;
+	/* Triangles around the building flag must be land (L12). */
+	if (!(CURSOR_TYPES(cursor_spiral(pos, 1)) & 0xc0) ||
+	    !(CURSOR_TYPES(cursor_spiral(pos, 3)) & 0x0c) ||
+	    !(CURSOR_TYPES(cursor_spiral(pos, 2)) & 0xc0) ||
+	    !(CURSOR_TYPES(cursor_spiral(pos, 2)) & 0x0c)) {
+		return;
 	}
 
-	/* Check that leveling is possible */
-	int r = game_get_leveling_height(pos);
-	if (r < 0) return 0;
+	cursor_possible_building(player, pos, own, c);
+}
 
-	return 1;
+/* get_map_cursor_type @0x194ba: cursor on a free vertex. */
+static void
+cursor_clear(const player_t *player, map_pos_t pos, uint own,
+	     game_map_cursor_t *c)
+{
+	map_pos_t p2 = cursor_spiral(pos, 2);
+
+	if (CURSOR_SPACE(p2) == MAP_SPACE_FLAG) {
+		c->cursor_type = GAME_CURSOR_CLEAR_BY_FLAG;
+	} else if (CURSOR_PATHS(p2) != 0) {
+		c->cursor_type = GAME_CURSOR_CLEAR_BY_PATH;
+	} else {
+		c->cursor_type = GAME_CURSOR_CLEAR;
+	}
+	cursor_build_possibility(player, pos, own, c);
+}
+
+static void
+cursor_reset(game_map_cursor_t *c)
+{
+	c->cursor_type = GAME_CURSOR_NONE;
+	c->possibility = GAME_CAN_BUILD_NONE;
+	c->no_flag = 1;
+	c->no_military = 0;
+	c->military_known = 0;
+}
+
+/* What the player can do at pos, as determine_map_cursor_type of the
+   original decides it for the panel and the build actions. */
+void
+game_get_map_cursor(const player_t *player, map_pos_t pos,
+		    game_map_cursor_t *c)
+{
+	uint own = cursor_own(player);
+	cursor_reset(c);
+
+	if (CURSOR_OWNER(pos) != own) return;
+
+	uint sp = CURSOR_SPACE(pos);
+	if (sp == MAP_SPACE_FLAG) {
+		if ((game.map.tiles[pos].paths & 0x10) &&
+		    CURSOR_SPACE(cursor_spiral(pos, 5)) >= MAP_SPACE_SMALL_BUILDING) {
+			c->cursor_type = GAME_CURSOR_FLAG;
+			return;
+		}
+		if (CURSOR_PATHS(pos) == 0) {
+			c->cursor_type = GAME_CURSOR_REMOVABLE_FLAG;
+			return;
+		}
+
+		flag_t *flag = game_get_flag(MAP_OBJ_INDEX(pos));
+		flag_t *other = NULL;
+		int paths = 0;
+		for (int d = 5; d >= 0; d--) {
+			if (!(flag->path_con & BIT(d))) continue;
+			if (!(flag->endpoint & BIT(d))) {
+				/* Water path */
+				c->cursor_type = GAME_CURSOR_FLAG;
+				return;
+			}
+			paths += 1;
+			if (other == NULL) {
+				other = flag->other_endpoint.f[d];
+			} else if (other == flag->other_endpoint.f[d]) {
+				c->cursor_type = GAME_CURSOR_FLAG;
+				return;
+			}
+		}
+		c->cursor_type = (paths == 2) ? GAME_CURSOR_REMOVABLE_FLAG :
+			GAME_CURSOR_FLAG;
+		return;
+	} else if (sp >= MAP_SPACE_SMALL_BUILDING) {
+		/* Original bug: object 127 is taken for a building. */
+		if (sp == MAP_SPACE_CASTLE || sp == MAP_SPACE_INVALID) return;
+		building_t *b = game_get_building(MAP_OBJ_INDEX(pos));
+		if (BUILDING_IS_BURNING(b)) return;
+		c->cursor_type = GAME_CURSOR_BUILDING;
+		/* What could be built here instead (replace building). */
+		cursor_possible_building(player, pos, own, c);
+		return;
+	}
+
+	uint paths = CURSOR_PATHS(pos);
+	if (paths == 0) {
+		cursor_clear(player, pos, own, c);
+		return;
+	}
+	if (paths == BIT(DIR_DOWN_RIGHT) || paths == BIT(DIR_UP_LEFT)) return;
+	c->cursor_type = GAME_CURSOR_PATH;
+	cursor_build_possibility(player, pos, own, c);
+}
+
+/* ai_get_map_cursor_type_at @0x1932e: the free-vertex part for an owner
+   pattern given by the caller. */
+void
+game_get_map_cursor_clear(const player_t *player, map_pos_t pos, uint own,
+			  game_map_cursor_t *c)
+{
+	cursor_reset(c);
+	cursor_clear(player, pos, own, c);
 }
 
 /* Checks whether a castle can be built by player at position. */
@@ -4183,129 +4324,36 @@ int
 game_can_build_castle(map_pos_t pos, const player_t *player)
 {
 	if (PLAYER_HAS_CASTLE(player)) return 0;
-
-	/* Check owner of land around position */
-	for (int i = 0; i < 7; i++) {
-		map_pos_t p = MAP_POS_ADD(pos, game.spiral_pos_pattern[i]);
-		if (MAP_HAS_OWNER(p)) return 0;
-	}
-
-	/* Check that land is clear at position */
-	if (map_space_from_obj[MAP_OBJ(pos)] != MAP_SPACE_OPEN ||
-	    MAP_PATHS(pos) != 0) {
-		return 0;
-	}
-
-	map_pos_t flag_pos = MAP_MOVE_DOWN_RIGHT(pos);
-
-	/* Check that land is clear at position */
-	if (map_space_from_obj[MAP_OBJ(flag_pos)] != MAP_SPACE_OPEN ||
-	    MAP_PATHS(flag_pos) != 0) {
-		return 0;
-	}
-
-	if (!game_can_build_large(pos)) return 0;
-
-	return 1;
+	game_map_cursor_t c;
+	game_get_map_cursor(player, pos, &c);
+	return c.possibility == GAME_CAN_BUILD_CASTLE;
 }
 
-/* Check whether player is allowed to build anything
-   at position. To determine if the initial castle can
-   be built use game_can_build_castle() instead.
-
-   TODO Existing buildings at position should be
-   disregarded so this can be used to determine what
-   can be built after the existing building has been
-   demolished. */
-int
-game_can_player_build(map_pos_t pos, const player_t *player)
-{
-	if (!PLAYER_HAS_CASTLE(player)) return 0;
-
-	/* Check owner of land around position */
-	for (int i = 0; i < 7; i++) {
-		map_pos_t p = MAP_POS_ADD(pos, game.spiral_pos_pattern[i]);
-		if (!MAP_HAS_OWNER(p) ||
-		    MAP_OWNER(p) != player->player_num) {
-			return 0;
-		}
-	}
-
-	/* Check whether cursor is in water */
-	if (MAP_TYPE_UP(pos) < 4 &&
-	    MAP_TYPE_DOWN(pos) < 4 &&
-	    MAP_TYPE_DOWN(MAP_MOVE_LEFT(pos)) < 4 &&
-	    MAP_TYPE_UP(MAP_MOVE_UP_LEFT(pos)) < 4 &&
-	    MAP_TYPE_DOWN(MAP_MOVE_UP_LEFT(pos)) < 4 &&
-	    MAP_TYPE_UP(MAP_MOVE_UP(pos)) < 4) {
-		return 0;
-	}
-
-	/* Check that no paths are blocking. */
-	if (MAP_PATHS(pos) != 0) return 0;
-
-	return 1;
-}
-
-/* Checks whether a building of the specified type is possible at
-   position. */
+/* Checks whether a building of type can be built at pos, as the
+   original's build actions do with the cursor: a free vertex (cursor
+   type 5..7) whose possible building is large enough, and for military
+   buildings player build bit 0 clear (Amiga @0x185a8..0x18702). */
 int
 game_can_build_building(map_pos_t pos, building_type_t type, const player_t *player)
 {
-	if (!game_can_player_build(pos, player)) return 0;
+	if (!PLAYER_HAS_CASTLE(player)) return 0;
 
-	/* Check that space is clear */
-	if (map_space_from_obj[MAP_OBJ(pos)] != MAP_SPACE_OPEN) return 0;
-
-	/* Check that building flag is possible if it
-	   doesn't already exist. */
-	map_pos_t flag_pos = MAP_MOVE_DOWN_RIGHT(pos);
-	if (!MAP_HAS_FLAG(flag_pos) &&
-	    !game_can_build_flag(flag_pos, player)) {
+	game_map_cursor_t c;
+	game_get_map_cursor(player, pos, &c);
+	if (c.cursor_type != GAME_CURSOR_CLEAR_BY_FLAG &&
+	    c.cursor_type != GAME_CURSOR_CLEAR_BY_PATH &&
+	    c.cursor_type != GAME_CURSOR_CLEAR) {
 		return 0;
 	}
 
-	/* Check if building size is possible. */
-	switch (type) {
-	case BUILDING_FISHER:
-	case BUILDING_LUMBERJACK:
-	case BUILDING_BOATBUILDER:
-	case BUILDING_STONECUTTER:
-	case BUILDING_FORESTER:
-	case BUILDING_HUT:
-	case BUILDING_MILL:
-		if (!game_can_build_small(pos)) return 0;
-		break;
-	case BUILDING_STONEMINE:
-	case BUILDING_COALMINE:
-	case BUILDING_IRONMINE:
-	case BUILDING_GOLDMINE:
-		if (!game_can_build_mine(pos)) return 0;
-		break;
-	case BUILDING_STOCK:
-	case BUILDING_FARM:
-	case BUILDING_BUTCHER:
-	case BUILDING_PIGFARM:
-	case BUILDING_BAKER:
-	case BUILDING_SAWMILL:
-	case BUILDING_STEELSMELTER:
-	case BUILDING_TOOLMAKER:
-	case BUILDING_WEAPONSMITH:
-	case BUILDING_TOWER:
-	case BUILDING_FORTRESS:
-	case BUILDING_GOLDSMELTER:
-		if (!game_can_build_large(pos)) return 0;
-		break;
-	default:
-		NOT_REACHED();
-		break;
+	switch (building_site_class(type)) {
+	case 0: if (c.possibility != GAME_CAN_BUILD_MINE) return 0; break;
+	case 1: if (c.possibility < GAME_CAN_BUILD_SMALL) return 0; break;
+	default: if (c.possibility < GAME_CAN_BUILD_LARGE) return 0; break;
 	}
 
-	/* Check if military building is possible */
-	if ((type == BUILDING_HUT ||
-	     type == BUILDING_TOWER ||
-	     type == BUILDING_FORTRESS) &&
-	    !game_can_build_military(pos)) {
+	if ((type == BUILDING_HUT || type == BUILDING_TOWER ||
+	     type == BUILDING_FORTRESS) && c.no_military) {
 		return 0;
 	}
 
@@ -4456,27 +4504,21 @@ game_build_building(map_pos_t pos, building_type_t type, player_t *player)
 	return build_building(pos, type, player, 1);
 }
 
-/* Site class of the position as the build button sees it, ignoring an
-   own building standing there: 0 mine, 1 small, 2 large, -1 none
-   (Amiga determine_possible_building @0x19660). */
+/* Site class of an own building's site as the build button sees it:
+   0 mine, 1 small, 2 large, -1 none (Amiga determine_map_cursor_type on
+   a building, @0x19490). */
 int
 game_get_replace_site_class(map_pos_t pos, const player_t *player)
 {
-	if (!PLAYER_HAS_CASTLE(player)) return -1;
-
-	/* Own land around the site (the building's path to its flag is
-	   not in the way, unlike game_can_player_build). */
-	for (int i = 0; i < 7; i++) {
-		map_pos_t p = MAP_POS_ADD(pos, game.spiral_pos_pattern[i]);
-		if (!MAP_HAS_OWNER(p) || MAP_OWNER(p) != player->player_num) {
-			return -1;
-		}
+	game_map_cursor_t c;
+	game_get_map_cursor(player, pos, &c);
+	if (c.cursor_type != GAME_CURSOR_BUILDING) return -1;
+	switch (c.possibility) {
+	case GAME_CAN_BUILD_MINE: return 0;
+	case GAME_CAN_BUILD_SMALL: return 1;
+	case GAME_CAN_BUILD_LARGE: return 2;
+	default: return -1;
 	}
-
-	if (game_can_build_mine(pos)) return 0;
-	if (game_can_build_large(pos)) return 2;
-	if (game_can_build_small(pos)) return 1;
-	return -1;
 }
 
 /* Replace an own building: it is demolished and the new type is built

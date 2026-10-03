@@ -54,19 +54,6 @@ ssub(unsigned a, unsigned b)
 
 /* ---- Amiga data ---- */
 
-/* map_space_from_obj of the original (0x1f42): 0 open, 1 filled,
-   2 semipassable/impassable, 3 flag, 4/5/6 small/large building/castle,
-   0xff for object 127. Its encoding differs from legacy's table. */
-static const uint8_t amiga_space_from_obj[128] = {
-	0, 3, 4, 5, 6, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2,
-	2, 2, 1, 0, 0, 0, 0, 0, 2, 2, 1, 1, 1, 1, 1, 1,
-	1, 0, 1, 1, 1, 1, 0, 1, 1, 2, 2, 2, 2, 2, 2, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 255
-};
 
 /* Site categories allowed per panel_btn_type 1..5 (0x2d234). */
 static const uint32_t site_categories[5] = {
@@ -170,7 +157,7 @@ ai_pending(player_t *player, int i, int row)
 
 /* ---- Map helpers (Amiga tile bytes) ---- */
 
-#define SPACE(pos)   (amiga_space_from_obj[MAP_OBJ(pos)])
+#define SPACE(pos)   (map_space_from_obj[MAP_OBJ(pos)])
 #define OWNERBITS(pos)  ((unsigned)(game.map.tiles[(pos)].height & 0xe0))
 #define TYPEBYTE(pos)   ((unsigned)game.map.tiles[(pos)].type)
 #define PATHBITS(pos)   ((unsigned)(game.map.tiles[(pos)].paths & 0x3f))
@@ -189,243 +176,29 @@ own_bits(const player_t *player)
 }
 
 
-/* ---- Map cursor type (0x1932e..0x19af8) ---- */
+/* ---- Map cursor type (0x1932e..0x19af8, shared with the human player:
+   game_get_map_cursor) ---- */
 
-/* determine_map_cursor_type_sub @0x196d8: classify a triangle. */
-static int
-triangle_class(unsigned type)
-{
-	if (type < 4) return 2;
-	if (type < 8) return 0;
-	if (type >= 11 && type < 15) return 1;
-	return 2;
-}
-
-/* determine_possible_building @0x19660. own = owner pattern (D3). */
 static void
-determine_possible_building(player_t *player, map_pos_t pos, unsigned own)
+ai_set_cursor_result(player_t *player, const game_map_cursor_t *c)
 {
-	int has_castle = PLAYER_HAS_CASTLE(player);
-
-	for (int i = 1; i <= 6; i++) {
-		if (OWNERBITS(spiral(pos, i)) != own) return;
+	player->ai.map_cursor_type = c->cursor_type;
+	player->ai.panel_btn_type = c->possibility;
+	if (c->no_flag) player->build |= BIT(1);
+	else player->build &= ~BIT(1);
+	if (c->military_known) {
+		if (c->no_military) player->build |= BIT(0);
+		else player->build &= ~BIT(0);
 	}
-
-	map_pos_t p4 = spiral(pos, 4), p5 = spiral(pos, 5), p6 = spiral(pos, 6);
-	int cls = triangle_class(TYPEBYTE(pos) >> 4) |
-		triangle_class(TYPEBYTE(pos) & 0xf) |
-		triangle_class(TYPEBYTE(p4) & 0xf) |
-		triangle_class(TYPEBYTE(p5) >> 4) |
-		triangle_class(TYPEBYTE(p5) & 0xf) |
-		triangle_class(TYPEBYTE(p6) >> 4);
-	if (cls >= 2) return;
-	if (cls == 1) {
-		if (has_castle) player->ai.panel_btn_type = AI_CAN_BUILD_MINE;
-		return;
-	}
-	if (has_castle) player->ai.panel_btn_type = AI_CAN_BUILD_SMALL;
-
-	/* Military buildings in the second shell (only 7..18; the
-	   original does not look at the center and the first shell). */
-	player->build &= ~BIT(0);
-	for (int i = 7; i <= 18; i++) {
-		map_pos_t p = spiral(pos, i);
-		int obj = MAP_OBJ(p);
-		if (obj >= MAP_OBJ_SMALL_BUILDING && obj <= MAP_OBJ_CASTLE) {
-			building_t *b = game_get_building(MAP_OBJ_INDEX(p));
-			int t = BUILDING_TYPE(b);
-			if (t == BUILDING_HUT || t == BUILDING_TOWER ||
-			    t == BUILDING_FORTRESS || t == BUILDING_CASTLE) {
-				player->build |= BIT(0);
-				break;
-			}
-		}
-	}
-
-	for (int i = 1; i <= 6; i++) {
-		unsigned s = SPACE(spiral(pos, i));
-		if (s >= 2 && s != 3) return;
-	}
-	for (int i = 7; i <= 18; i++) {
-		if (SPACE(spiral(pos, i)) >= 5) return;
-	}
-
-	if (TYPEBYTE(pos) != 0x55) return;
-	if ((TYPEBYTE(p4) & 0xf) != 5) return;
-	if (TYPEBYTE(p5) != 0x55) return;
-	if ((TYPEBYTE(p6) & 0xf0) != 0x50) return;
-
-	unsigned h_min = 31, h_max = 0;
-	for (int i = 7; i <= 18; i++) {
-		unsigned h = MAP_HEIGHT(spiral(pos, i));
-		if (h <= h_min) h_min = h;
-		if (h > h_max) h_max = h;
-	}
-	for (int i = 19; i <= 36; i++) {
-		map_pos_t p = spiral(pos, i);
-		if (MAP_OBJ(p) != MAP_OBJ_LARGE_BUILDING) continue;
-		building_t *b = game_get_building(MAP_OBJ_INDEX(p));
-		if (BUILDING_IS_DONE(b) || b->progress != 0) continue;
-		unsigned h = b->u.level & 0xff;
-		if (h <= h_min) h_min = h;
-		if (h > h_max) h_max = h;
-	}
-	if (W(h_max - h_min) >= 9) return;
-
-	/* The leveling height (ptr+0x102) is not kept: legacy
-	   game_build_building computes it itself. */
-	player->ai.panel_btn_type = has_castle ? AI_CAN_BUILD_LARGE :
-		AI_CAN_BUILD_CASTLE;
-}
-
-/* Tail of determine_map_cursor_type from 0x194ee: building and flag
-   possibilities once map_cursor_type is known. */
-static void
-determine_build_possibility(player_t *player, map_pos_t pos, unsigned own)
-{
-	player_ai_t *ai = &player->ai;
-
-	if (SPACE(pos) != 0) return;
-
-	/* All six triangles water? */
-	if (!(TYPEBYTE(pos) & 0xcc) &&
-	    !(TYPEBYTE(spiral(pos, 4)) & 0x0c) &&
-	    !(TYPEBYTE(spiral(pos, 5)) & 0xcc) &&
-	    !(TYPEBYTE(spiral(pos, 6)) & 0xc0)) {
-		return;
-	}
-
-	int flag_near = 0;
-	for (int i = 1; i <= 6; i++) {
-		if (SPACE(spiral(pos, i)) == 3) {
-			flag_near = 1;
-			break;
-		}
-	}
-	if (flag_near) {
-		if (ai->map_cursor_type == AI_CURSOR_PATH) return;
-	} else {
-		player->build &= ~BIT(1);
-		if (PLAYER_HAS_CASTLE(player)) {
-			ai->panel_btn_type = AI_CAN_BUILD_FLAG;
-		}
-		if (ai->map_cursor_type == AI_CURSOR_PATH) return;
-	}
-
-	for (int i = 1; i <= 6; i++) {
-		if (SPACE(spiral(pos, i)) >= 4) return;
-	}
-	if (ai->map_cursor_type != AI_CURSOR_CLEAR_BY_FLAG &&
-	    SPACE(spiral(pos, 2)) != 0) {
-		return;
-	}
-
-	/* Flags near the building flag. */
-	static const int flag_ring[] = { 7, 8, 14, 1, 3 };
-	for (int i = 0; i < 5; i++) {
-		if (SPACE(spiral(pos, flag_ring[i])) == 3) return;
-	}
-
-	/* Triangles around the building flag must be land. */
-	if (!(TYPEBYTE(spiral(pos, 1)) & 0xc0) ||
-	    !(TYPEBYTE(spiral(pos, 3)) & 0x0c) ||
-	    !(TYPEBYTE(spiral(pos, 2)) & 0xc0) ||
-	    !(TYPEBYTE(spiral(pos, 2)) & 0x0c)) {
-		return;
-	}
-
-	determine_possible_building(player, pos, own);
-}
-
-/* get_map_cursor_type @0x194ba (cursor on a free tile). */
-static void
-get_map_cursor_type(player_t *player, map_pos_t pos, unsigned own)
-{
-	map_pos_t p2 = spiral(pos, 2);
-
-	if (SPACE(p2) == 3) {
-		player->ai.map_cursor_type = AI_CURSOR_CLEAR_BY_FLAG;
-	} else if (PATHBITS(p2) != 0) {
-		player->ai.map_cursor_type = AI_CURSOR_CLEAR_BY_PATH;
-	} else {
-		player->ai.map_cursor_type = AI_CURSOR_CLEAR;
-	}
-	determine_build_possibility(player, pos, own);
-}
-
-/* determine_map_cursor_type @0x19368 at pos. */
-static void
-determine_map_cursor_type_at(player_t *player, map_pos_t pos)
-{
-	player_ai_t *ai = &player->ai;
-	unsigned own = PLAYER_HAS_CASTLE(player) ? own_bits(player) : 0;
-
-	player->build |= BIT(1);
-	ai->map_cursor_type = AI_CURSOR_NONE;
-	ai->panel_btn_type = AI_CAN_BUILD_NONE;
-
-	if (OWNERBITS(pos) != own) return;
-
-	unsigned s = SPACE(pos);
-	if (s == 3) {
-		/* Flag */
-		if ((game.map.tiles[pos].paths & 0x10) &&
-		    SPACE(spiral(pos, 5)) >= 4) {
-			ai->map_cursor_type = AI_CURSOR_FLAG;
-			return;
-		}
-		if (PATHBITS(pos) == 0) {
-			ai->map_cursor_type = AI_CURSOR_REMOVABLE_FLAG;
-			return;
-		}
-
-		flag_t *flag = game_get_flag(MAP_OBJ_INDEX(pos));
-		flag_t *other = NULL;
-		int paths = 0;
-		for (int d = 5; d >= 0; d--) {
-			if (!(flag->path_con & BIT(d))) continue;
-			if (!(flag->endpoint & BIT(d))) {
-				/* Water path */
-				ai->map_cursor_type = AI_CURSOR_FLAG;
-				return;
-			}
-			paths += 1;
-			if (other == NULL) {
-				other = flag->other_endpoint.f[d];
-			} else if (other == flag->other_endpoint.f[d]) {
-				ai->map_cursor_type = AI_CURSOR_FLAG;
-				return;
-			}
-		}
-		ai->map_cursor_type = (paths == 2) ? AI_CURSOR_REMOVABLE_FLAG :
-			AI_CURSOR_FLAG;
-		return;
-	} else if (s >= 4) {
-		/* Original bug: object 127 (space 0xff) is taken for a
-		   building and its obj_index read as building index. */
-		if (s == 6 || s == 0xff) return;
-		building_t *b = game_get_building(MAP_OBJ_INDEX(pos));
-		if (BUILDING_IS_BURNING(b)) return;
-		ai->map_cursor_type = AI_CURSOR_BUILDING;
-		determine_possible_building(player, pos, own);
-		return;
-	}
-
-	unsigned paths = PATHBITS(pos);
-	if (paths == 0) {
-		get_map_cursor_type(player, pos, own);
-		return;
-	}
-	if (paths == BIT(DIR_DOWN_RIGHT) || paths == BIT(DIR_UP_LEFT)) return;
-	ai->map_cursor_type = AI_CURSOR_PATH;
-	determine_build_possibility(player, pos, own);
 }
 
 /* determine_map_cursor_type @0x19368 for the AI cursor. */
 void
 ai_determine_map_cursor_type(player_t *player)
 {
-	determine_map_cursor_type_at(player, AI_CURSOR_POS(player));
+	game_map_cursor_t c;
+	game_get_map_cursor(player, AI_CURSOR_POS(player), &c);
+	ai_set_cursor_result(player, &c);
 }
 
 /* ai_get_map_cursor_type_at @0x1932e: get_map_cursor_type for pos
@@ -434,10 +207,9 @@ ai_determine_map_cursor_type(player_t *player)
 static void
 ai_get_map_cursor_type_at(player_t *player, map_pos_t pos, unsigned own)
 {
-	player->build |= BIT(1);
-	player->ai.map_cursor_type = AI_CURSOR_NONE;
-	player->ai.panel_btn_type = AI_CAN_BUILD_NONE;
-	get_map_cursor_type(player, pos, own);
+	game_map_cursor_t c;
+	game_get_map_cursor_clear(player, pos, own, &c);
+	ai_set_cursor_result(player, &c);
 }
 
 

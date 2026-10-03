@@ -2137,21 +2137,20 @@ viewport_t::draw_map_cursor_possible_build() {
       int y = y_base - 4*MAP_HEIGHT(pos);
       if (y >= height) break;
 
-      /* Draw possible building */
+      /* Draw possible building, as the cursor determination of the
+         original sees it on a free vertex. */
       int sprite = -1;
-      if (game_can_build_castle(pos, interface->get_player())) {
-        sprite = 50;
-      } else if (game_can_player_build(pos, interface->get_player()) &&
-           map_space_from_obj[MAP_OBJ(pos)] == MAP_SPACE_OPEN &&
-           (game_can_build_flag(MAP_MOVE_DOWN_RIGHT(pos),
-                                interface->get_player()) ||
-            MAP_HAS_FLAG(MAP_MOVE_DOWN_RIGHT(pos)))) {
-        if (game_can_build_mine(pos)) {
-          sprite = 48;
-        } else if (game_can_build_large(pos)) {
-          sprite = 50;
-        } else if (game_can_build_small(pos)) {
-          sprite = 49;
+      game_map_cursor_t c;
+      game_get_map_cursor(interface->get_player(), pos, &c);
+      if (c.cursor_type == GAME_CURSOR_CLEAR_BY_FLAG ||
+          c.cursor_type == GAME_CURSOR_CLEAR_BY_PATH ||
+          c.cursor_type == GAME_CURSOR_CLEAR) {
+        switch (c.possibility) {
+        case GAME_CAN_BUILD_CASTLE: sprite = 50; break;
+        case GAME_CAN_BUILD_MINE: sprite = 48; break;
+        case GAME_CAN_BUILD_LARGE: sprite = 50; break;
+        case GAME_CAN_BUILD_SMALL: sprite = 49; break;
+        default: break;
         }
       }
 

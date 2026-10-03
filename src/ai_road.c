@@ -199,7 +199,7 @@ ai_road_tile_cost(player_t *player, int index, map_pos_t pos, int ring,
 
 	if (ai_tile_blocked(pos)) goto out;
 	if (MAP_OBJ(pos) != 0 &&
-	    map_space_from_obj[MAP_OBJ(pos)] >= MAP_SPACE_SEMIPASSABLE) {
+	    map_space_from_obj[MAP_OBJ(pos)] >= MAP_SPACE_IMPASSABLE) {
 		goto out;
 	}
 
