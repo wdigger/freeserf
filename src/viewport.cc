@@ -1884,7 +1884,8 @@ viewport_t::draw_active_serf(serf_t *serf, map_pos_t pos,
       serf->state == SERF_STATE_KNIGHT_PREPARE_ATTACKING_FREE ||
       serf->state == SERF_STATE_KNIGHT_ATTACKING_FREE ||
       serf->state == SERF_STATE_KNIGHT_ATTACKING_VICTORY_FREE ||
-      serf->state == SERF_STATE_KNIGHT_ATTACKING_DEFEAT_FREE) {
+      serf->state == SERF_STATE_KNIGHT_ATTACKING_DEFEAT_FREE ||
+      serf->state == SERF_STATE_KNIGHT_DEFENDING_VICTORY_FREE) {
     int index = serf->s.attacking.def_index;
     if (index != 0) {
       serf_t *def_serf = game_get_serf(index);

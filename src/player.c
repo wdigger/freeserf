@@ -40,6 +40,12 @@ player_add_notification(player_t *player, int type, map_pos_t pos)
 
 /* Set defaults for food distribution priorities. */
 void
+player_count_resource(player_t *player, int res)
+{
+	if (player->resource_count[res] < 255) player->resource_count[res] += 1;
+}
+
+void
 player_reset_food_priority(player_t *player)
 {
 	player->food_stonemine = 13100;

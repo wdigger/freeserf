@@ -567,10 +567,11 @@ load_v0_serf_state(FILE *f, const v0_map_t *map)
 			break;
 
 		case SERF_STATE_KNIGHT_DEFENDING_VICTORY_FREE:
-			/* TODO This will be tricky to load since the
-			   function of this state has been changed to one
-			   that is driven by the attacking serf instead
-			   (SERF_STATE_KNIGHT_ATTACKING_DEFEAT_FREE). */
+			/* dist col/row, field D and the dead attacker. */
+			serf->s.defending_free.dist_col = *(int8_t *)&serf_data[11];
+			serf->s.defending_free.dist_row = *(int8_t *)&serf_data[12];
+			serf->s.defending_free.field_D = serf_data[13];
+			serf->s.attacking.def_index = *(uint16_t *)&serf_data[14];
 			break;
 
 		case SERF_STATE_IDLE_ON_PATH:
@@ -1423,6 +1424,13 @@ save_text_serf_state(FILE *f)
 			save_text_write_value(f, "state.field_B", serf->s.attacking.field_B);
 			save_text_write_value(f, "state.field_C", serf->s.attacking.field_C);
 			save_text_write_value(f, "state.field_D", serf->s.attacking.field_D);
+			save_text_write_value(f, "state.def_index", serf->s.attacking.def_index);
+			break;
+
+		case SERF_STATE_KNIGHT_DEFENDING_VICTORY_FREE:
+			save_text_write_value(f, "state.dist_col", serf->s.defending_free.dist_col);
+			save_text_write_value(f, "state.dist_row", serf->s.defending_free.dist_row);
+			save_text_write_value(f, "state.field_D", serf->s.defending_free.field_D);
 			save_text_write_value(f, "state.def_index", serf->s.attacking.def_index);
 			break;
 
@@ -2698,6 +2706,18 @@ load_text_serf_section(section_t *section)
 				serf->s.attacking.field_C = atoi(s->value);
 			} else if (!strcmp(s->key, "state.field_D")) {
 				serf->s.attacking.field_D = atoi(s->value);
+			} else if (!strcmp(s->key, "state.def_index")) {
+				serf->s.attacking.def_index = atoi(s->value);
+			}
+			break;
+
+		case SERF_STATE_KNIGHT_DEFENDING_VICTORY_FREE:
+			if (!strcmp(s->key, "state.dist_col")) {
+				serf->s.defending_free.dist_col = atoi(s->value);
+			} else if (!strcmp(s->key, "state.dist_row")) {
+				serf->s.defending_free.dist_row = atoi(s->value);
+			} else if (!strcmp(s->key, "state.field_D")) {
+				serf->s.defending_free.field_D = atoi(s->value);
 			} else if (!strcmp(s->key, "state.def_index")) {
 				serf->s.attacking.def_index = atoi(s->value);
 			}

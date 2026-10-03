@@ -187,6 +187,9 @@ typedef struct {
 
 
 void player_add_notification(player_t *player, int type, map_pos_t pos);
+/* Count a produced resource; the original keeps a byte that saturates
+   at 255 (Amiga @0x1333a, @0x100a2). */
+void player_count_resource(player_t *player, int res);
 
 void player_reset_food_priority(player_t *player);
 void player_reset_planks_priority(player_t *player);

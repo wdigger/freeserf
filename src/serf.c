@@ -26,6 +26,15 @@
 
 #include <assert.h>
 
+/* State handlers entered in the same update as the state change, like
+   the original does by jumping into them. */
+static void handle_serf_move_resource_out_state(serf_t *serf);
+static void handle_serf_ready_to_leave_state(serf_t *serf);
+static void handle_serf_ready_to_enter_state(serf_t *serf);
+static void handle_serf_ready_to_leave_inventory_state(serf_t *serf);
+static void handle_serf_finished_building_state(serf_t *serf);
+static void handle_serf_delivering_state(serf_t *serf);
+
 static const int counter_from_animation[] = {
 	/* Walking (0-80) */
 	511, 447, 383, 319, 255, 319, 511, 767, 1023,
@@ -478,7 +487,8 @@ handle_serf_idle_in_stock_state(serf_t *serf)
 		serf->state = SERF_STATE_READY_TO_LEAVE_INVENTORY;
 		serf->s.ready_to_leave_inventory.mode = -3;
 		serf->s.ready_to_leave_inventory.inv_index = INVENTORY_INDEX(inventory);
-		/* TODO immediate switch to next state. */
+		/* Same update (Amiga idle_in_stock @0x111c2). */
+		handle_serf_ready_to_leave_inventory_state(serf);
 	}
 }
 
@@ -536,9 +546,10 @@ serf_change_direction(serf_t *serf, int dir, int alt_end)
 	serf->pos = new_pos;
 	map_set_serf_index(serf->pos, SERF_INDEX(serf));
 	serf->counter += counter_from_animation[serf->animation];
-	if (alt_end && serf->counter < 0) {
-		if (MAP_HAS_FLAG(new_pos)) serf->counter = 0;
-		else LOGD("serf", "unhandled jump to 31B82.");
+	/* Off a flag a transporter continues with the next step in the same
+	   update; see handle_serf_transporting_state. */
+	if (alt_end && serf->counter < 0 && MAP_HAS_FLAG(new_pos)) {
+		serf->counter = 0;
 	}
 }
 
@@ -899,15 +910,9 @@ handle_serf_walking_state(serf_t *serf)
 }
 
 static void
-handle_serf_transporting_state(serf_t *serf)
+handle_serf_transporting_step(serf_t *serf)
 {
 	map_tile_t *tiles = game.map.tiles;
-
-	uint16_t delta = game.tick - serf->tick;
-	serf->tick = game.tick;
-	serf->counter -= delta;
-
-	if (serf->counter >= 0) return;
 
 	if (serf->s.walking.dir < 0) {
 		serf_change_direction(serf, serf->s.walking.dir+6, 1);
@@ -935,11 +940,11 @@ handle_serf_transporting_state(serf_t *serf)
 
 				map_pos_t new_pos = MAP_MOVE_UP_LEFT(serf->pos);
 				serf->animation = 3 + MAP_HEIGHT(new_pos) - MAP_HEIGHT(serf->pos) + (DIR_UP_LEFT+6)*9;
-				serf->counter = counter_from_animation[serf->animation];
-				/* TODO next call is actually into the middle of handle_serf_delivering_state().
-				   Why is a nice and clean state switch not enough???
-				   Just ignore this call and we'll be safe, I think... */
-				/* handle_serf_delivering_state(serf); */
+				/* The overshoot is kept, and a still negative counter
+				   continues in the delivering loop in the same update
+				   (Amiga transporting @0x12704). */
+				serf->counter += counter_from_animation[serf->animation];
+				if (serf->counter < 0) handle_serf_delivering_state(serf);
 				return;
 			}
 
@@ -1009,6 +1014,25 @@ handle_serf_transporting_state(serf_t *serf)
 			}
 		}
 	}
+}
+
+static void
+handle_serf_transporting_state(serf_t *serf)
+{
+	uint16_t delta = game.tick - serf->tick;
+	serf->tick = game.tick;
+	serf->counter -= delta;
+
+	if (serf->counter >= 0) return;
+
+	/* A step that ends off a flag with the counter still negative is
+	   followed by the next step in the same update (Amiga transporting
+	   @0x126c0 back to 0x1201a). */
+	do {
+		handle_serf_transporting_step(serf);
+	} while (serf->state == SERF_STATE_TRANSPORTING &&
+		 serf->counter < 0 && serf->s.walking.dir >= 0 &&
+		 !MAP_HAS_FLAG(serf->pos));
 }
 
 static void
@@ -1814,6 +1838,8 @@ handle_serf_building_state(serf_t *serf)
 
 				serf_log_state_change(serf, SERF_STATE_FINISHED_BUILDING);
 				serf->state = SERF_STATE_FINISHED_BUILDING;
+				/* Same update (Amiga building @0x139ec). */
+				handle_serf_finished_building_state(serf);
 				return;
 			}
 
@@ -1979,7 +2005,8 @@ handle_serf_wait_for_resource_out_state(serf_t *serf)
 	inventory->out_queue[1].type = RESOURCE_NONE;
 	inventory->out_queue[0].dest = inventory->out_queue[1].dest;
 
-	/*handle_serf_move_resource_out_state(serf);*//* why isn't a state switch enough? */
+	/* Same update (Amiga @0x11180). */
+	handle_serf_move_resource_out_state(serf);
 }
 
 static void
@@ -2004,6 +2031,8 @@ handle_serf_drop_resource_out_state(serf_t *serf)
 	serf_log_state_change(serf, SERF_STATE_READY_TO_ENTER);
 	serf->state = SERF_STATE_READY_TO_ENTER;
 	serf->s.ready_to_enter.field_B = 0;
+	/* Same update (Amiga drop_resource_out @0x12846). */
+	handle_serf_ready_to_enter_state(serf);
 }
 
 static void
@@ -2132,7 +2161,7 @@ serf_drop_resource(serf_t *serf, resource_type_t res)
 		flag->endpoint |= BIT(7);
 
 		player_t *player = game.player[SERF_PLAYER(serf)];
-		player->resource_count[res] += 1;
+		player_count_resource(player, res);
 	}
 }
 
@@ -2186,6 +2215,8 @@ handle_serf_free_walking_state_dest_reached(serf_t *serf)
 			serf->state = SERF_STATE_READY_TO_ENTER;
 			serf->s.ready_to_enter.field_B = 0;
 			serf->counter = 0;
+			/* Same update (Amiga @0x12846). */
+			handle_serf_ready_to_enter_state(serf);
 		} else {
 			serf->s.free_walking.dist1 = serf->s.free_walking.neg_dist1;
 			serf->s.free_walking.dist2 = serf->s.free_walking.neg_dist2;
@@ -2218,6 +2249,8 @@ handle_serf_free_walking_state_dest_reached(serf_t *serf)
 			serf->state = SERF_STATE_READY_TO_ENTER;
 			serf->s.ready_to_enter.field_B = 0;
 			serf->counter = 0;
+			/* Same update (Amiga @0x12846). */
+			handle_serf_ready_to_enter_state(serf);
 		} else {
 			serf->s.free_walking.dist1 = serf->s.free_walking.neg_dist1;
 			serf->s.free_walking.dist2 = serf->s.free_walking.neg_dist2;
@@ -2249,6 +2282,8 @@ handle_serf_free_walking_state_dest_reached(serf_t *serf)
 			serf->state = SERF_STATE_READY_TO_ENTER;
 			serf->s.ready_to_enter.field_B = 0;
 			serf->counter = 0;
+			/* Same update (Amiga @0x12846). */
+			handle_serf_ready_to_enter_state(serf);
 		} else {
 			serf->s.free_walking.dist1 = serf->s.free_walking.neg_dist1;
 			serf->s.free_walking.dist2 = serf->s.free_walking.neg_dist2;
@@ -2277,6 +2312,8 @@ handle_serf_free_walking_state_dest_reached(serf_t *serf)
 			serf->state = SERF_STATE_READY_TO_ENTER;
 			serf->s.ready_to_enter.field_B = 0;
 			serf->counter = 0;
+			/* Same update (Amiga @0x12846). */
+			handle_serf_ready_to_enter_state(serf);
 		} else {
 			serf->s.free_walking.dist1 = serf->s.free_walking.neg_dist1;
 			serf->s.free_walking.dist2 = serf->s.free_walking.neg_dist2;
@@ -2319,6 +2356,8 @@ handle_serf_free_walking_state_dest_reached(serf_t *serf)
 			serf->state = SERF_STATE_READY_TO_ENTER;
 			serf->s.ready_to_enter.field_B = 0;
 			serf->counter = 0;
+			/* Same update (Amiga @0x12846). */
+			handle_serf_ready_to_enter_state(serf);
 		} else {
 			serf->s.free_walking.dist1 = serf->s.free_walking.neg_dist1;
 			serf->s.free_walking.dist2 = serf->s.free_walking.neg_dist2;
@@ -2893,6 +2932,8 @@ handle_serf_planning_logging_state(serf_t *serf)
 			LOGV("serf", "planning logging: tree found, dist %i, %i.",
 			     serf->s.leaving_building.field_B,
 			     serf->s.leaving_building.dest);
+			/* Same update (serf_enter_ready_to_leave @0x1329a). */
+			handle_serf_ready_to_leave_state(serf);
 			return;
 		}
 
@@ -2927,6 +2968,8 @@ handle_serf_planning_planting_state(serf_t *serf)
 			LOGV("serf", "planning planting: free space found, dist %i, %i.",
 			     serf->s.leaving_building.field_B,
 			     serf->s.leaving_building.dest);
+			/* Same update (serf_enter_ready_to_leave @0x1329a). */
+			handle_serf_ready_to_leave_state(serf);
 			return;
 		}
 
@@ -2993,6 +3036,8 @@ handle_serf_planning_stonecutting(serf_t *serf)
 			LOGV("serf", "planning stonecutting: stone found, dist %i, %i.",
 			     serf->s.leaving_building.field_B,
 			     serf->s.leaving_building.dest);
+			/* Same update (serf_enter_ready_to_leave @0x1329a). */
+			handle_serf_ready_to_leave_state(serf);
 			return;
 		}
 
@@ -3007,7 +3052,11 @@ handle_stonecutter_free_walking(serf_t *serf)
 	serf->tick = game.tick;
 	serf->counter -= delta;
 
-	while (serf->counter < 0) {
+	if (serf->counter >= 0) return;
+
+	/* Checked once per update; then steps follow while the counter
+	   stays negative (Amiga free walking loops back to 0x100c6 only). */
+	{
 		map_pos_t pos = MAP_MOVE_UP_LEFT(serf->pos);
 		if (MAP_SERF_INDEX(pos) == 0 &&
 		    MAP_OBJ(pos) >= MAP_OBJ_STONE_0 &&
@@ -3019,8 +3068,11 @@ handle_stonecutter_free_walking(serf_t *serf)
 			serf->s.free_walking.flags = 8;
 		}
 
-		handle_free_walking_common(serf);
 	}
+
+	do {
+		handle_free_walking_common(serf);
+	} while (serf->counter < 0 && serf->state == SERF_STATE_STONECUTTER_FREE_WALKING);
 }
 
 static void
@@ -3105,7 +3157,11 @@ handle_serf_sawing_state(serf_t *serf)
 
 		/* Update resource stats. */
 		player_t *player = game.player[SERF_PLAYER(serf)];
-		player->resource_count[RESOURCE_PLANK] += 1;
+		player_count_resource(player, RESOURCE_PLANK);
+		/* The original continues with the new state in the
+		   same update (serf_enter_move_resource_out @0x1335e). */
+		handle_serf_move_resource_out_state(serf);
+		return;
 	}
 }
 
@@ -3430,7 +3486,11 @@ handle_serf_mining_state(serf_t *serf)
 
 				/* Update resource stats. */
 				player_t *player = game.player[SERF_PLAYER(serf)];
-				player->resource_count[res-1] += 1;
+				player_count_resource(player, res-1);
+				/* The original continues with the new state in the
+				   same update (serf_enter_move_resource_out @0x1335e). */
+				handle_serf_move_resource_out_state(serf);
+				return;
 				return;
 			}
 			break;
@@ -3488,7 +3548,11 @@ handle_serf_smelting_state(serf_t *serf)
 
 				/* Update resource stats. */
 				player_t *player = game.player[SERF_PLAYER(serf)];
-				player->resource_count[res-1] += 1;
+				player_count_resource(player, res-1);
+				/* The original continues with the new state in the
+				   same update (serf_enter_move_resource_out @0x1335e). */
+				handle_serf_move_resource_out_state(serf);
+				return;
 				return;
 			} else if (serf->s.smelting.counter == 0) {
 				map_set_serf_index(serf->pos, 0);
@@ -3527,6 +3591,8 @@ handle_serf_planning_fishing_state(serf_t *serf)
 			LOGV("serf", "planning fishing: lake found, dist %i, %i.",
 			     serf->s.leaving_building.field_B,
 			     serf->s.leaving_building.dest);
+			/* Same update (serf_enter_ready_to_leave @0x1329a). */
+			handle_serf_ready_to_leave_state(serf);
 			return;
 		}
 
@@ -3632,6 +3698,8 @@ handle_serf_planning_farming_state(serf_t *serf)
 			LOGV("serf", "planning farming: field spot found, dist %i, %i.",
 			     serf->s.leaving_building.field_B,
 			     serf->s.leaving_building.dest);
+			/* Same update (serf_enter_ready_to_leave @0x1329a). */
+			handle_serf_ready_to_leave_state(serf);
 			return;
 		}
 
@@ -3707,7 +3775,11 @@ handle_serf_milling_state(serf_t *serf)
 				serf->s.move_resource_out.next_state = SERF_STATE_DROP_RESOURCE_OUT;
 
 				player_t *player = game.player[SERF_PLAYER(serf)];
-				player->resource_count[RESOURCE_FLOUR] += 1;
+				player_count_resource(player, RESOURCE_FLOUR);
+				/* The original continues with the new state in the
+				   same update (serf_enter_move_resource_out @0x1335e). */
+				handle_serf_move_resource_out_state(serf);
+				return;
 				return;
 			} else if (serf->s.milling.mode == 3) {
 				map_set_serf_index(serf->pos, SERF_INDEX(serf));
@@ -3755,7 +3827,11 @@ handle_serf_baking_state(serf_t *serf)
 				serf->s.move_resource_out.next_state = SERF_STATE_DROP_RESOURCE_OUT;
 
 				player_t *player = game.player[SERF_PLAYER(serf)];
-				player->resource_count[RESOURCE_BREAD] += 1;
+				player_count_resource(player, RESOURCE_BREAD);
+				/* The original continues with the new state in the
+				   same update (serf_enter_move_resource_out @0x1335e). */
+				handle_serf_move_resource_out_state(serf);
+				return;
 				return;
 			} else {
 				building->serf |= BIT(4);
@@ -3815,7 +3891,11 @@ handle_serf_pigfarming_state(serf_t *serf)
 
 					/* Update resource stats. */
 					player_t *player = game.player[SERF_PLAYER(serf)];
-					player->resource_count[RESOURCE_PIG] += 1;
+					player_count_resource(player, RESOURCE_PIG);
+					/* The original continues with the new state in the
+					   same update (serf_enter_move_resource_out @0x1335e). */
+					handle_serf_move_resource_out_state(serf);
+					return;
 				} else if (game_random_int() & 0xf) {
 					serf->s.pigfarming.mode = 1;
 					serf->animation = 139;
@@ -3871,7 +3951,11 @@ handle_serf_butchering_state(serf_t *serf)
 
 			/* Update resource stats. */
 			player_t *player = game.player[SERF_PLAYER(serf)];
-			player->resource_count[RESOURCE_MEAT] += 1;
+			player_count_resource(player, RESOURCE_MEAT);
+			/* The original continues with the new state in the
+			   same update (serf_enter_move_resource_out @0x1335e). */
+			handle_serf_move_resource_out_state(serf);
+			return;
 		}		
 	}
 }
@@ -3926,7 +4010,11 @@ handle_serf_making_weapon_state(serf_t *serf)
 
 				/* Update resource stats. */
 				player_t *player = game.player[SERF_PLAYER(serf)];
-				player->resource_count[res] += 1;
+				player_count_resource(player, res);
+				/* The original continues with the new state in the
+				   same update (serf_enter_move_resource_out @0x1335e). */
+				handle_serf_move_resource_out_state(serf);
+				return;
 				return;
 			} else {
 				serf->counter += 576;
@@ -3996,7 +4084,11 @@ handle_serf_making_tool_state(serf_t *serf)
 				serf->s.move_resource_out.next_state = SERF_STATE_DROP_RESOURCE_OUT;
 
 				/* Update resource stats. */
-				player->resource_count[res] += 1;
+				player_count_resource(player, res);
+				/* The original continues with the new state in the
+				   same update (serf_enter_move_resource_out @0x1335e). */
+				handle_serf_move_resource_out_state(serf);
+				return;
 				return;
 			} else {
 				serf->counter += 1536;
@@ -4048,7 +4140,11 @@ handle_serf_building_boat_state(serf_t *serf)
 
 					/* Update resource stats. */
 					player_t *player = game.player[SERF_PLAYER(serf)];
-					player->resource_count[RESOURCE_BOAT] += 1;
+					player_count_resource(player, RESOURCE_BOAT);
+					/* The original continues with the new state in the
+					   same update (serf_enter_move_resource_out @0x1335e). */
+					handle_serf_move_resource_out_state(serf);
+					return;
 
 					break;
 				}
@@ -4359,17 +4455,25 @@ handle_knight_attacking(serf_t *serf)
 			if (serf->s.attacking.field_C == 0) {
 				/* Defender won. */
 				if (serf->state == SERF_STATE_KNIGHT_ATTACKING_FREE) {
+					/* As in the original (Amiga @0xe19c): the defender
+					   takes the attacker's place on the map at once and
+					   removes the dead attacker (state 63); the attacker
+					   dies in state 51. */
+					map_set_serf_index(serf->pos, SERF_INDEX(def_serf));
+
 					serf_log_state_change(def_serf, SERF_STATE_KNIGHT_DEFENDING_VICTORY_FREE);
 					def_serf->state = SERF_STATE_KNIGHT_DEFENDING_VICTORY_FREE;
-
 					def_serf->animation = 180;
 					def_serf->counter = 0;
+					/* dist_col and dist_row (B, C) are kept. */
+					def_serf->s.attacking.def_index = SERF_INDEX(serf);
 
 					/* Attacker dies. */
-					serf_log_state_change(serf, SERF_STATE_KNIGHT_ATTACKING_DEFEAT_FREE);
-					serf->state = SERF_STATE_KNIGHT_ATTACKING_DEFEAT_FREE;
+					serf_log_state_change(serf, SERF_STATE_KNIGHT_ATTACKING_DEFEAT);
+					serf->state = SERF_STATE_KNIGHT_ATTACKING_DEFEAT;
 					serf->animation = 152 + SERF_TYPE(serf);
 					serf->counter = 255;
+					serf->tick = game.tick;
 					serf_set_type_dead(serf);
 				} else {
 					/* Defender returns to building. */
@@ -4456,6 +4560,13 @@ handle_serf_knight_attacking_defeat_state(serf_t *serf)
 	serf->counter -= delta;
 
 	if (serf->counter < 0) {
+		/* Original bug: after a free fight the victorious defender
+		   (state 63) has taken this place and removes this serf; when
+		   this handler runs first the original clears the defender
+		   from the map, frees itself and the defender frees the slot
+		   again later. Leave it to the defender. */
+		if (MAP_SERF_INDEX(serf->pos) != SERF_INDEX(serf)) return;
+
 		map_set_serf_index(serf->pos, 0);
 		game_free_serf(SERF_INDEX(serf));
 	}
@@ -4538,7 +4649,11 @@ handle_state_knight_free_walking(serf_t *serf)
 	serf->tick = game.tick;
 	serf->counter -= delta;
 
-	while (serf->counter < 0) {
+	if (serf->counter >= 0) return;
+
+	/* Checked once per update; then steps follow while the counter
+	   stays negative (Amiga free walking loops back to 0x100c6 only). */
+	{
 		/* Check for enemy knights nearby. */
 		for (int d = DIR_RIGHT; d <= DIR_UP; d++) {
 			map_pos_t pos = MAP_MOVE(serf->pos, d);
@@ -4608,8 +4723,11 @@ handle_state_knight_free_walking(serf_t *serf)
 			}
 		}
 
-		handle_free_walking_common(serf);
 	}
+
+	do {
+		handle_free_walking_common(serf);
+	} while (serf->counter < 0 && serf->state == SERF_STATE_KNIGHT_FREE_WALKING);
 }
 
 static void
@@ -4734,12 +4852,14 @@ handle_knight_attacking_victory_free(serf_t *serf)
 		serf_log_state_change(serf, SERF_STATE_KNIGHT_ATTACKING_FREE_WAIT);
 		serf->state = SERF_STATE_KNIGHT_ATTACKING_FREE_WAIT;
 
-		serf->s.free_walking.dist1 = dist_col;
-		serf->s.free_walking.dist2 = dist_row;
-		serf->s.free_walking.neg_dist1 = 0;
-		serf->s.free_walking.neg_dist2 = 0;
-
+		/* Only with field_B set the distance is moved down; otherwise
+		   only flags is cleared and dist1 stays 0, which the lost
+		   state reads as its field_B (Amiga @0xfefe). */
 		if (serf->s.attacking.field_B != 0) {
+			serf->s.free_walking.dist1 = dist_col;
+			serf->s.free_walking.dist2 = dist_row;
+			serf->s.free_walking.neg_dist1 = 0;
+			serf->s.free_walking.neg_dist2 = 0;
 			serf->s.free_walking.flags = 1;
 		} else {
 			serf->s.free_walking.flags = 0;
@@ -4755,13 +4875,40 @@ handle_knight_attacking_victory_free(serf_t *serf)
 static void
 handle_knight_defending_victory_free(serf_t *serf)
 {
-	serf->animation = 180;
-	serf->counter = 0;
+	/* Count down the dead attacker's counter, then remove it and walk
+	   on (Amiga handle_knight_defending_victory_free @0xff6e). */
+	serf_t *other = game_get_serf(serf->s.attacking.def_index);
+
+	uint16_t delta = game.tick - other->tick;
+	other->tick = game.tick;
+	other->counter -= delta;
+
+	if (other->counter < 0) {
+		game_free_serf(SERF_INDEX(other));
+
+		int dist_col = serf->s.defending_free.dist_col;
+		int dist_row = serf->s.defending_free.dist_row;
+
+		serf_log_state_change(serf, SERF_STATE_KNIGHT_FREE_WALKING);
+		serf->state = SERF_STATE_KNIGHT_FREE_WALKING;
+
+		serf->s.free_walking.dist1 = dist_col;
+		serf->s.free_walking.dist2 = dist_row;
+		serf->s.free_walking.neg_dist1 = 0;
+		serf->s.free_walking.neg_dist2 = 0;
+		serf->s.free_walking.flags = 0;
+
+		serf->animation = 179;
+		serf->counter = 0;
+		serf->tick = game.tick;
+	}
 }
 
 static void
 handle_serf_knight_attacking_defeat_free_state(serf_t *serf)
 {
+	/* Legacy-only state 76, kept for saves made before the free fight
+	   ended as in the original (states 51 and 63). */
 	uint16_t delta = game.tick - serf->tick;
 	serf->tick = game.tick;
 	serf->counter -= delta;
@@ -5006,10 +5153,8 @@ handle_serf_finished_building_state(serf_t *serf)
 		serf->s.leaving_building.dir = 0;
 		serf->s.leaving_building.next_state = SERF_STATE_WALKING;
 
-		if (MAP_SERF_INDEX(serf->pos) != SERF_INDEX(serf) &&
-		    MAP_SERF_INDEX(serf->pos) != 0) {
-			serf->animation = 82;
-		}
+		/* Same update (Amiga finished_building @0x13296). */
+		handle_serf_ready_to_leave_state(serf);
 	}
 }
 
