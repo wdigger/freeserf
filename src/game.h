@@ -232,6 +232,7 @@ void game_pause(int enable);
 
 void game_prepare_ground_analysis(map_pos_t pos, int estimates[5]);
 int game_send_geologist(flag_t *dest);
+void init_spiral_pos_pattern();
 
 int game_get_leveling_height(map_pos_t pos);
 

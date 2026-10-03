@@ -735,6 +735,7 @@ handle_serf_walking_state_dest_reached(serf_t *serf)
 		serf->state = SERF_STATE_TRANSPORTING;
 		serf->s.walking.dir = dir;
 		serf->s.walking.res = 0;
+		serf->s.walking.dest = 0; /* Not carrying: no destination. */
 		serf->s.walking.wait_counter = 0;
 
 		serf_transporter_move_to_flag(serf, flag);
@@ -993,10 +994,14 @@ handle_serf_transporting_state(serf_t *serf)
 				if (!FLAG_IS_SCHEDULED(other_flag, other_dir)) {
 					/* TODO Don't use anim as state var */
 					serf->tick = (serf->tick & 0xff00) | (serf->s.walking.dir & 0xff);
+					/* field_E shares the walking dir byte (+0xe) in
+					   the original. */
+					int walking_dir = serf->s.walking.dir;
 					serf_log_state_change(serf, SERF_STATE_IDLE_ON_PATH);
 					serf->state = SERF_STATE_IDLE_ON_PATH;
 					serf->s.idle_on_path.rev_dir = rev_dir;
 					serf->s.idle_on_path.flag = flag;
+					serf->s.idle_on_path.field_E = walking_dir;
 					tiles[serf->pos].obj |= BIT(7);
 					map_set_serf_index(serf->pos, 0);
 					return;
@@ -1559,8 +1564,12 @@ handle_serf_leaving_building_state(serf_t *serf)
 		if (serf->state == SERF_STATE_WALKING) {
 			int mode = serf->s.leaving_building.field_B;
 			uint dest = serf->s.leaving_building.dest;
+			/* walking.dir is the same byte (+0xe) as leaving_building.dir
+			   in the original; legacy's layouts differ. */
+			int dir = serf->s.leaving_building.dir;
 			serf->s.walking.res = mode;
 			serf->s.walking.dest = dest;
+			serf->s.walking.dir = dir;
 			serf->s.walking.wait_counter = 0;
 		} else if (serf->state == SERF_STATE_DROP_RESOURCE_OUT) {
 			uint res = serf->s.leaving_building.field_B;
@@ -2038,10 +2047,17 @@ handle_serf_delivering_state(serf_t *serf)
 						}
 					}
 
-					assert(stock >= 0);
-					building->stock[stock].available += 1;
-					building->stock[stock].requested -= 1;
-					assert(building->stock[stock].requested >= 0);
+					if (stock < 0) {
+						/* The building that requested the resource was
+						   replaced while it was on its way (a new
+						   building on the same flag); the original adds
+						   it to an unrelated stock. Drop it. */
+						game_lose_resource((resource_type_t)res);
+					} else {
+						building->stock[stock].available += 1;
+						building->stock[stock].requested -= 1;
+						assert(building->stock[stock].requested >= 0);
+					}
 				}
 			}
 		}
@@ -4562,10 +4578,16 @@ handle_state_knight_free_walking(serf_t *serf)
 							serf->animation = 99;
 							serf->counter = 255;
 
-							flag_t *dest = game_get_flag(other->s.walking.dest);
-							building_t *building = dest->other_endpoint.b[DIR_UP_LEFT];
-							if (!BUILDING_HAS_INVENTORY(building)) {
-								building->stock[0].requested -= 1;
+							/* Original bug: a knight whose road was removed
+							   has no destination (dest 0); the original then
+							   decrements a byte of the dummy flag 0. */
+							if (other->s.walking.dest != 0) {
+								flag_t *dest = game_get_flag(other->s.walking.dest);
+								building_t *building = dest->other_endpoint.b[DIR_UP_LEFT];
+								if (FLAG_HAS_BUILDING(dest) &&
+								    !BUILDING_HAS_INVENTORY(building)) {
+									building->stock[0].requested -= 1;
+								}
 							}
 
 							serf_log_state_change(other, SERF_STATE_KNIGHT_ENGAGE_ATTACKING_FREE);
@@ -4896,6 +4918,7 @@ handle_serf_idle_on_path_state(serf_t *serf)
 		serf_log_state_change(serf, SERF_STATE_TRANSPORTING);
 		serf->state = SERF_STATE_TRANSPORTING;
 		serf->s.walking.res = 0;
+		serf->s.walking.dest = 0; /* Not carrying: no destination. */
 		serf->s.walking.wait_counter = 0;
 		serf->s.walking.dir = dir;
 		serf->tick = game.tick;
@@ -4921,6 +4944,7 @@ handle_serf_wait_idle_on_path_state(serf_t *serf)
 		serf_log_state_change(serf, SERF_STATE_TRANSPORTING);
 		serf->state = SERF_STATE_TRANSPORTING;
 		serf->s.walking.res = 0;
+		serf->s.walking.dest = 0; /* Not carrying: no destination. */
 		serf->s.walking.wait_counter = 0;
 		serf->s.walking.dir = dir;
 		serf->tick = game.tick;

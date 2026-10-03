@@ -20,6 +20,7 @@
  */
 
 #include "savegame.h"
+#include "ai_internal.h"
 #include "game.h"
 #include "map.h"
 #include "version.h"
@@ -72,6 +73,7 @@ load_v0_game_state(FILE *f, v0_map_t *map)
 	game.map.cols = 1 << game.map.col_size;
 	game.map.rows = 1 << game.map.row_size;
 	map_init_dimensions(&game.map);
+	init_spiral_pos_pattern(); /* Not set up by the loader before. */
 
 	/* Allocate game objects */
 	const int max_map_size = 10;
@@ -258,9 +260,10 @@ load_v0_player_state(FILE *f)
 		player->flags = data[130];
 		player->build = data[131];
 
+		/* The original indexes these by building type - 1. */
 		for (int j = 0; j < 23; j++) {
-			player->completed_building_count[j] = *(uint16_t *)&data[132+2*j];
-			player->incomplete_building_count[j] = *(uint16_t *)&data[178+2*j];
+			player->completed_building_count[j+1] = *(uint16_t *)&data[132+2*j];
+			player->incomplete_building_count[j+1] = *(uint16_t *)&data[178+2*j];
 		}
 
 		for (int j = 0; j < 26; j++) {
@@ -281,6 +284,7 @@ load_v0_player_state(FILE *f)
 		player->knights_to_spawn = *(uint16_t *)&data[396];
 		/*player->field_110 = *(uint16_t *)&data[400];*/
 
+		player->total_land_area = *(uint32_t *)&data[402];
 		player->total_building_score = *(uint32_t *)&data[406];
 		player->total_military_score = *(uint32_t *)&data[410];
 
@@ -371,7 +375,7 @@ load_v0_map_state(FILE *f, const v0_map_t *map)
 			uint8_t *field_2_data = &data[4*(x + (y << map->row_shift)) + 4*map->cols];
 
 			tiles[pos].paths = field_1_data[0] & 0x3f;
-			tiles[pos].height = field_1_data[1] & 0x1f;
+			tiles[pos].height = field_1_data[1]; /* With owner bits 5-7. */
 			tiles[pos].type = field_1_data[2];
 			tiles[pos].obj = field_1_data[3] & 0x7f;
 
@@ -995,6 +999,9 @@ save_text_game_state(FILE *f)
 	save_text_write_value(f, "map.regions", game.map_regions);
 
 	save_text_write_value(f, "max_next_index", game.max_next_index);
+	save_text_write_value(f, "clear_req_building_cursor", game.clear_req_building_cursor);
+	save_text_write_value(f, "clear_req_flag_cursor", game.clear_req_flag_cursor);
+	save_text_write_value(f, "ai_ticks", ai_game.ticks_288);
 	save_text_write_value(f, "max_serfs_from_land", game.max_serfs_from_land);
 	save_text_write_value(f, "map.gold_deposit", game.map_gold_deposit);
 	save_text_write_value(f, "update_map_16_loop", game.update_map_16_loop);
@@ -1028,8 +1035,8 @@ save_text_player_state(FILE *f)
 		save_text_write_array(f, "serf_count", player->serf_count, 27);
 		save_text_write_array(f, "knight_occupation", player->knight_occupation, 4);
 
-		save_text_write_array(f, "completed_building_count", player->completed_building_count, 23);
-		save_text_write_array(f, "incomplete_building_count", player->incomplete_building_count, 23);
+		save_text_write_array(f, "completed_building_count", player->completed_building_count, 24);
+		save_text_write_array(f, "incomplete_building_count", player->incomplete_building_count, 24);
 
 		save_text_write_array(f, "inventory_prio", player->inventory_prio, 26);
 		save_text_write_array(f, "attacking_buildings", player->attacking_buildings, 64);
@@ -1037,6 +1044,7 @@ save_text_player_state(FILE *f)
 		save_text_write_value(f, "initial_supplies", player->initial_supplies);
 		save_text_write_value(f, "knights_to_spawn", player->knights_to_spawn);
 
+		save_text_write_value(f, "total_land_area", player->total_land_area);
 		save_text_write_value(f, "total_building_score", player->total_building_score);
 		save_text_write_value(f, "total_military_score", player->total_military_score);
 
@@ -1080,6 +1088,18 @@ save_text_player_state(FILE *f)
 		save_text_write_value(f, "sawmill_index", player->sawmill_index);
 		save_text_write_value(f, "stonecutter_index", player->stonecutter_index);
 		save_text_write_value(f, "emergency_counter", player->emergency_counter);
+		save_text_write_value(f, "knight_cycle_counter", player->knight_cycle_counter);
+		save_text_write_value(f, "ai_intelligence", player->ai_intelligence);
+		{
+			const int ai_values[] = {
+				player->ai_value_0, player->ai_value_1, player->ai_value_2,
+				player->ai_value_3, player->ai_value_4, player->ai_value_5
+			};
+			save_text_write_array(f, "ai_values", ai_values, 6);
+		}
+		/* Computer player state (all ints, see ai.h). */
+		save_text_write_array(f, "ai", (const int *)&player->ai,
+				      sizeof(player->ai) / sizeof(int));
 
 		save_text_write_value(f, "castle_knights", player->castle_knights);
 		save_text_write_value(f, "castle_knights_wanted", player->castle_knights_wanted);
@@ -1219,6 +1239,7 @@ save_text_inventory_state(FILE *f)
 			save_text_write_array(f, "queue.dest", dests, 2);
 
 			save_text_write_value(f, "generic_count", inventory->generic_count);
+			save_text_write_value(f, "serfs_out", inventory->serfs_out);
 
 			save_text_write_array(f, "resources", inventory->resources, 26);
 			save_text_write_array(f, "serfs", inventory->serfs, 27);
@@ -1379,6 +1400,7 @@ save_text_serf_state(FILE *f)
 
 		case SERF_STATE_KNIGHT_ENGAGING_BUILDING:
 		case SERF_STATE_KNIGHT_PREPARE_ATTACKING:
+		case SERF_STATE_KNIGHT_PREPARE_DEFENDING_FREE:
 		case SERF_STATE_KNIGHT_PREPARE_DEFENDING_FREE_WAIT:
 		case SERF_STATE_KNIGHT_ATTACKING_DEFEAT_FREE:
 		case SERF_STATE_KNIGHT_ATTACKING:
@@ -1386,6 +1408,7 @@ save_text_serf_state(FILE *f)
 		case SERF_STATE_KNIGHT_ENGAGE_ATTACKING_FREE:
 		case SERF_STATE_KNIGHT_ENGAGE_ATTACKING_FREE_JOIN:
 		case SERF_STATE_KNIGHT_ATTACKING_VICTORY_FREE:
+		case SERF_STATE_KNIGHT_PREPARE_ATTACKING_FREE:
 			save_text_write_value(f, "state.field_B", serf->s.attacking.field_B);
 			save_text_write_value(f, "state.field_C", serf->s.attacking.field_C);
 			save_text_write_value(f, "state.field_D", serf->s.attacking.field_D);
@@ -1398,6 +1421,7 @@ save_text_serf_state(FILE *f)
 			save_text_write_value(f, "state.dist_row", serf->s.defending_free.dist_row);
 			save_text_write_value(f, "state.field_D", serf->s.defending_free.field_D);
 			save_text_write_value(f, "state.other_dist_col", serf->s.defending_free.other_dist_col);
+			save_text_write_value(f, "state.other_dist_row", serf->s.defending_free.other_dist_row);
 			save_text_write_value(f, "state.other_dist_row", serf->s.defending_free.other_dist_row);
 			break;
 
@@ -1438,6 +1462,7 @@ static int
 save_text_map_state(FILE *f)
 {
 	int height[SAVE_MAP_TILE_COUNT];
+	int owner[SAVE_MAP_TILE_COUNT];
 	int type_up[SAVE_MAP_TILE_COUNT];
 	int type_down[SAVE_MAP_TILE_COUNT];
 	int paths[SAVE_MAP_TILE_COUNT];
@@ -1459,6 +1484,7 @@ save_text_map_state(FILE *f)
 					map_pos_t pos = MAP_POS(tx+x, ty+y);
 					int i = y*SAVE_MAP_TILE_SIZE + x;
 					height[i] = MAP_HEIGHT(pos);
+					owner[i] = MAP_HAS_OWNER(pos) ? MAP_OWNER(pos) + 1 : 0;
 					type_up[i] = MAP_TYPE_UP(pos);
 					type_down[i] = MAP_TYPE_DOWN(pos);
 					paths[i] = MAP_PATHS(pos);
@@ -1476,6 +1502,8 @@ save_text_map_state(FILE *f)
 			}
 
 			save_text_write_array(f, "height", height, SAVE_MAP_TILE_COUNT);
+			/* Land owner: 0 none, else player + 1. */
+			save_text_write_array(f, "owner", owner, SAVE_MAP_TILE_COUNT);
 			save_text_write_array(f, "type.up", type_up, SAVE_MAP_TILE_COUNT);
 			save_text_write_array(f, "type.down", type_down, SAVE_MAP_TILE_COUNT);
 			save_text_write_array(f, "paths", paths, SAVE_MAP_TILE_COUNT);
@@ -1781,6 +1809,7 @@ load_text_game_state(list_t *sections)
 	game.map.cols = 1 << game.map.col_size;
 	game.map.rows = 1 << game.map.row_size;
 	map_init_dimensions(&game.map);
+	init_spiral_pos_pattern(); /* Not set up by the loader before. */
 
 	/* Load the remaining game state. */
 	list_foreach(&section->settings, elm) {
@@ -1842,6 +1871,12 @@ load_text_game_state(list_t *sections)
 			game.map_regions = atoi(s->value);
 		} else if (!strcmp(s->key, "max_next_index")) {
 			game.max_next_index = atoi(s->value);
+		} else if (!strcmp(s->key, "clear_req_building_cursor")) {
+			game.clear_req_building_cursor = atoi(s->value);
+		} else if (!strcmp(s->key, "clear_req_flag_cursor")) {
+			game.clear_req_flag_cursor = atoi(s->value);
+		} else if (!strcmp(s->key, "ai_ticks")) {
+			ai_game.ticks_288 = atoi(s->value);
 		} else if (!strcmp(s->key, "max_serfs_from_land")) {
 			game.max_serfs_from_land = atoi(s->value);
 		} else if (!strcmp(s->key, "map.gold_deposit")) {
@@ -1861,8 +1896,12 @@ load_text_game_state(list_t *sections)
 		}
 	}
 
-	/* Allocate game objects */
+	/* Allocate game objects (this resets the request failure cursors). */
+	uint building_cursor = game.clear_req_building_cursor;
+	uint flag_cursor = game.clear_req_flag_cursor;
 	game_allocate_objects();
+	game.clear_req_building_cursor = building_cursor;
+	game.clear_req_flag_cursor = flag_cursor;
 
 	return 0;
 }
@@ -1892,6 +1931,28 @@ load_text_player_section(section_t *section)
 			player->color = atoi(s->value);
 		} else if (!strcmp(s->key, "face")) {
 			player->face = atoi(s->value);
+		} else if (!strcmp(s->key, "ai_intelligence")) {
+			player->ai_intelligence = atoi(s->value);
+		} else if (!strcmp(s->key, "ai_values")) {
+			int *values[] = {
+				&player->ai_value_0, &player->ai_value_1, &player->ai_value_2,
+				&player->ai_value_3, &player->ai_value_4, &player->ai_value_5
+			};
+			char *array = s->value;
+			for (int i = 0; i < 6 && array != NULL; i++) {
+				char *v = parse_array_value(&array);
+				*values[i] = atoi(v);
+			}
+		} else if (!strcmp(s->key, "knight_cycle_counter")) {
+			player->knight_cycle_counter = atoi(s->value);
+		} else if (!strcmp(s->key, "ai")) {
+			int *ai = (int *)&player->ai;
+			char *array = s->value;
+			for (uint i = 0; i < sizeof(player->ai) / sizeof(int) &&
+				     array != NULL; i++) {
+				char *v = parse_array_value(&array);
+				ai[i] = atoi(v);
+			}
 		} else if (!strcmp(s->key, "tool_prio")) {
 			char *array = s->value;
 			for (int i = 0; i < 9 && array != NULL; i++) {
@@ -1924,13 +1985,13 @@ load_text_player_section(section_t *section)
 			}
 		} else if (!strcmp(s->key, "completed_building_count")) {
 			char *array = s->value;
-			for (int i = 0; i < 23 && array != NULL; i++) {
+			for (int i = 0; i < 24 && array != NULL; i++) {
 				char *v = parse_array_value(&array);
 				player->completed_building_count[i] = atoi(v);
 			}
 		} else if (!strcmp(s->key, "incomplete_building_count")) {
 			char *array = s->value;
-			for (int i = 0; i < 23 && array != NULL; i++) {
+			for (int i = 0; i < 24 && array != NULL; i++) {
 				char *v = parse_array_value(&array);
 				player->incomplete_building_count[i] = atoi(v);
 			}
@@ -1950,6 +2011,8 @@ load_text_player_section(section_t *section)
 			player->initial_supplies = atoi(s->value);
 		} else if (!strcmp(s->key, "knights_to_spawn")) {
 			player->knights_to_spawn = atoi(s->value);
+		} else if (!strcmp(s->key, "total_land_area")) {
+			player->total_land_area = atoi(s->value);
 		} else if (!strcmp(s->key, "total_building_score")) {
 			player->total_building_score = atoi(s->value);
 		} else if (!strcmp(s->key, "total_military_score")) {
@@ -2060,6 +2123,7 @@ load_text_flag_section(section_t *section)
 
 	flag_t *flag = &game.flags[n];
 	game.flag_bitmap[n/8] |= BIT(7-(n&7));
+	memset(flag, 0, sizeof(flag_t)); /* Fields not in the file start at 0. */
 
 	/* Load the flag state. */
 	list_elm_t *elm;
@@ -2175,6 +2239,7 @@ load_text_building_section(section_t *section)
 
 	building_t *building = &game.buildings[n];
 	game.building_bitmap[n/8] |= BIT(7-(n&7));
+	memset(building, 0, sizeof(building_t)); /* Fields not in the file start at 0. */
 
 	/* Load the building state. */
 	list_elm_t *elm;
@@ -2283,6 +2348,7 @@ load_text_inventory_section(section_t *section)
 
 	inventory_t *inventory = &game.inventories[n];
 	game.inventory_bitmap[n/8] |= BIT(7-(n&7));
+	memset(inventory, 0, sizeof(inventory_t)); /* Fields not in the file start at 0. */
 
 	/* Load the inventory state. */
 	list_elm_t *elm;
@@ -2308,6 +2374,8 @@ load_text_inventory_section(section_t *section)
 				char *v = parse_array_value(&array);
 				inventory->out_queue[i].dest = atoi(v);
 			}
+		} else if (!strcmp(s->key, "serfs_out")) {
+			inventory->serfs_out = atoi(s->value);
 		} else if (!strcmp(s->key, "generic_count")) {
 			inventory->generic_count = atoi(s->value);
 		} else if (!strcmp(s->key, "resources")) {
@@ -2361,6 +2429,7 @@ load_text_serf_section(section_t *section)
 
 	serf_t *serf = &game.serfs[n];
 	game.serf_bitmap[n/8] |= BIT(7-(n&7));
+	memset(serf, 0, sizeof(serf_t)); /* Fields not in the file start at 0. */
 
 	/* Load the serf state. */
 	list_elm_t *elm;
@@ -2590,6 +2659,7 @@ load_text_serf_section(section_t *section)
 
 		case SERF_STATE_KNIGHT_ENGAGING_BUILDING:
 		case SERF_STATE_KNIGHT_PREPARE_ATTACKING:
+		case SERF_STATE_KNIGHT_PREPARE_DEFENDING_FREE:
 		case SERF_STATE_KNIGHT_PREPARE_DEFENDING_FREE_WAIT:
 		case SERF_STATE_KNIGHT_ATTACKING_DEFEAT_FREE:
 		case SERF_STATE_KNIGHT_ATTACKING:
@@ -2597,6 +2667,7 @@ load_text_serf_section(section_t *section)
 		case SERF_STATE_KNIGHT_ENGAGE_ATTACKING_FREE:
 		case SERF_STATE_KNIGHT_ENGAGE_ATTACKING_FREE_JOIN:
 		case SERF_STATE_KNIGHT_ATTACKING_VICTORY_FREE:
+		case SERF_STATE_KNIGHT_PREPARE_ATTACKING_FREE:
 			if (!strcmp(s->key, "state.field_B")) {
 				serf->s.attacking.field_B = atoi(s->value);
 			} else if (!strcmp(s->key, "state.field_C")) {
@@ -2722,7 +2793,19 @@ load_text_map_section(section_t *section)
 					if (array == NULL) return -1;
 					map_pos_t p = MAP_POS_ADD(pos, MAP_POS(x, y));
 					char *v = parse_array_value(&array);
-					tiles[p].height = atoi(v) & 0x1f;
+					tiles[p].height = (tiles[p].height & 0xe0) | (atoi(v) & 0x1f);
+				}
+			}
+		} else if (!strcmp(s->key, "owner")) {
+			char *array = s->value;
+			for (int y = 0; y < SAVE_MAP_TILE_SIZE; y++) {
+				for (int x = 0; x < SAVE_MAP_TILE_SIZE; x++) {
+					if (array == NULL) return -1;
+					map_pos_t p = MAP_POS_ADD(pos, MAP_POS(x, y));
+					char *v = parse_array_value(&array);
+					int o = atoi(v);
+					tiles[p].height = (tiles[p].height & 0x1f) |
+						(o > 0 ? (BIT(7) | ((o - 1) << 5)) : 0);
 				}
 			}
 		} else if (!strcmp(s->key, "type.up")) {

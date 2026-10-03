@@ -24,6 +24,7 @@
    go in the respective source file. */
 
 #include "game.h"
+#include "ai_internal.h"
 #include "mission.h"
 #include "savegame.h"
 #include "debug.h"
@@ -138,7 +139,10 @@ game_alloc_flag(flag_t **flag, int *index)
 		f->transporter = 0;
 		for (int j = 0; j < FLAG_MAX_RES_COUNT; j++) {
 			f->slot[j].type = RESOURCE_NONE;
+			f->slot[j].dir = DIR_NONE;
+			f->slot[j].dest = 0;
 		}
+		memset(&f->other_endpoint, 0, sizeof(f->other_endpoint));
 		memset(&f->length, 0, sizeof(f->length));
 		f->bld_flags = 0;
 		f->bld2_flags = 0;
@@ -230,6 +234,16 @@ game_free_building(int index)
 	/* Remove building from allocation bitmap. */
 	game.building_bitmap[index/8] &= ~BIT(7-(index&7));
 
+	/* A freed building is no longer designated by the emergency
+	   program (the original keeps reading the stale record). */
+	for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
+		player_t *player = game.player[i];
+		if (player == NULL) continue;
+		if (player->lumberjack_index == index) player->lumberjack_index = 0;
+		if (player->sawmill_index == index) player->sawmill_index = 0;
+		if (player->stonecutter_index == index) player->stonecutter_index = 0;
+	}
+
 	/* Decrement max_building_index as much as possible. */
 	if (index + 1 == game.max_building_index) { /* Amiga game_free_*: shrink when the last one is freed */
 		while (--game.max_building_index > 0) {
@@ -302,6 +316,9 @@ game_alloc_serf(serf_t **serf, int *index)
 		if (i == game.max_serf_index) game.max_serf_index += 1;
 
 		serf_t *s = &game.serfs[i];
+		/* Start from a clean record; state handlers may read fields
+		   of the union that were never written for a new serf. */
+		memset(s, 0, sizeof(serf_t));
 
 		if (serf != NULL) *serf = s;
 		if (index != NULL) *index = i;
@@ -408,8 +425,8 @@ update_player(player_t *player)
 	if (player->total_building_score > 0xffff0000) player->total_building_score = 0;
 
 	if (PLAYER_IS_AI(player)) {
-		/*if (player->field_1B2 != 0) player->field_1B2 -= 1;*/
-		/*if (player->field_1B0 != 0) player->field_1B0 -= 1;*/
+		if (player->ai.u_1b2 != 0) player->ai.u_1b2 -= 1;
+		if (player->ai.u_1b0 != 0) player->ai.u_1b0 -= 1;
 	}
 
 	/* Counted once per update, not by ticks (Amiga update_player @0xa562):
@@ -482,7 +499,7 @@ clear_serf_request_failure()
 		uint n = min(batch, game.max_building_index - i);
 		int cleared = 10;
 		for (; n > 0; n--, i++) {
-			if (!BUILDING_ALLOCATED(i)) continue;
+			if (i == 0 || !BUILDING_ALLOCATED(i)) continue;
 			building_t *building = game_get_building(i);
 			if (building->serf & BIT(2)) {
 				building->serf &= ~BIT(2);
@@ -498,7 +515,7 @@ clear_serf_request_failure()
 		uint n = min(batch, game.max_flag_index - i);
 		int cleared = 10;
 		for (; n > 0; n--, i++) {
-			if (!FLAG_ALLOCATED(i)) continue;
+			if (i == 0 || !FLAG_ALLOCATED(i)) continue;
 			flag_t *flag = game_get_flag(i);
 			if (flag->transporter & BIT(7)) {
 				flag->transporter &= ~BIT(7);
@@ -577,34 +594,9 @@ update_knight_morale()
 			player->knight_morale = min(player->knight_morale + 1024*castle_score, 0xffff);
 		}
 
-		uint military_score = player->total_military_score;
-		uint morale = player->knight_morale >> 5;
-		while (military_score > 0xffff) {
-			military_score >>= 1;
-			morale <<= 1;
-		}
-
-		/* Calculate fractional score used by AI */
-		uint player_score = (military_score * morale) >> 7;
-		uint enemy_score = 0;
-		for (int j = 0; j < GAME_MAX_PLAYER_COUNT; j++) {
-			if (PLAYER_IS_ACTIVE(game.player[j]) && i != j) {
-				enemy_score += game.player[j]->total_military_score;
-			}
-		}
-
-		while (player_score > 0xffff &&
-		       enemy_score > 0xffff) {
-			player_score >>= 1;
-			enemy_score >>= 1;
-		}
-
-		player_score >>= 1;
-		uint frac_score = 0;
-		if (player_score != 0 && enemy_score != 0) {
-			if (player_score > enemy_score) frac_score = 0xffffffff;
-			else frac_score = (player_score*0x10000)/enemy_score;
-		}
+		/* Military strength against the other players, used by the
+		   AI (Amiga player_update_knight_morale @0xb4bc). */
+		player->ai.military_ratio = ai_calc_military_ratio(player);
 
 		player->military_max_gold = 0;
 	}
@@ -806,9 +798,8 @@ update_inventories()
 		-1
 	};
 
-	check_max_serfs_reached();
-	/* AI: TODO */
-
+	/* check_max_serfs_reached() and the AI damping run before the
+	   emergency program in the scheduler, as in the original. */
 	const int *arr = NULL;
 	switch (game_random_int() & 7) {
 	case 0: arr = arr_2; break;
@@ -1047,7 +1038,7 @@ find_nearest_inventory_search_cb(flag_t *flag, flag_t **dest)
 }
 
 /* Return the flag index of the inventory nearest to flag. */
-static int
+int
 find_nearest_inventory(flag_t *flag)
 {
 	flag_t *dest = NULL;
@@ -1202,7 +1193,7 @@ schedule_unknown_dest_cb(flag_t *flag, schedule_unknown_dest_data_t *data)
 	return 0;
 }
 
-static void
+void
 schedule_slot_to_unknown_dest(flag_t *flag, int slot)
 {
 	/* Resources which should be routed directly to
@@ -1489,7 +1480,11 @@ send_serf_to_flag_search_cb(flag_t *flag, send_serf_to_flag_data_t *data)
 				serf_t *serf = game_get_serf(inv->serfs[SERF_KNIGHT_0+knight_type]);
 				inv->serfs[SERF_KNIGHT_0+knight_type] = 0;
 
-				data->building->stock[0].requested += 1;
+				/* A castle keeps its inventory marker (the original
+				   restores the stock bytes to 0xff, Amiga @0xcac6). */
+				if (!BUILDING_HAS_INVENTORY(data->building)) {
+					data->building->stock[0].requested += 1;
+				}
 				data->building->serf &= ~BIT(7);
 
 				serf_log_state_change(serf, SERF_STATE_READY_TO_LEAVE_INVENTORY);
@@ -1597,7 +1592,9 @@ send_serf_to_flag(flag_t *dest, int type, resource_type_t res1, resource_type_t 
 
 		if (type < 0) {
 			/* Knight */
-			building->stock[0].requested += 1;
+			if (!BUILDING_HAS_INVENTORY(building)) {
+				building->stock[0].requested += 1;
+			}
 			building->serf &= ~BIT(7);
 
 			serf_log_state_change(serf, SERF_STATE_READY_TO_LEAVE_INVENTORY);
@@ -1676,6 +1673,25 @@ update_unfinished_building(building_t *building)
 		}
 		int r = send_serf_to_building(building, SERF_BUILDER, RESOURCE_HAMMER, (resource_type_t)-1);
 		if (r < 0) building->serf |= BIT(2);
+	}
+
+	/* During a planks or stone emergency computer players demolish
+	   construction sites at random, the less progress the more likely
+	   (Amiga @0xc07a / 0xc10e). */
+	if (((BIT_TEST(player->emergency_flags, 1) ||
+	      BIT_TEST(player->emergency_flags, 2)) && !designated) &&
+	    PLAYER_IS_AI(player)) {
+		/* Original bug: in the stone branch the designated stonecutter
+		   test is inverted (bne @0xc10c); not reproduced. */
+		int rolls = BIT_TEST(player->emergency_flags, 1) +
+			BIT_TEST(player->emergency_flags, 2);
+		uint16_t limit = (uint16_t)~building->progress >> 5;
+		for (int i = 0; i < rolls; i++) {
+			if (game_random_int() < limit) {
+				demolish_building(building->pos);
+				return;
+			}
+		}
 	}
 
 	/* Request planks */
@@ -2657,8 +2673,12 @@ player_update_emergency_program(player_t *player)
 {
 	if (BIT_TEST(player->emergency_flags, 0)) return;
 	if (!PLAYER_HAS_CASTLE(player)) return;
+	/* Original bug: after the castle is lost the original keeps
+	   reading its freed inventory record. */
+	if (!INVENTORY_ALLOCATED(player->castle_inventory)) return;
 
 	inventory_t *inventory = game_get_inventory(player->castle_inventory);
+	if (inventory->player_num != (int)player->player_num) return;
 
 	if (!BIT_TEST(player->emergency_flags, 1) &&
 	    inventory->resources[RESOURCE_PLANK] == 0) {
@@ -2746,6 +2766,7 @@ game_update()
 	game.last_tick = game.tick;
 	game.tick += game.game_speed;
 	game.tick_diff = game.tick - game.last_tick;
+	ai_game.ticks_288 = (ai_game.ticks_288 + game.tick_diff) & 0xffff;
 
 	clear_serf_request_failure();
 	map_update();
@@ -2761,13 +2782,41 @@ game_update()
 	   next_index cycles 0..max_next_index-1 once per update. Slots 0..31
 	   select the chunk of flags and buildings handled this update; slot
 	   32 runs knight morale and, unless paused, the inventories. Slots
-	   0..31 / 33..48 also run the AI, which legacy does not have. */
-	game.next_index = (game.next_index + 1) % game.max_next_index;
-	if (game.next_index == 32) {
+	   0..31 also run the AI site scan early in the game, slots 33..48
+	   the AI players' updates. */
+	game.next_index += 1;
+	if (game.next_index == game.max_next_index) game.next_index = 0;
+	if (game.next_index < 32) {
+		if (game.game_speed != 0 && game.max_flag_index < 50) {
+			player_t *player = game.player[game.next_index & 3];
+			if (PLAYER_IS_ACTIVE(player) && PLAYER_IS_AI(player)) {
+				ai_scan_sites(player);
+			}
+		}
+	} else if (game.next_index == 32) {
 		update_knight_morale();
 		if (game.game_speed != 0) {
+			check_max_serfs_reached();
+			ai_update_build_damping_all();
 			update_emergency_programs();
 			update_inventories();
+		}
+	} else {
+		/* A slot of a player that is not an AI player, or that loses
+		   the intelligence roll, passes on to the next slot. */
+		while (1) {
+			player_t *player = game.player[(game.next_index - 33) & 3];
+			if (PLAYER_IS_ACTIVE(player) && PLAYER_IS_AI(player) &&
+			    game_random_int() < (uint16_t)player->ai_intelligence) {
+				ai_update(player);
+				break;
+			}
+
+			game.next_index += 1;
+			if (game.next_index == game.max_next_index) {
+				game.next_index = 0;
+				break;
+			}
 		}
 	}
 
@@ -2913,7 +2962,7 @@ game_road_segment_valid(map_pos_t pos, dir_t dir)
 
 /* Get road length category value for real length.
    Determines number of serfs servicing the path segment.(?) */
-static int
+int
 get_road_length_value(int length)
 {
 	if (length >= 24) return 7;
@@ -4602,7 +4651,7 @@ game_can_demolish_flag(map_pos_t pos, const player_t *player)
 	return 0;
 }
 
-static int
+int
 demolish_flag(map_pos_t pos)
 {
 	const int max_transporters[] = { 1, 2, 3, 4, 6, 8, 11, 15 };
@@ -4799,7 +4848,7 @@ game_demolish_flag(map_pos_t pos, player_t *player)
 	return demolish_flag(pos);
 }
 
-static int
+int
 demolish_building(map_pos_t pos)
 {
 	building_t *building = game_get_building(MAP_OBJ_INDEX(pos));
@@ -5366,8 +5415,18 @@ game_occupy_enemy_building(building_t *building, int player_num)
 
 		game_update_land_ownership(building->pos);
 
+		/* A computer player remembers the conquered building's flag
+		   to connect it by road later (Amiga @0xd68c). */
 		if (PLAYER_IS_AI(player)) {
-			/* TODO AI */
+			map_pos_t flag_pos = MAP_MOVE_DOWN_RIGHT(building->pos);
+			int *pending = &player->ai.u_1bc;
+			for (int i = 0; i < 8; i++) {
+				if (pending[2*i] & 0x8000) {
+					pending[2*i] = MAP_POS_COL(flag_pos);
+					pending[2*i+1] = MAP_POS_ROW(flag_pos);
+					break;
+				}
+			}
 		}
 	}
 }
@@ -5577,8 +5636,11 @@ player_init(uint number, uint face, uint color, uint supplies,
 	player->send_generic_delay = 0;
 	player->serf_index = 0;
 
-	/* player->field_1b0 = 0; AI */
-	/* player->field_1b2 = 0; AI */
+	/* Computer player state (Amiga player_init_all @0x5468). */
+	memset(&player->ai, 0, sizeof(player->ai));
+	for (int i = 0; i < 25; i++) player->ai.build_damp[i] = 0xffff;
+	int *pending = &player->ai.u_1bc;
+	for (int i = 0; i < 16; i++) pending[i] = 0xffff;
 
 	player->initial_supplies = supplies;
 	player->reproduction_reset = (60 - reproduction) * 50;
@@ -5676,6 +5738,7 @@ game_init()
 	game.update_map_16_loop = 0;
 	game.update_map_initial_pos = 0;
 	game.next_index = 0;
+	memset(&ai_game, 0, sizeof(ai_game));
 
 	/* Clear player objects */
 	for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
@@ -5699,7 +5762,7 @@ game_init()
 }
 
 /* Initialize spiral_pos_pattern from spiral_pattern. */
-static void
+void
 init_spiral_pos_pattern()
 {
 	int *pattern = game.spiral_pattern;
@@ -5859,7 +5922,15 @@ game_load_mission_map(int level)
 		    m->player[n].castle.row > -1) {
 			map_pos_t pos = MAP_POS(m->player[n].castle.col,
 						m->player[n].castle.row);
-			game_build_castle(pos, game.player[n]);
+			player_t *player = game.player[n];
+			AI_SET_CURSOR(player, pos);
+			/* A computer player with a given castle skips the castle
+			   placement phase (Amiga @0x4b36). */
+			if (PLAYER_IS_AI(player)) {
+				player->ai.phase = 1;
+				player->ai.counter = 0x18;
+			}
+			game_build_castle(pos, player);
 		}
 	}
 
@@ -5910,7 +5981,9 @@ game_cancel_transported_resource(resource_type_t res, uint dest)
 	if (dest == 0) return;
 
 	flag_t *flag = game_get_flag(dest);
-	assert(FLAG_HAS_BUILDING(flag));
+	/* The destination building may be gone already (demolished while
+	   the resource was on its way); nothing is requested any more. */
+	if (!FLAG_HAS_BUILDING(flag)) return;
 	building_t *building = flag->other_endpoint.b[DIR_UP_LEFT];
 
 	if (res == RESOURCE_FISH ||

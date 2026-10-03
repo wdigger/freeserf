@@ -22,6 +22,7 @@
 #ifndef _PLAYER_H
 #define _PLAYER_H
 
+#include "ai.h"
 #include "map.h"
 
 /* Whether player has built the initial castle. */
@@ -164,6 +165,8 @@ typedef struct {
 	int ai_value_5;
 	/* 1AE */
 	int ai_intelligence;
+	/* 1B0..AC4: computer player state, see ai.h */
+	player_ai_t ai;
 	/* AC4 */
 	int player_stat_history[16][112];
 	int resource_count_history[26][120];

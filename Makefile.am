@@ -7,6 +7,8 @@ freeserf_SOURCES = \
 	src/data.cc src/data.h \
 	src/resource.h \
 	src/mission.c src/mission.h \
+	src/ai.c src/ai.h src/ai_internal.h \
+	src/ai_road.c src/ai_manage.c src/ai_want.c src/ai_rate.c \
 	src/game.c src/game.h \
 	src/serf.c src/serf.h \
 	src/flag.c src/flag.h \
