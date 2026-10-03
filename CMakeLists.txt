@@ -70,4 +70,8 @@ if(ENABLE_SDL3_MIXER)
 endif()
 if(NOT MSVC)
   target_link_libraries(freeserf PRIVATE m)
+  # Warnings of the debug build (--enable-debug of the former autotools).
+  target_compile_options(freeserf PRIVATE
+    $<$<AND:$<CONFIG:Debug>,$<COMPILE_LANGUAGE:C>>:-pedantic -Wall>
+    $<$<AND:$<CONFIG:Debug>,$<COMPILE_LANGUAGE:CXX>>:-Wall>)
 endif()
