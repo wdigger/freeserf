@@ -35,6 +35,7 @@ END_EXT_C
 #include "src/freeserf.h"
 #include "src/popup.h"
 #include "src/game-init.h"
+#include "src/extro.h"
 #include "src/viewport.h"
 #include "src/notification.h"
 #include "src/panel.h"
@@ -67,6 +68,12 @@ interface_t::close_popup() {
   popup->hide();
   update_map_cursor_pos(map_cursor_pos);
   panel->update();
+}
+
+/* End sequence after the last mission; the game resumes after it. */
+void
+interface_t::play_extro() {
+  extro->start();
 }
 
 /* Open box for starting a new game */
@@ -621,6 +628,9 @@ interface_t::layout() {
   init_box->move_to(init_box_x, init_box_y);
   init_box->set_size(init_box_width, init_box_height);
 
+  extro->move_to(0, 0);
+  extro->set_size(width, height);
+
   int notification_box_width = 200;
   int notification_box_height = 88;
   int notification_box_x = panel_x + 40;
@@ -660,6 +670,12 @@ interface_t::interface_t() {
   /* Notification box */
   notification_box = new notification_box_t();
   add_float(notification_box, 0, 0);
+
+  /* End sequence, above everything else */
+  extro = new extro_t(this);
+  extro->set_displayed(false);
+  extro->set_enabled(false);
+  add_float(extro, 0, 0);
 
   map_cursor_pos = MAP_POS(0, 0);
   map_cursor_type = (map_cursor_type_t)0;
@@ -706,6 +722,7 @@ interface_t::~interface_t() {
   delete panel;
   delete popup;
   delete init_box;
+  delete extro;
   delete notification_box;
 }
 
@@ -717,6 +734,8 @@ interface_t::game_reset() {
 /* Called periodically when the game progresses. */
 void
 interface_t::update() {
+  extro->step();
+
   int tick_diff = game.const_tick - last_const_tick;
   last_const_tick = game.const_tick;
 

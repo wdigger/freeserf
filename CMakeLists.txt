@@ -33,7 +33,7 @@ set(SOURCES
   src/ai.c src/ai_road.c src/ai_manage.c src/ai_want.c src/ai_rate.c
   src/game.c src/serf.c src/flag.c src/building.c src/random.c
   src/pathfinder.cc src/gfx.cc src/viewport.cc src/minimap.cc
-  src/interface.cc src/gui.cc src/popup.cc src/game-init.cc
+  src/interface.cc src/gui.cc src/popup.cc src/game-init.cc src/extro.cc
   src/notification.cc src/panel.cc src/map.c src/player.c
   src/video-sdl.cc src/video.cc src/audio.cc src/savegame.c src/list.c
   src/log.c src/version.c src/data-source-dos.cc src/tpwm.cc

@@ -207,7 +207,17 @@ data_source_dos_t::get_sprite(unsigned int index) {
     return NULL;
   }
 
-  color_dos_t *palette = get_palette(DATA_PALETTE_GAME);
+  /* The pictures of the end sequence have their own palette. */
+  unsigned int palette_index = DATA_PALETTE_GAME;
+  if (index == DATA_ART_LANDSCAPE ||
+      (index >= DATA_ART_OWL_BASE &&
+       index < DATA_ART_OWL_BASE + DATA_ART_OWL_COUNT) ||
+      (index >= DATA_ART_FLAG_BASE &&
+       index < DATA_ART_FLAG_BASE + DATA_ART_FLAG_COUNT)) {
+    palette_index = DATA_PALETTE_ENDING;
+  }
+
+  color_dos_t *palette = get_palette(palette_index);
   if (palette == NULL) {
     return NULL;
   }

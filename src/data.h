@@ -29,7 +29,7 @@
    contains a header with the size and total
    number of entries in the file). */
 
-/* This sprite uses DATA_PALETTE_INTRO. */
+/* Landscape of the end sequence (640x200), uses DATA_PALETTE_ENDING. */
 #define DATA_ART_LANDSCAPE  1
 
 #define DATA_SERF_ANIMATION_TABLE  2
@@ -37,12 +37,13 @@
 
 #define DATA_SERF_SHADOW  4
 
-#define DATA_DOTTED_LINES_BASE   5
-#define DATA_DOTTED_LINES_COUNT  7
+/* Owl eyes of the end sequence (5x2), use DATA_PALETTE_ENDING. */
+#define DATA_ART_OWL_BASE   5
+#define DATA_ART_OWL_COUNT  7
 
 /* undefined: 12-14 */
 
-/* These use DATA_PALETTE_INTRO. */
+/* Flag of the end sequence (64x32), use DATA_PALETTE_ENDING. */
 #define DATA_ART_FLAG_BASE   15
 #define DATA_ART_FLAG_COUNT  7
 

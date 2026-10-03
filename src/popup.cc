@@ -4205,7 +4205,13 @@ popup_box_t::handle_game_end_clk(int x, int y) {
 
   if (game_end_stage > 2) {
     interface->close_popup();
-    game_pause(0);
+    /* The last mission ends with the end sequence (Amiga @0x1d976). */
+    if (game.game_type == GAME_TYPE_MISSION &&
+        game.winning_player == 0 && game.mission_level + 1 == 30) {
+      interface->play_extro();
+    } else {
+      game_pause(0);
+    }
   } else {
     set_redraw();
   }

@@ -69,6 +69,7 @@ class viewport_t;
 class panel_bar_t;
 class popup_box_t;
 class game_init_box_t;
+class extro_t;
 class notification_box_t;
 
 class interface_t : public gui_object_t {
@@ -79,6 +80,7 @@ class interface_t : public gui_object_t {
   panel_bar_t *panel;
   popup_box_t *popup;
   game_init_box_t *init_box;
+  extro_t *extro;
   notification_box_t *notification_box;
 
   map_pos_t map_cursor_pos;
@@ -148,6 +150,7 @@ class interface_t : public gui_object_t {
   void close_popup();
 
   void open_game_init();
+  void play_extro();
   void close_game_init();
 
   void open_message();
