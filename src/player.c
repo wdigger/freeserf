@@ -331,7 +331,8 @@ player_start_attack(player_t *player)
 	}
 
 	for (int i = 0; i < player->attacking_building_count; i++) {
-		/* TODO building index may not be valid any more(?). */
+		/* The original skips buildings that no longer exist. */
+		if (!BUILDING_ALLOCATED(player->attacking_buildings[i])) continue;
 		building_t *b = game_get_building(player->attacking_buildings[i]);
 		if (BUILDING_IS_BURNING(b) ||
 		    MAP_OWNER(b->pos) != player->player_num) {
@@ -365,13 +366,14 @@ player_start_attack(player_t *player)
 			int knight_index = b->serf_index;
 			while (knight_index != 0) {
 				serf_t *knight = game_get_serf(knight_index);
+				/* First among equals, as in the original. */
 				if (PLAYER_SEND_STRONGEST(player)) {
-					if (SERF_TYPE(knight) >= best_type) {
+					if (best_index < 0 || SERF_TYPE(knight) > best_type) {
 						best_index = knight_index;
 						best_type = SERF_TYPE(knight);
 					}
 				} else {
-					if (SERF_TYPE(knight) <= best_type) {
+					if (best_index < 0 || SERF_TYPE(knight) < best_type) {
 						best_index = knight_index;
 						best_type = SERF_TYPE(knight);
 					}

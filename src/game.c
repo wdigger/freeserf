@@ -3306,19 +3306,23 @@ remove_road_forwards(map_pos_t pos, dir_t dir)
 			path_serf_idle_to_wait_state(pos);
 		}
 
+		/* Serfs on the removed road become lost (Amiga
+		   remove_road_forwards @0x26600). At the flags only
+		   serfs heading onto the removed road are affected. */
 		if (MAP_SERF_INDEX(pos) != 0) {
 			serf_t *serf = game_get_serf(MAP_SERF_INDEX(pos));
+			int walking = serf->state == SERF_STATE_WALKING ||
+				serf->state == SERF_STATE_TRANSPORTING;
 			if (!MAP_HAS_FLAG(pos)) {
-				serf_set_lost_state(serf);
-			} else {
-				/* Handle serf close to flag, where
-				   it should only be lost if walking
-				   in the wrong direction. */
+				if (walking) serf_set_lost_state(serf);
+			} else if (walking ||
+				   (in_dir != DIR_NONE &&
+				    serf->state == SERF_STATE_DELIVERING)) {
+				dir_t road_dir = (in_dir == DIR_NONE) ?
+					dir : DIR_REVERSE(in_dir);
 				int d = serf->s.walking.dir;
 				if (d < 0) d += 6;
-				if (d == DIR_REVERSE(dir)) {
-					serf_set_lost_state(serf);
-				}
+				if (d == road_dir) serf_set_lost_state(serf);
 			}
 		}
 
@@ -3483,10 +3487,33 @@ wake_transporter_at_flag(map_pos_t pos)
 	return change_transporter_state_at_pos(pos, SERF_STATE_WAKE_AT_FLAG);
 }
 
+/* Wake an idle transporter on a path (Amiga wake_idle_serfs_at_pos
+   @0x26ad8). A transporter already heading to the flag is not counted. */
 static int
 wake_transporter_on_path(map_pos_t pos)
 {
-	return change_transporter_state_at_pos(pos, SERF_STATE_WAKE_ON_PATH);
+	for (uint i = 1; i < game.max_serf_index; i++) {
+		if (SERF_ALLOCATED(i)) {
+			serf_t *serf = game_get_serf(i);
+			if (serf->pos != pos) continue;
+
+			switch (serf->state) {
+			case SERF_STATE_IDLE_ON_PATH:
+			case SERF_STATE_WAIT_IDLE_ON_PATH:
+				serf_log_state_change(serf, SERF_STATE_WAKE_ON_PATH);
+				serf->state = SERF_STATE_WAKE_ON_PATH;
+				return SERF_INDEX(serf);
+			case SERF_STATE_WAKE_ON_PATH:
+				return SERF_INDEX(serf);
+			case SERF_STATE_WAKE_AT_FLAG:
+				return -1;
+			default:
+				break;
+			}
+		}
+	}
+
+	return -1;
 }
 
 typedef struct {
@@ -3722,8 +3749,9 @@ build_flag_split_path(map_pos_t pos)
 			}
 		}
 
-		serf_path_info_t *path_data = &path_1_data;
-		if (select == 0) path_data = &path_2_data;
+		/* The original defaults to the path 2 end (Amiga @0x27690). */
+		serf_path_info_t *path_data = &path_2_data;
+		if (select == 1) path_data = &path_1_data;
 
 		flag_t *selected_flag = game_get_flag(path_data->flag_index);
 		selected_flag->length[path_data->flag_dir] &= ~BIT(7);
@@ -3885,24 +3913,56 @@ map_types_within(map_pos_t pos, uint low, uint high)
 	return 0;
 }
 
+/* Check that the outer triangles around the building flag are land
+   (Amiga get_map_cursor_type @0x19628). */
+static int
+building_flag_on_land(map_pos_t pos)
+{
+	map_pos_t flag_pos = MAP_MOVE_DOWN_RIGHT(pos);
+	return MAP_TYPE_UP(MAP_MOVE_RIGHT(pos)) >= 4 &&
+	       MAP_TYPE_DOWN(MAP_MOVE_DOWN(pos)) >= 4 &&
+	       MAP_TYPE_UP(flag_pos) >= 4 &&
+	       MAP_TYPE_DOWN(flag_pos) >= 4;
+}
+
 /* Checks whether a small building is possible at position.*/
 int
 game_can_build_small(map_pos_t pos)
 {
-	return map_types_within(pos, 4, 7);
+	return building_flag_on_land(pos) && map_types_within(pos, 4, 7);
 }
 
-/* Checks whether a mine is possible at position. */
+/* Checks whether a mine is possible at position. The original allows
+   a mix of mountain and grass as long as one triangle is mountain. */
 int
 game_can_build_mine(map_pos_t pos)
 {
-	return map_types_within(pos, 11, 14);
+	if (!building_flag_on_land(pos)) return 0;
+
+	const uint types[] = {
+		MAP_TYPE_UP(pos),
+		MAP_TYPE_DOWN(pos),
+		MAP_TYPE_DOWN(MAP_MOVE_LEFT(pos)),
+		MAP_TYPE_UP(MAP_MOVE_UP_LEFT(pos)),
+		MAP_TYPE_DOWN(MAP_MOVE_UP_LEFT(pos)),
+		MAP_TYPE_UP(MAP_MOVE_UP(pos))
+	};
+
+	int mountain = 0;
+	for (int i = 0; i < 6; i++) {
+		if (types[i] >= 11 && types[i] <= 14) mountain = 1;
+		else if (types[i] < 4 || types[i] > 7) return 0;
+	}
+
+	return mountain;
 }
 
 /* Checks whether a large building is possible at position. */
 int
 game_can_build_large(map_pos_t pos)
 {
+	if (!building_flag_on_land(pos)) return 0;
+
 	/* Check that surroundings are passable by serfs. */
 	for (int i = 0; i < 6; i++) {
 		map_pos_t p = MAP_POS_ADD(pos, game.spiral_pos_pattern[1+i]);
@@ -4112,7 +4172,10 @@ game_build_building(map_pos_t pos, building_type_t type, player_t *player)
 	if (!game_can_build_building(pos, type, player)) return -1;
 
 	if (type == BUILDING_STOCK) {
-		/* TODO Check that more stocks are allowed to be built */
+		/* The original limits stocks to a quarter of the inventories. */
+		int stocks = player->completed_building_count[BUILDING_STOCK] +
+			player->incomplete_building_count[BUILDING_STOCK];
+		if (stocks + 1 >= (int)(game.inventory_limit / 4)) return -1;
 	}
 
 	building_t *bld;
@@ -4548,11 +4611,11 @@ demolish_flag(map_pos_t pos)
 	if (MAP_SERF_INDEX(pos) != 0) {
 		serf_t *serf = game_get_serf(MAP_SERF_INDEX(pos));
 		switch (serf->state) {
+		case SERF_STATE_FINISHED_BUILDING: /* As in the original. */
 		case SERF_STATE_READY_TO_LEAVE:
 		case SERF_STATE_LEAVING_BUILDING:
 			serf->s.leaving_building.next_state = SERF_STATE_LOST;
 			break;
-		case SERF_STATE_FINISHED_BUILDING:
 		case SERF_STATE_WALKING:
 			if (MAP_PATHS(pos) == 0) {
 				serf_log_state_change(serf, SERF_STATE_LOST);
@@ -4621,7 +4684,29 @@ demolish_flag(map_pos_t pos)
 			flag_2->transporter |= BIT(dir_2);
 
 			if (serf_count > max_serfs) {
-				/* TODO 59B8B */
+				/* Send the surplus transporters away
+				   (Amiga demolish_flag @0x26194). */
+				int surplus = serf_count - max_serfs;
+				serf_path_info_t *paths[] = { &path_1_data, &path_2_data };
+				for (int p = 0; p < 2 && surplus > 0; p++) {
+					for (int k = 0; k < paths[p]->serf_count && surplus > 0; k++) {
+						serf_t *serf = game_get_serf(paths[p]->serfs[k]);
+						if (serf->state == SERF_STATE_WAKE_ON_PATH) {
+							serf_log_state_change(serf, SERF_STATE_WAKE_AT_FLAG);
+							serf->state = SERF_STATE_WAKE_AT_FLAG;
+						} else {
+							serf->s.walking.wait_counter = -1;
+							if (serf->s.walking.res != 0) {
+								resource_type_t res = (resource_type_t)(serf->s.walking.res-1);
+								serf->s.walking.res = 0;
+								game_cancel_transported_resource(res, serf->s.walking.dest);
+								game_lose_resource(res);
+							}
+						}
+						surplus -= 1;
+					}
+				}
+				serf_count = max_serfs;
 			}
 
 			flag_1->length[dir_1] += serf_count;
@@ -4927,6 +5012,8 @@ game_calculate_military_flag_state(building_t *building)
 {
 	const int border_check_offsets[] = {
 		31,  32,  33,  34,  35,  36,  37,  38,  39,  40,  41,  42,
+		121, 122, 123, 124, 125, 126,
+		97,  98,  99,
 		100, 101, 102, 103, 104, 105, 106, 107, 108,
 		259, 260, 261, 262, 263, 264,
 		241, 242, 243, 244, 245, 246,
@@ -5097,7 +5184,9 @@ game_update_land_ownership(map_pos_t init_pos)
 						for (int l = 0; l < influence_diameter - abs(j); l++) {
 							int inf = influence[*closeness];
 							if (inf < 0) *arr = 128;
-							else if (*arr < 128) *arr = min(*arr + inf, 127);
+							/* Saturating signed byte add as in the original:
+							   a core value of 128 drops to 127 when touched again. */
+							else *arr = min(*arr + inf, 127);
 
 							closeness += 1;
 							arr += 1;
@@ -5151,9 +5240,10 @@ game_update_land_ownership(map_pos_t init_pos)
 
 	free(temp_arr);
 
-	/* Update military building flag state. */
+	/* Update military building flag state in a hexagon of radius 25. */
 	for (int i = -25; i <= 25; i++) {
 		for (int j = -25; j <= 25; j++) {
+			if (i - j < -25 || i - j > 25) continue;
 			map_pos_t pos = MAP_POS_ADD(init_pos,
 						    MAP_POS(i & game.map.col_mask,
 							    j & game.map.row_mask));

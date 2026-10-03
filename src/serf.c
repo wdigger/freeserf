@@ -313,6 +313,10 @@ serf_set_lost_state(serf_t *serf)
 			serf_log_state_change(serf, SERF_STATE_LOST_SAILOR);
 			serf->state = SERF_STATE_LOST_SAILOR;
 		}
+	} else if (SERF_TYPE(serf) == SERF_SAILOR) {
+		/* Like the original, any sailor not walking is a lost sailor. */
+		serf_log_state_change(serf, SERF_STATE_LOST_SAILOR);
+		serf->state = SERF_STATE_LOST_SAILOR;
 	} else {
 		serf_log_state_change(serf, SERF_STATE_LOST);
 		serf->state = SERF_STATE_LOST;

@@ -501,11 +501,24 @@ interface_t::demolish_object() {
   } else if (map_cursor_type == MAP_CURSOR_TYPE_BUILDING) {
     building_t *building = game_get_building(MAP_OBJ_INDEX(map_cursor_pos));
 
-    if (BUILDING_IS_DONE(building) &&
-        (BUILDING_TYPE(building) == BUILDING_HUT ||
-         BUILDING_TYPE(building) == BUILDING_TOWER ||
-         BUILDING_TYPE(building) == BUILDING_FORTRESS)) {
-      /* TODO */
+    /* Military buildings can't be demolished while enemy
+       knights are nearby (Amiga do_demolish @0x25bd4). */
+    if (BUILDING_TYPE(building) == BUILDING_HUT ||
+        BUILDING_TYPE(building) == BUILDING_TOWER ||
+        BUILDING_TYPE(building) == BUILDING_FORTRESS) {
+      for (int i = 0; i < 127; i++) {
+        map_pos_t pos = MAP_POS_ADD(map_cursor_pos,
+                                    game.spiral_pos_pattern[i]);
+        if (MAP_SERF_INDEX(pos) == 0) continue;
+
+        serf_t *serf = game_get_serf(MAP_SERF_INDEX(pos));
+        if (SERF_TYPE(serf) >= SERF_KNIGHT_0 &&
+            SERF_TYPE(serf) <= SERF_KNIGHT_4 &&
+            SERF_PLAYER(serf) != player->player_num) {
+          play_sound(SFX_NOT_ACCEPTED);
+          return;
+        }
+      }
     }
 
     play_sound(SFX_AHHH);
