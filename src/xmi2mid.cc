@@ -338,10 +338,10 @@ midi_produce(midi_file_t *midi, size_t *size) {
   uint64_t time = 0;
   while (!midi->nodes.empty()) {
     midi_node_t *node = midi->nodes.top();
+    midi->nodes.pop();
     if (node == NULL) {
       continue;
     }
-    midi->nodes.pop();
     midi_write_variable_size(midi, &current, node->time - time);
     time = node->time;
     WRITE_BYTE(node->type);
