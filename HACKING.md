@@ -24,9 +24,12 @@ $ make
 
 The project can be rebuilt at any time by running `make` again.
 
-### MS Visual Studio
+### CMake (any platform, including Windows)
 
-Open `windows/freeserf.sln`, build, run or debug.
+``` shell
+$ cmake -S . -B build
+$ cmake --build build
+```
 
 
 Dependencies
@@ -34,9 +37,6 @@ Dependencies
 
 * SDL3
 * SDL3_mixer (Optional; for audio playback)
-
-Besides autotools the game can be built with CMake:
-`cmake -S . -B build && cmake --build build`.
 
 
 Coding style
