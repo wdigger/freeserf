@@ -85,19 +85,27 @@ extro_t::step() {
 
   counter += 1;
   if (counter >= EXTRO_END) {
-    set_displayed(false);
-    set_enabled(false);
+    finish();
+  } else {
+    set_redraw();
+  }
+}
 
-    audio_t *audio = audio_t::get_instance();
-    audio_player_t *player = audio->get_music_player();
-    if (player != NULL && player->is_enabled()) {
-      player->play_track(MIDI_TRACK_0);
-    }
+/* Leave the sequence and return to the game. */
+void
+extro_t::finish() {
+  if (!displayed) return;
 
-    game_pause(0);
+  set_displayed(false);
+  set_enabled(false);
+
+  audio_t *audio = audio_t::get_instance();
+  audio_player_t *player = audio->get_music_player();
+  if (player != NULL && player->is_enabled()) {
+    player->play_track(MIDI_TRACK_0);
   }
 
-  set_redraw();
+  game_pause(0);
 }
 
 void

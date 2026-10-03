@@ -43,9 +43,12 @@ class extro_t : public gui_object_t {
   void step();
 
  protected:
+  void finish();
+
   virtual void internal_draw();
-  virtual bool handle_click_left(int x, int y) { return true; }
-  virtual bool handle_click_right(int x, int y) { return true; }
+  /* A click skips the rest of the sequence (the original has no skip). */
+  virtual bool handle_click_left(int x, int y) { finish(); return true; }
+  virtual bool handle_click_right(int x, int y) { finish(); return true; }
   virtual bool handle_dbl_click(int x, int y, event_button_t button) {
     return true; }
   virtual bool handle_drag(int dx, int dy) { return true; }
