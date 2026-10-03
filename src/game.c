@@ -316,6 +316,8 @@ game_alloc_serf(serf_t **serf, int *index)
 
 		if (i == game.max_serf_index) game.max_serf_index += 1;
 
+		if (game.max_serfs_left > 0) game.max_serfs_left -= 1;
+
 		serf_t *s = &game.serfs[i];
 		/* Start from a clean record; state handlers may read fields
 		   of the union that were never written for a new serf. */
@@ -345,6 +347,7 @@ game_free_serf(int index)
 {
 	/* Remove serf from allocation bitmap. */
 	game.serf_bitmap[index/8] &= ~BIT(7-(index&7));
+	game.max_serfs_left += 1;
 
 	/* Decrement max_serf_index as much as possible. */
 	if (index + 1 == game.max_serf_index) { /* Amiga game_free_*: shrink when the last one is freed */
@@ -363,6 +366,7 @@ spawn_serf(player_t *player, serf_t **serf, inventory_t **inventory, int want_kn
 {
 	if (!PLAYER_CAN_SPAWN(player)) return -1;
 	if (game.max_inventory_index < 1) return -1;
+	if (game.max_serfs_left == 0) return -1; /* Amiga spawn_serf @0x15a94 */
 
 	serf_t *s = NULL;
 	int r = game_alloc_serf(&s, NULL);
@@ -639,7 +643,7 @@ update_inventories_search(inventory_t *invs[], int n, int resource,
 
 	while (ncur > 0) {
 		int nnext = 0;
-		for (int k = 0; k < ncur && nnext < 994; k++) {
+		for (int k = 0; k < ncur && nnext < SEARCH_LAYER_MAX; k++) {
 			flag_t *flag = cur[k];
 			int inv = flag->search_dir;
 			if (max_prio[inv] == 255) continue;
@@ -721,6 +725,14 @@ inventory_add_to_queue(inventory_t *inventory, resource_type_t type, uint dest)
 static void
 check_max_serfs_reached()
 {
+	/* With fewer free serf slots than players in the game the spawn
+	   permissions are left as they are (Amiga @0xaf9e). */
+	uint in_game = 0;
+	for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
+		if (PLAYER_IN_GAME(game.player[i])) in_game += 1;
+	}
+	if (in_game > game.max_serfs_left) return;
+
 	uint land_area = 0;
 	for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
 		if (!PLAYER_IS_ACTIVE(game.player[i])) continue;
@@ -1261,7 +1273,7 @@ schedule_slot_to_unknown_dest(flag_t *flag, int slot)
 		cur[ncur++] = flag;
 		while (ncur > 0) {
 			int nnext = 0;
-			for (int k = 0; k < ncur && nnext < 994; k++) {
+			for (int k = 0; k < ncur && nnext < SEARCH_LAYER_MAX; k++) {
 				flag_t *f = cur[k];
 				for (int d = DIR_UP; d >= DIR_RIGHT; d--) {
 					if (!FLAG_HAS_TRANSPORTER(f, d)) continue;
@@ -5089,13 +5101,15 @@ demolish_building(map_pos_t pos)
 		game.map_gold_deposit -= gold_stock;
 	}
 
-	/* Update land owner ship if the building is military. */
-	if (BUILDING_IS_DONE(building) &&
-	    BUILDING_IS_ACTIVE(building) &&
-	    (BUILDING_TYPE(building) == BUILDING_HUT ||
-	     BUILDING_TYPE(building) == BUILDING_TOWER ||
-	     BUILDING_TYPE(building) == BUILDING_FORTRESS ||
-	     BUILDING_TYPE(building) == BUILDING_CASTLE)) {
+	/* Update land ownership if the building is military: a castle
+	   always, a hut, tower or fortress only while a knight is in it
+	   (Amiga demolish_building @0x25d04 / 0x25d20; when its last knight
+	   is out defending the land stays owned for now). */
+	if (BUILDING_TYPE(building) == BUILDING_CASTLE ||
+	    ((BUILDING_TYPE(building) == BUILDING_HUT ||
+	      BUILDING_TYPE(building) == BUILDING_TOWER ||
+	      BUILDING_TYPE(building) == BUILDING_FORTRESS) &&
+	     building->serf_index != 0)) {
 		game_update_land_ownership(building->pos);
 	}
 
@@ -6070,6 +6084,9 @@ game_allocate_objects()
 	game.clear_req_flag_cursor = 0;
 	game.max_serf_index = 0;
 	game.max_inventory_index = 0;
+
+	/* All serf slots are free, the NULL serf takes the first. */
+	game.max_serfs_left = game.serf_limit;
 
 	/* Create NULL-serf */
 	serf_t *serf;

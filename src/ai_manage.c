@@ -200,7 +200,13 @@ ai_find_other_resource_inventory(flag_t *flag)
 }
 
 /* 0x238fa as used by the AI: < 0 if the flag itself accepts serfs or
-   no other flag accepting serfs is reachable over land paths. */
+   no other flag accepting serfs is reachable over land paths.
+   Original bug: ai_manage_stock (@0x29924) passes the flag in A1 while
+   0x238fa reads the flag index from D0, which is left over from the
+   caller, so the original searches from an unrelated flag; and 0x238fa
+   counts the source flag itself as found. Here the search starts at
+   the stock's flag and, like the resource variant 0x239fa, looks for
+   another inventory. */
 static int
 ai_find_other_serf_inventory(flag_t *flag)
 {

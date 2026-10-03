@@ -78,9 +78,26 @@ flag_search_add_source(flag_search_t *search, flag_t *flag)
 	flag->search_num = search->id;
 }
 
+/* Drop the rest of the current layer from the queue head when the next
+   layer is full (SEARCH_LAYER_MAX). */
+static void
+flag_search_cut_layer(flag_search_t *search, int *in_layer, int *next_layer)
+{
+	while (*in_layer > 1 && !list_is_empty(&search->queue)) {
+		free(list_remove_head(&search->queue));
+		*in_layer -= 1;
+	}
+}
+
 int
 flag_search_execute(flag_search_t *search, flag_search_func *callback, int land, int transporter, void *data)
 {
+	/* Layers are tracked only for the original's layer limit. */
+	int in_layer = 0;
+	list_elm_t *e;
+	list_foreach(&search->queue, e) in_layer += 1;
+	int next_layer = 0;
+
 	for (int i = 0; i < SEARCH_MAX_DEPTH && !list_is_empty(&search->queue); i++) {
 		flag_proxy_t *proxy = (flag_proxy_t *)list_remove_head(&search->queue);
 		flag_t *flag = proxy->flag;
@@ -103,7 +120,17 @@ flag_search_execute(flag_search_t *search, flag_search_func *callback, int land,
 				flag->other_endpoint.f[5-i]->search_dir = flag->search_dir;
 				flag_proxy_t *other_flag_proxy = flag_proxy_alloc(flag->other_endpoint.f[5-i]);
 				list_append(&search->queue, (list_elm_t *)other_flag_proxy);
+				next_layer += 1;
 			}
+		}
+
+		if (next_layer >= SEARCH_LAYER_MAX) {
+			flag_search_cut_layer(search, &in_layer, &next_layer);
+		}
+		in_layer -= 1;
+		if (in_layer == 0) {
+			in_layer = next_layer;
+			next_layer = 0;
 		}
 	}
 
@@ -153,6 +180,9 @@ flag_search_execute_layered(flag_search_t *search, flag_search_func *callback,
 			}
 		}
 
+		if (next_layer >= SEARCH_LAYER_MAX) {
+			flag_search_cut_layer(search, &in_layer, &next_layer);
+		}
 		in_layer -= 1;
 		if (in_layer == 0) {
 			if (layer_callback(data)) {

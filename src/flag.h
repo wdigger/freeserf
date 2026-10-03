@@ -111,6 +111,10 @@ typedef struct {
 	int id;
 } flag_search_t;
 
+/* The original stops expanding a breadth-first layer once the next one
+   holds this many flags (cmpi.w #0x3e2 on a counter starting at -1). */
+#define SEARCH_LAYER_MAX  995
+
 void flag_search_init(flag_search_t *search);
 void flag_search_add_source(flag_search_t *search, flag_t *flag);
 int flag_search_execute(flag_search_t *search, flag_search_func *callback,

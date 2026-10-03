@@ -67,6 +67,9 @@ typedef struct {
 	int16_t map_max_lake_area;
 	/*uint16_t map_max_serfs_left;*/
 	uint max_serfs_from_land;
+	/* Free serf slots (Amiga game+0x48): game_alloc_serf takes one,
+	   game_free_serf returns it; spawn_serf needs one. */
+	uint max_serfs_left;
 	uint32_t map_gold_deposit;
 	/* 50 */
 	uint16_t map_size;

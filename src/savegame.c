@@ -178,7 +178,7 @@ load_v0_game_state(FILE *f, v0_map_t *map)
 	*/
 
 	game.max_inventory_index = *(uint16_t *)&data[174];
-	/*game.map_max_serfs_left = *(uint16_t *)&data[176];*/
+	game.max_serfs_left = *(uint16_t *)&data[176];
 	/* game.max_stock_buildings = *(uint16_t *)&data[178]; */
 	game.max_next_index = *(uint16_t *)&data[180];
 	game.max_serfs_from_land = *(uint16_t *)&data[182];
@@ -1012,6 +1012,7 @@ save_text_game_state(FILE *f)
 	save_text_write_value(f, "clear_req_flag_cursor", game.clear_req_flag_cursor);
 	save_text_write_value(f, "ai_ticks", ai_game.ticks_288);
 	save_text_write_value(f, "max_serfs_from_land", game.max_serfs_from_land);
+	save_text_write_value(f, "max_serfs_left", game.max_serfs_left);
 	save_text_write_value(f, "map.gold_deposit", game.map_gold_deposit);
 	save_text_write_value(f, "update_map_16_loop", game.update_map_16_loop);
 
@@ -1797,6 +1798,9 @@ parse_array_value(char **str)
 	return value;
 }
 
+/* -1 when the save has no max_serfs_left (older saves). */
+static int loaded_max_serfs_left = -1;
+
 static int
 load_text_game_state(list_t *sections)
 {
@@ -1863,6 +1867,8 @@ load_text_game_state(list_t *sections)
 				char *v = parse_array_value(&array);
 				game.rnd.state[i] = atoi(v);
 			}
+		} else if (!strcmp(s->key, "max_serfs_left")) {
+			loaded_max_serfs_left = atoi(s->value);
 		} else if (!strcmp(s->key, "serf_limit")) {
 			game.serf_limit = atoi(s->value);
 		} else if (!strcmp(s->key, "flag_limit")) {
@@ -1928,6 +1934,7 @@ load_text_game_state(list_t *sections)
 	game_allocate_objects();
 	game.clear_req_building_cursor = building_cursor;
 	game.clear_req_flag_cursor = flag_cursor;
+	if (loaded_max_serfs_left >= 0) game.max_serfs_left = loaded_max_serfs_left;
 
 	return 0;
 }
@@ -3003,6 +3010,7 @@ load_text_map_state(list_t *sections)
 int
 load_text_state(FILE *f)
 {
+	loaded_max_serfs_left = -1;
 	int r;
 
 	list_t sections;
@@ -3041,6 +3049,14 @@ load_text_state(FILE *f)
 	}
 
 	r = load_text_serf_state(&sections);
+	if (r >= 0 && loaded_max_serfs_left < 0) {
+		/* Older saves: the free slots are those not in use. */
+		uint used = 0;
+		for (uint i = 0; i < game.serf_limit; i++) {
+			if (SERF_ALLOCATED(i)) used += 1;
+		}
+		game.max_serfs_left = game.serf_limit - used;
+	}
 	if (r < 0) {
 		LOGD("savegame", "Error loading serf state");
 		goto error;
