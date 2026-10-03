@@ -35,7 +35,7 @@ const char *const mission_name[30] = {
 
 
 void
-init_missions()
+init_missions(void)
 {
 	/* Mission 1: START */
 	mission[0].rnd.state[0] = 0x6d6f;
@@ -704,7 +704,7 @@ const int mission_count = sizeof(mission) / sizeof(mission[0]);
 mission_t tutorial[6] = {0};
 
 void
-init_tutorials()
+init_tutorials(void)
 {
 	for (int t = 0; t < 6; t++) {
 		for (int p = 0; p < 4; p++) {

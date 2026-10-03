@@ -21,7 +21,7 @@
 
 #include "src/notification.h"
 
-#include <strstream>
+#include <sstream>
 #include <string>
 
 #include "src/interface.h"
@@ -48,7 +48,7 @@ notification_box_t::draw_background(int width, int height, int sprite) {
 
 void
 notification_box_t::draw_string(int x, int y, const std::string &str) {
-  std::strstream sin;
+  std::stringstream sin;
   sin << str;
   std::string line;
   int cy = y;

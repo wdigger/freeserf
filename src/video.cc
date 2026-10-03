@@ -22,7 +22,7 @@
 #include "src/video.h"
 
 #include <cstdlib>
-#include <strstream>
+#include <sstream>
 
 Video_Exception::Video_Exception(const std::string &description) throw() {
   this->description = description;
@@ -33,9 +33,10 @@ Video_Exception::~Video_Exception() throw() {
 
 const char*
 Video_Exception::what() const throw() {
-  std::strstream str;
+  std::stringstream str;
   str << "[" << get_platform() << "] " << get_description();
-  return str.str();
+  message = str.str();
+  return message.c_str();
 }
 
 const char*

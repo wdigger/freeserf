@@ -333,48 +333,6 @@ serf_set_lost_state(serf_t *serf)
 	}
 }
 
-/* Return true if serf is waiting for a position to be available.
-   In this case, dir will be set to the desired direction of the serf,
-   or DIR_NONE if the desired direction cannot be determined. */
-static int
-serf_is_waiting(serf_t *serf, dir_t *dir)
-{
-	const int dir_from_offset[] = {
-		DIR_UP_LEFT, DIR_UP, -1,
-		DIR_LEFT, -1, DIR_RIGHT,
-		-1, DIR_DOWN, DIR_DOWN_RIGHT
-	};
-
-	if ((serf->state == SERF_STATE_TRANSPORTING ||
-	     serf->state == SERF_STATE_WALKING ||
-	     serf->state == SERF_STATE_DELIVERING) &&
-	    serf->s.walking.dir < 0) {
-		*dir = (dir_t)(serf->s.walking.dir + 6);
-		return 1;
-	} else if ((serf->state == SERF_STATE_FREE_WALKING ||
-		    serf->state == SERF_STATE_KNIGHT_FREE_WALKING ||
-		    serf->state == SERF_STATE_STONECUTTER_FREE_WALKING) &&
-		   serf->animation == 82) {
-		int dx = serf->s.free_walking.dist1;
-		int dy = serf->s.free_walking.dist2;
-
-		if (abs(dx) <= 1 && abs(dy) <= 1 &&
-		    dir_from_offset[(dx+1) + 3*(dy+1)] > -1) {
-			*dir = (dir_t)dir_from_offset[(dx+1) + 3*(dy+1)];
-		} else {
-			*dir = DIR_NONE;
-		}
-		return 1;
-	} else if (serf->state == SERF_STATE_DIGGING &&
-		   serf->s.digging.substate < 0) {
-		int d = serf->s.digging.dig_pos;
-		*dir = (dir_t)((d == 0) ? DIR_UP : 6-d);
-		return 1;
-	}
-
-	return 0;
-}
-
 /* Signal waiting serf that it is possible to move in direction
    while switching position with another serf. Returns 0 if the
    switch is not acceptable. */

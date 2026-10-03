@@ -44,7 +44,7 @@ flag_proxy_alloc(flag_t *flag)
 }
 
 static int
-next_search_id()
+next_search_id(void)
 {
 	game.flag_search_counter += 1;
 

@@ -24,7 +24,7 @@
 #include <cmath>
 #include <cassert>
 #include <algorithm>
-#include <strstream>
+#include <sstream>
 
 #include "src/misc.h"
 BEGIN_EXT_C
@@ -1950,7 +1950,7 @@ popup_box_t::draw_options_box() {
   if (volume_controller != NULL) {
     volume = 99.f * volume_controller->get_volume();
   }
-  std::strstream str;
+  std::stringstream str;
   str << static_cast<int>(volume);
   draw_green_string(8, 54, str.str());
 

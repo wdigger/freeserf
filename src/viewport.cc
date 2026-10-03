@@ -2338,8 +2338,6 @@ viewport_t::handle_click_left(int x, int y) {
   set_redraw();
 
   map_pos_t clk_pos = map_pos_from_screen_pix(x, y);
-  int clk_col = MAP_POS_COL(clk_pos);
-  int clk_row = MAP_POS_ROW(clk_pos);
 
   if (interface->is_building_road()) {
     road_click(clk_pos);

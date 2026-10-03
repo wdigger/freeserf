@@ -95,7 +95,7 @@ static int spiral_pattern[] = {
 
 /* Initialize the global spiral_pattern. */
 static void
-init_spiral_pattern()
+init_spiral_pattern(void)
 {
 	static const int spiral_matrix[] = {
 		1,  0,  0,  1,
@@ -488,7 +488,7 @@ update_player(player_t *player)
    (depending on map size) is processed per update, and
    processing stops after ten bits were cleared. */
 static void
-clear_serf_request_failure()
+clear_serf_request_failure(void)
 {
 	static const int batch_size[] = {
 		16, 30, 55, 90, 150, 220, 350, 500
@@ -532,7 +532,7 @@ clear_serf_request_failure()
 }
 
 static void
-update_knight_morale()
+update_knight_morale(void)
 {
 	uint inventory_gold[GAME_MAX_PLAYER_COUNT] = {0};
 	uint military_gold[GAME_MAX_PLAYER_COUNT] = {0};
@@ -607,12 +607,6 @@ update_knight_morale()
 	}
 }
 
-typedef struct {
-	int resource;
-	int *max_prio;
-	flag_t **flags;
-} update_inventories_data_t;
-
 /* Layered search of update_inventories (Amiga update_scheduled
    @0xab8e..0xad78). Flags are expanded along paths with transporters, a
    neighbour is tested as a destination when it is discovered, and after
@@ -683,27 +677,6 @@ update_inventories_search(inventory_t *invs[], int n, int resource,
 	free(next);
 }
 
-static int
-update_inventories_cb(flag_t *flag, update_inventories_data_t *data)
-{
-	int inv = flag->search_dir;
-	if (data->max_prio[inv] < 255 &&
-	    FLAG_HAS_BUILDING(flag)) {
-		building_t *building = flag->other_endpoint.b[DIR_UP_LEFT];
-
-		for (int i = 0; i < BUILDING_MAX_STOCK; i++) {
-			if (building->stock[i].type == data->resource &&
-			    building->stock[i].prio >= 16 &&
-			    building->stock[i].prio > data->max_prio[inv]) {
-				data->max_prio[inv] = building->stock[i].prio;
-				data->flags[inv] = flag;
-			}
-		}
-	}
-
-	return 0;
-}
-
 /* Take resource from inventory and put in out queue. The resource must
    be present.*/
 static void
@@ -723,7 +696,7 @@ inventory_add_to_queue(inventory_t *inventory, resource_type_t type, uint dest)
 
 /* Check which players are allowed to spawn new serfs. */
 static void
-check_max_serfs_reached()
+check_max_serfs_reached(void)
 {
 	/* With fewer free serf slots than players in the game the spawn
 	   permissions are left as they are (Amiga @0xaf9e). */
@@ -761,7 +734,7 @@ check_max_serfs_reached()
 /* Update inventories as part of the game progression. Moves the appropriate
    resources that are needed outside of the inventory into the out queue. */
 static void
-update_inventories()
+update_inventories(void)
 {
 	const int arr_1[] = {
 		RESOURCE_PLANK,
@@ -1186,26 +1159,6 @@ typedef struct {
 	flag_t *flag;
 } schedule_unknown_dest_data_t;
 
-static int
-schedule_unknown_dest_cb(flag_t *flag, schedule_unknown_dest_data_t *data)
-{
-	if (FLAG_HAS_BUILDING(flag)) {
-		building_t *building = flag->other_endpoint.b[DIR_UP_LEFT];
-
-		for (int i = 0; i < BUILDING_MAX_STOCK; i++) {
-			if (building->stock[i].type == data->resource &&
-			    building->stock[i].prio > data->max_prio) {
-				data->max_prio = building->stock[i].prio;
-				data->flag = flag;
-			}
-		}
-
-		if (data->max_prio > 204) return 1;
-	}
-
-	return 0;
-}
-
 void
 schedule_slot_to_unknown_dest(flag_t *flag, int slot)
 {
@@ -1365,7 +1318,7 @@ schedule_slot_to_unknown_dest(flag_t *flag, int slot)
 
 /* Update flags as part of the game progression. */
 static void
-update_flags()
+update_flags(void)
 {
 	const int max_transporters[] = { 1, 2, 3, 4, 6, 8, 11, 15 };
 
@@ -2490,7 +2443,7 @@ building_burned_down(building_t *building)
 }
 
 static void
-update_buildings()
+update_buildings(void)
 {
 	/* Chunked like update_flags (Amiga update_buildings @0xbc2e). */
 	if (game.next_index >= 32) return;
@@ -2516,7 +2469,7 @@ update_buildings()
 
 /* Update serfs as part of the game progression. */
 static void
-update_serfs()
+update_serfs(void)
 {
 	for (uint i = 1; i < game.max_serf_index; i++) {
 		if (SERF_ALLOCATED(i)) {
@@ -2592,7 +2545,7 @@ history_sum(const player_t *player, int res)
 
 /* Goals of the tutorials (Amiga update_game_stats @0x86ac). */
 static int
-tutorial_completed()
+tutorial_completed(void)
 {
 	const player_t *player = game.player[0];
 	switch (game.tutorial_level) {
@@ -2625,7 +2578,7 @@ tutorial_completed()
 }
 
 static void
-update_game_stats()
+update_game_stats(void)
 {
 	if ((int)game.game_stats_counter > game.tick_diff) {
 		game.game_stats_counter -= game.tick_diff;
@@ -2860,7 +2813,7 @@ player_update_emergency_program(player_t *player)
 }
 
 static void
-update_emergency_programs()
+update_emergency_programs(void)
 {
 	for (int i = 0; i < GAME_MAX_PLAYER_COUNT; i++) {
 		if (PLAYER_IS_ACTIVE(game.player[i])) {
@@ -2871,7 +2824,7 @@ update_emergency_programs()
 
 /* Update game state after tick increment. */
 void
-game_update()
+game_update(void)
 {
 	/* Increment tick counters */
 	game.const_tick += 1;
@@ -2963,7 +2916,7 @@ game_update()
 /* Restart the save reminders: 180000 / 360000 ticks
    (Amiga game_loop / action_close_disk_msg). */
 void
-game_reset_save_reminders()
+game_reset_save_reminders(void)
 {
 	game.save_reminder_30m = 180000;
 	game.save_reminder_1h = 360000;
@@ -5412,7 +5365,7 @@ game_surrender_land(map_pos_t pos)
 
 /* Initialize land ownership for whole map. */ 
 void
-game_init_land_ownership()
+game_init_land_ownership(void)
 {
 	for (uint i = 1; i < game.max_building_index; i++) {
 		if (!BUILDING_ALLOCATED(i)) continue;
@@ -6001,7 +5954,7 @@ game_add_player(uint face, uint color, uint supplies,
 }
 
 void
-game_init()
+game_init(void)
 {
 	/* Initialize global lookup tables */
 	init_spiral_pattern();
@@ -6042,7 +5995,7 @@ game_init()
 
 /* Initialize spiral_pos_pattern from spiral_pattern. */
 void
-init_spiral_pos_pattern()
+init_spiral_pos_pattern(void)
 {
 	int *pattern = game.spiral_pattern;
 
@@ -6060,7 +6013,7 @@ init_spiral_pos_pattern()
 }
 
 static void
-game_init_map()
+game_init_map(void)
 {
 	game.map.col_size = 5 + game.map_size/2;
 	game.map.row_size = 5 + (game.map_size - 1)/2;
@@ -6101,7 +6054,7 @@ game_init_map()
 }
 
 void
-game_allocate_objects()
+game_allocate_objects(void)
 {
 	/* Serfs */
 	if (game.serfs != NULL) free(game.serfs);
@@ -6295,7 +6248,7 @@ tutorial_build_military_building(player_t *player, int col, int row,
 /* Tutorial 6: the passive enemy (player 1) with four military buildings
    on a small piece of land (Amiga game_init_start_castles @0x49ca). */
 static void
-tutorial_6_setup()
+tutorial_6_setup(void)
 {
 	player_t *human = game.player[0];
 	for (int i = 0; i < 4; i++) human->knight_occupation[i] = 0x40;
@@ -6455,7 +6408,7 @@ game_lose_resource(resource_type_t res)
 }
 
 uint16_t
-game_random_int()
+game_random_int(void)
 {
 	return random_int(&game.rnd);
 }

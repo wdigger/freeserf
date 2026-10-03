@@ -42,12 +42,13 @@ class video_image_t {
   unsigned int h;
   SDL_Texture *texture;
 
-  video_image_t() : texture(NULL), w(0), h(0) {}
+  video_image_t() : w(0), h(0), texture(NULL) {}
 };
 
 class SDL_Exception : public Video_Exception {
  protected:
   std::string sdl_error;
+  mutable std::string full_description;  /* Storage of get_description(). */
 
  public:
   explicit SDL_Exception(const std::string &description) throw();

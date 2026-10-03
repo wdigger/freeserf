@@ -231,22 +231,22 @@ extern game_t game;
 
 
 /* External interface */
-void game_init();
+void game_init(void);
 int game_add_player(uint face, uint color, uint supplies,
 		    uint reproduction, uint intelligence);
 int game_load_mission_map(int m);
 int game_load_tutorial_map(int level);
 int game_load_random_map(int size, const random_state_t *rnd);
 int game_load_save_game(const char *path);
-void game_reset_save_reminders();
-void game_allocate_objects();
+void game_reset_save_reminders(void);
+void game_allocate_objects(void);
 
-void game_update();
+void game_update(void);
 void game_pause(int enable);
 
 void game_prepare_ground_analysis(map_pos_t pos, int estimates[5]);
 int game_send_geologist(flag_t *dest);
-void init_spiral_pos_pattern();
+void init_spiral_pos_pattern(void);
 
 int game_get_leveling_height(map_pos_t pos);
 
@@ -333,14 +333,14 @@ serf_t *game_get_serf(int index);
 void game_free_serf(int index);
 
 void game_calculate_military_flag_state(building_t *building);
-void game_init_land_ownership();
+void game_init_land_ownership(void);
 void game_update_land_ownership(map_pos_t pos);
 void game_occupy_enemy_building(building_t *building, int player);
 
 void game_cancel_transported_resource(resource_type_t type, uint dest);
 void game_lose_resource(resource_type_t type);
 
-uint16_t game_random_int();
+uint16_t game_random_int(void);
 
 
 #endif /* !_GAME_H */

@@ -156,6 +156,6 @@ int demolish_flag(map_pos_t pos);
 void schedule_slot_to_unknown_dest(flag_t *flag, int slot);
 int find_nearest_inventory(flag_t *flag);
 int get_road_length_value(int length);
-uint16_t game_random_int();
+uint16_t game_random_int(void);
 
 #endif /* !_AI_INTERNAL_H */

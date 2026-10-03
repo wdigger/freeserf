@@ -35,6 +35,7 @@ typedef struct {
 class Video_Exception : public std::exception {
  protected:
   std::string description;
+  mutable std::string message;  /* Storage of what(). */
 
  public:
   explicit Video_Exception(const std::string &description) throw();

@@ -212,7 +212,7 @@ get_rnd_map_coord(int *col, int *row)
 /* Midpoint displacement map generator. This function initialises the height
    values in the corners of 16x16 squares. */
 static void
-init_map_heights_squares()
+init_map_heights_squares(void)
 {
 	map_tile_t *tiles = game.map.tiles;
 
@@ -238,7 +238,7 @@ calc_height_displacement(int avg, int base, int offset)
 /* Calculate height values of the subdivisions in the
    midpoint displacement algorithm. */
 static void
-init_map_heights_midpoints()
+init_map_heights_midpoints(void)
 {
 	map_tile_t *tiles = game.map.tiles;
 
@@ -296,7 +296,7 @@ init_map_heights_midpoints()
 }
 
 static void
-init_map_heights_diamond_square()
+init_map_heights_diamond_square(void)
 {
 	map_tile_t *tiles = game.map.tiles;
 
@@ -390,7 +390,7 @@ adjust_map_height(int h1, int h2, map_tile_t *tile)
 
 /* Ensure that map heights of adjacent fields are not too far apart. */
 static void
-clamp_map_heights()
+clamp_map_heights(void)
 {
 	map_tile_t *tiles = game.map.tiles;
 
@@ -501,7 +501,7 @@ map_init_level_area(map_tile_t *tiles, map_pos_t pos)
    It is created in areas that are below a certain threshold.
    The areas are also limited in size. */
 static void
-map_init_sea_level()
+map_init_sea_level(void)
 {
 	map_tile_t *tiles = game.map.tiles;
 
@@ -547,7 +547,7 @@ map_init_sea_level()
 
 /* Adjust heights so zero height is sea level. */
 static void
-map_heights_rebase()
+map_heights_rebase(void)
 {
 	map_tile_t *tiles = game.map.tiles;
 	int h = game.map_water_level - 1;
@@ -574,7 +574,7 @@ calc_map_type(int h_sum)
 
 /* Set type of map fields based on the height value. */
 static void
-init_map_types()
+init_map_types(void)
 {
 	map_tile_t *tiles = game.map.tiles;
 
@@ -591,7 +591,7 @@ init_map_types()
 }
 
 static void
-init_map_types_2_sub()
+init_map_types_2_sub(void)
 {
 	map_tile_t *tiles = game.map.tiles;
 
@@ -603,7 +603,7 @@ init_map_types_2_sub()
 }
 
 static void
-init_map_types_2()
+init_map_types_2(void)
 {
 	init_map_types_2_sub();
 
@@ -676,7 +676,7 @@ init_map_types_2()
 
 /* Rescale height values to be in [0;31]. */
 static void
-map_heights_rescale()
+map_heights_rescale(void)
 {
 	map_tile_t *tiles = game.map.tiles;
 
@@ -733,7 +733,7 @@ init_map_types_shared_sub(int old, int seed, int new_)
 }
 
 static void
-init_map_lakes()
+init_map_lakes(void)
 {
 	init_map_types_shared_sub(0, 5, 3);
 	init_map_types_shared_sub(0, 3, 2);
@@ -741,7 +741,7 @@ init_map_lakes()
 }
 
 static void
-init_map_types4()
+init_map_types4(void)
 {
 	init_map_types_shared_sub(5, 3, 4);
 }
@@ -793,7 +793,7 @@ init_map_desert_sub2(map_pos_t pos)
 
 /* Create deserts on the map. */
 static void
-init_map_desert()
+init_map_desert(void)
 {
 	map_tile_t *tiles = game.map.tiles;
 
@@ -820,7 +820,7 @@ init_map_desert()
 }
 
 static void
-init_map_desert_2_sub()
+init_map_desert_2_sub(void)
 {
 	map_tile_t *tiles = game.map.tiles;
 
@@ -839,7 +839,7 @@ init_map_desert_2_sub()
 }
 
 static void
-init_map_desert_2()
+init_map_desert_2(void)
 {
 	init_map_types_shared_sub(10, 5, 7);
 	init_map_types_shared_sub(10, 7, 8);
@@ -854,7 +854,7 @@ init_map_desert_2()
 
 /* Put crosses on top of mountains. */
 static void
-init_map_crosses()
+init_map_crosses(void)
 {
 	map_tile_t *tiles = game.map.tiles;
 
@@ -940,95 +940,95 @@ init_map_objects_shared(int num_clusters, int objs_in_cluster, int pos_mask,
 }
 
 static void
-init_map_trees_1()
+init_map_trees_1(void)
 {
 	/* Add either tree or pine. */
 	init_map_objects_shared(game.map_regions << 3, 10, 0xff, 5, 7, MAP_OBJ_TREE_0, 0xf);
 }
 
 static void
-init_map_trees_2()
+init_map_trees_2(void)
 {
 	/* Add only trees. */
 	init_map_objects_shared(game.map_regions, 45, 0x3f, 5, 7, MAP_OBJ_TREE_0, 0x7);
 }
 
 static void
-init_map_trees_3()
+init_map_trees_3(void)
 {
 	/* Add only pines. */
 	init_map_objects_shared(game.map_regions, 30, 0x3f, 4, 7, MAP_OBJ_PINE_0, 0x7);
 }
 
 static void
-init_map_trees_4()
+init_map_trees_4(void)
 {
 	/* Add either tree or pine. */
 	init_map_objects_shared(game.map_regions, 20, 0x7f, 5, 7, MAP_OBJ_TREE_0, 0xf);
 }
 
 static void
-init_map_stone_1()
+init_map_stone_1(void)
 {
 	init_map_objects_shared(game.map_regions, 40, 0x3f, 5, 7, MAP_OBJ_STONE_0, 0x7);
 }
 
 static void
-init_map_stone_2()
+init_map_stone_2(void)
 {
 	init_map_objects_shared(game.map_regions, 15, 0xff, 5, 7, MAP_OBJ_STONE_0, 0x7);
 }
 
 static void
-init_map_dead_trees()
+init_map_dead_trees(void)
 {
 	init_map_objects_shared(game.map_regions, 2, 0xff, 5, 7, MAP_OBJ_DEAD_TREE, 0);
 }
 
 static void
-init_map_large_boulders()
+init_map_large_boulders(void)
 {
 	init_map_objects_shared(game.map_regions, 6, 0xff, 5, 7, MAP_OBJ_SANDSTONE_0, 0x1);
 }
 
 static void
-init_map_water_trees()
+init_map_water_trees(void)
 {
 	init_map_objects_shared(game.map_regions, 50, 0x7f, 2, 4, MAP_OBJ_WATER_TREE_0, 0x3);
 }
 
 static void
-init_map_stubs()
+init_map_stubs(void)
 {
 	init_map_objects_shared(game.map_regions, 5, 0xff, 5, 7, MAP_OBJ_STUB, 0);
 }
 
 static void
-init_map_small_boulders()
+init_map_small_boulders(void)
 {
 	init_map_objects_shared(game.map_regions, 10, 0xff, 5, 7, MAP_OBJ_STONE, 0x1);
 }
 
 static void
-init_map_cadavers()
+init_map_cadavers(void)
 {
 	init_map_objects_shared(game.map_regions, 2, 0xf, 10, 11, MAP_OBJ_CADAVER_0, 0x1);
 }
 
 static void
-init_map_cacti()
+init_map_cacti(void)
 {
 	init_map_objects_shared(game.map_regions, 6, 0x7f, 8, 11, MAP_OBJ_CACTUS_0, 0x1);
 }
 
 static void
-init_map_water_stones()
+init_map_water_stones(void)
 {
 	init_map_objects_shared(game.map_regions, 8, 0x7f, 0, 3, MAP_OBJ_WATER_STONE_0, 0x1);
 }
 
 static void
-init_map_palms()
+init_map_palms(void)
 {
 	init_map_objects_shared(game.map_regions, 6, 0x3f, 10, 11, MAP_OBJ_PALM_0, 0x3);
 }
@@ -1090,7 +1090,7 @@ init_map_resources_shared(int num_clusters, ground_deposit_t type, int min, int 
 
 /* Initialize resources in the ground. */
 static void
-init_map_resources()
+init_map_resources(void)
 {
 	init_map_resources_shared(game.map_regions * 9, GROUND_DEPOSIT_COAL, 11, 15);
 	init_map_resources_shared(game.map_regions * 4, GROUND_DEPOSIT_IRON, 11, 15);
@@ -1099,7 +1099,7 @@ init_map_resources()
 }
 
 static void
-init_map_clean_up()
+init_map_clean_up(void)
 {
 	map_tile_t *tiles = game.map.tiles;
 
@@ -1128,7 +1128,7 @@ init_map_clean_up()
 }
 
 static void
-init_map_sub()
+init_map_sub(void)
 {
 	init_map_lakes();
 
@@ -1189,7 +1189,7 @@ init_map_sub()
 
 /* Initialize global count of gold deposits. */
 static void
-init_map_ground_gold_deposit()
+init_map_ground_gold_deposit(void)
 {
 	int total_gold = 0;
 
@@ -1207,7 +1207,7 @@ init_map_ground_gold_deposit()
 
 /* Initialize minimap data. */
 void
-map_init_minimap()
+map_init_minimap(void)
 {
 	static const int color_offset[] = {
 		0, 85, 102, 119, 17, 17, 17, 17,
@@ -1278,7 +1278,7 @@ map_init_dimensions(map_t *map)
 }
 
 void
-map_init()
+map_init(void)
 {
 	/* game.svga &= ~BIT(5); */
 
@@ -1341,7 +1341,7 @@ map_init()
 }
 
 void
-map_deinit()
+map_deinit(void)
 {
 	free(game.map.tiles);
 	free(game.minimap);
@@ -1568,7 +1568,7 @@ map_update_hidden(map_pos_t pos)
 
 /* Update map data as part of the game progression. */
 void
-map_update()
+map_update(void)
 {
 	uint16_t delta = game.tick - game.update_map_last_tick;
 	game.update_map_last_tick = game.tick;

@@ -298,11 +298,11 @@ void map_remove_fish(map_pos_t pos, int amount);
 void map_set_serf_index(map_pos_t pos, int index);
 
 void map_init_dimensions(map_t *map);
-void map_init_minimap();
+void map_init_minimap(void);
 
-void map_init();
-void map_deinit();
-void map_update();
+void map_init(void);
+void map_deinit(void);
+void map_update(void);
 void map_move_deposit_to_neighbours(map_pos_t pos);
 
 

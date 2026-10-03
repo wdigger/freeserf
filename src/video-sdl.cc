@@ -21,7 +21,7 @@
 
 #include "src/video-sdl.h"
 
-#include <strstream>
+#include <sstream>
 
 #include <SDL3/SDL.h>
 
@@ -35,10 +35,11 @@ SDL_Exception::~SDL_Exception() throw() {
 
 const char *
 SDL_Exception::get_description() const {
-  std::strstream str;
+  std::stringstream str;
   str << Video_Exception::get_description();
   str << "(" << sdl_error << ")";
-  return str.str();
+  full_description = str.str();
+  return full_description.c_str();
 }
 
 const char *

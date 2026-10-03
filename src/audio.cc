@@ -24,7 +24,6 @@
 #include <cstring>
 #include <cassert>
 #include <algorithm>
-#include <strstream>
 
 #include "src/misc.h"
 BEGIN_EXT_C

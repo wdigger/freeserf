@@ -336,9 +336,7 @@ midi_produce(midi_file_t *midi, size_t *size) {
   WRITE_BE32(0);          /* Size reserved */
 
   uint64_t time = 0;
-  int i = 0;
   while (!midi->nodes.empty()) {
-    i++;
     midi_node_t *node = midi->nodes.top();
     if (node == NULL) {
       continue;
