@@ -25,7 +25,7 @@
 #include <exception>
 #include <string>
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #include "src/video.h"
 
@@ -64,7 +64,7 @@ class video_sdl_t : public video_t {
   static Uint32 Gmask;
   static Uint32 Bmask;
   static Uint32 Amask;
-  static Uint32 pixel_format;
+  static SDL_PixelFormat pixel_format;
 
   SDL_Window *window;
   SDL_Renderer *renderer;

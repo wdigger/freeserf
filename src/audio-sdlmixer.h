@@ -25,23 +25,28 @@
 
 #include "src/audio.h"
 
-#include <SDL_mixer.h>
+#include <SDL3_mixer/SDL_mixer.h>
 
 #include "src/event_loop.h"
 
 class sfx_track_t : public audio_track_t {
  protected:
-  Mix_Chunk *chunk;
+  MIX_Audio *chunk;
 
  public:
-  explicit sfx_track_t(Mix_Chunk *chunk);
+  explicit sfx_track_t(MIX_Audio *chunk);
   virtual ~sfx_track_t();
 
   virtual void play();
 };
 
 class sfx_player_t : public audio_player_t, public audio_volume_controller_t {
+ protected:
+  float volume;
+
  public:
+  sfx_player_t();
+
   virtual void enable(bool enable);
   virtual audio_volume_controller_t *get_volume_controller() { return this; }
 
@@ -58,10 +63,10 @@ class sfx_player_t : public audio_player_t, public audio_volume_controller_t {
 
 class midi_track_t : public audio_track_t {
  protected:
-  Mix_Music *chunk;
+  MIX_Audio *chunk;
 
  public:
-  explicit midi_track_t(Mix_Music *chunk);
+  explicit midi_track_t(MIX_Audio *chunk);
   virtual ~midi_track_t();
 
   virtual void play();
@@ -69,6 +74,8 @@ class midi_track_t : public audio_track_t {
 
 class midi_player_t : public audio_player_t, public audio_volume_controller_t,
                       public deferred_callee_t {
+  friend class midi_track_t;
+
  protected:
   midi_t current_track;
 
@@ -95,7 +102,7 @@ class midi_player_t : public audio_player_t, public audio_volume_controller_t,
 
  protected:
   static midi_player_t *current_midi_player;
-  static void music_finished_hook();
+  static void SDLCALL music_finished_hook(void *userdata, MIX_Track *track);
   void music_finished();
 };
 

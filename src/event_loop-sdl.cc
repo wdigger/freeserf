@@ -21,7 +21,7 @@
 
 #include "src/event_loop-sdl.h"
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #include "src/misc.h"
 BEGIN_EXT_C
@@ -52,10 +52,11 @@ typedef enum {
   USER_EVENT_CALL,
 } USER_EVENT_TYPE;
 
-Uint32 timer_callback(Uint32 interval, void *param) {
+Uint32 timer_callback(void *param, SDL_TimerID timer_id, Uint32 interval) {
   SDL_Event event;
-  event.type = SDL_USEREVENT;
-  event.user.type = SDL_USEREVENT;
+  SDL_zero(event);
+  event.type = SDL_EVENT_USER;
+  event.user.type = SDL_EVENT_USER;
   event.user.code = USER_EVENT_STEP;
   event.user.data1 = 0;
   event.user.data2 = 0;
@@ -67,8 +68,9 @@ Uint32 timer_callback(Uint32 interval, void *param) {
 void
 event_loop_sdl_t::quit() {
   SDL_Event event;
-  event.type = SDL_USEREVENT;
-  event.user.type = SDL_USEREVENT;
+  SDL_zero(event);
+  event.type = SDL_EVENT_USER;
+  event.user.type = SDL_EVENT_USER;
   event.user.code = USER_EVENT_QUIT;
   event.user.data1 = 0;
   event.user.data2 = 0;
@@ -79,8 +81,9 @@ void
 event_loop_sdl_t::deferred_call(deferred_callee_t *deferred_callee,
                                 void *data) {
   SDL_Event event;
-  event.type = SDL_USEREVENT;
-  event.user.type = SDL_USEREVENT;
+  SDL_zero(event);
+  event.type = SDL_EVENT_USER;
+  event.user.type = SDL_EVENT_USER;
   event.user.code = USER_EVENT_CALL;
   event.user.data1 = deferred_callee;
   event.user.data2 = data;
@@ -92,7 +95,7 @@ event_loop_sdl_t::deferred_call(deferred_callee_t *deferred_callee,
  in game_loop_iter. */
 void
 event_loop_sdl_t::run() {
-  SDL_InitSubSystem(SDL_INIT_EVENTS | SDL_INIT_TIMER);
+  SDL_InitSubSystem(SDL_INIT_EVENTS);
 
   SDL_TimerID timer_id = SDL_AddTimer(TICK_LENGTH, timer_callback, 0);
   if (timer_id == 0) {
@@ -114,10 +117,10 @@ event_loop_sdl_t::run() {
   frame_t *screen = NULL;
 
   while (SDL_WaitEvent(&event)) {
-    unsigned int current_ticks = SDL_GetTicks();
+    unsigned int current_ticks = static_cast<unsigned int>(SDL_GetTicks());
 
     switch (event.type) {
-      case SDL_MOUSEBUTTONUP:
+      case SDL_EVENT_MOUSE_BUTTON_UP:
         if (drag_button == event.button.button) {
           drag_button = 0;
         }
@@ -129,70 +132,79 @@ event_loop_sdl_t::run() {
                                    gfx->get_zoom_factor());
           notify_click(x, y, (event_button_t)event.button.button);
 
+          int bx = static_cast<int>(event.button.x);
+          int by = static_cast<int>(event.button.y);
           if (current_ticks - last_click[event.button.button] <
                 MOUSE_TIME_SENSITIVITY &&
-              event.button.x >= (last_click_x - MOUSE_MOVE_SENSITIVITY) &&
-              event.button.x <= (last_click_x + MOUSE_MOVE_SENSITIVITY) &&
-              event.button.y >= (last_click_y - MOUSE_MOVE_SENSITIVITY) &&
-              event.button.y <= (last_click_y + MOUSE_MOVE_SENSITIVITY)) {
+              bx >= (last_click_x - MOUSE_MOVE_SENSITIVITY) &&
+              bx <= (last_click_x + MOUSE_MOVE_SENSITIVITY) &&
+              by >= (last_click_y - MOUSE_MOVE_SENSITIVITY) &&
+              by <= (last_click_y + MOUSE_MOVE_SENSITIVITY)) {
             notify_dbl_click(x, y, (event_button_t)event.button.button);
           }
 
           last_click[event.button.button] = current_ticks;
-          last_click_x = event.button.x;
-          last_click_y = event.button.y;
+          last_click_x = bx;
+          last_click_y = by;
         }
         break;
-      case SDL_MOUSEBUTTONDOWN:
+      case SDL_EVENT_MOUSE_BUTTON_DOWN:
         if (event.button.button <= 3) {
           last_down[event.button.button] = current_ticks;
         }
         break;
-      case SDL_MOUSEMOTION:
+      case SDL_EVENT_MOUSE_MOTION: {
+        int mx = static_cast<int>(event.motion.x);
+        int my = static_cast<int>(event.motion.y);
         for (int button = 1; button <= 3; button++) {
-          if (event.motion.state & SDL_BUTTON(button)) {
+          if (event.motion.state & SDL_BUTTON_MASK(button)) {
             if (drag_button == 0) {
               drag_button = button;
-              drag_x = event.motion.x;
-              drag_y = event.motion.y;
+              drag_x = mx;
+              drag_y = my;
             }
 
-            notify_drag(drag_x, drag_y,
-                        event.motion.x - drag_x, event.motion.y - drag_y,
+            notify_drag(drag_x, drag_y, mx - drag_x, my - drag_y,
                         (event_button_t)drag_button);
 
-            SDL_WarpMouseInWindow(NULL, drag_x, drag_y);
+            SDL_WarpMouseInWindow(SDL_GetWindowFromID(event.motion.windowID),
+                                  static_cast<float>(drag_x),
+                                  static_cast<float>(drag_y));
 
             break;
           }
         }
         break;
-      case SDL_MOUSEWHEEL: {
+      }
+      case SDL_EVENT_MOUSE_WHEEL: {
         SDL_Keymod mod = SDL_GetModState();
-        if ((mod & KMOD_CTRL) != 0) {
+        if ((mod & SDL_KMOD_CTRL) != 0) {
           zoom(0.2f * static_cast<float>(event.wheel.y));
         }
         break;
       }
-      case SDL_KEYDOWN: {
-        if (event.key.keysym.sym == SDLK_q &&
-            (event.key.keysym.mod & KMOD_CTRL)) {
+      case SDL_EVENT_KEY_DOWN: {
+        /* SDL2 key symbols ignored the modifiers. */
+        SDL_Keycode sym = SDL_GetKeyFromScancode(event.key.scancode,
+                                                 SDL_KMOD_NONE, false);
+        if (sym == SDLK_Q &&
+            (event.key.mod & SDL_KMOD_CTRL)) {
           quit();
           break;
         }
 
         unsigned char modifier = 0;
-        if (event.key.keysym.mod & KMOD_CTRL) {
+        if (event.key.mod & SDL_KMOD_CTRL) {
           modifier |= 1;
         }
-        if (event.key.keysym.mod & KMOD_SHIFT) {
+        if (event.key.mod & SDL_KMOD_SHIFT) {
           modifier |= 2;
         }
-        if (event.key.keysym.mod & KMOD_ALT) {
+        if (event.key.mod & SDL_KMOD_ALT) {
           modifier |= 4;
         }
 
-        switch (event.key.keysym.sym) {
+        switch (sym) {
           /* Map scroll */
           case SDLK_UP: {
             notify_drag(0, 0, 0, -32, EVENT_BUTTON_LEFT);
@@ -222,8 +234,8 @@ event_loop_sdl_t::run() {
             break;
 
             /* Video */
-          case SDLK_f:
-            if (event.key.keysym.mod & KMOD_CTRL) {
+          case SDLK_F:
+            if (event.key.mod & SDL_KMOD_CTRL) {
               gfx->set_fullscreen(!gfx->is_fullscreen());
             }
             break;
@@ -240,24 +252,23 @@ event_loop_sdl_t::run() {
             break;
 
           default:
-            notify_key_pressed(event.key.keysym.sym, modifier);
+            notify_key_pressed(sym, modifier);
             break;
         }
 
         break;
       }
-      case SDL_QUIT:
+      case SDL_EVENT_QUIT:
         notify_key_pressed('c', 1);
         break;
-      case SDL_WINDOWEVENT:
-        if (SDL_WINDOWEVENT_SIZE_CHANGED == event.window.event) {
-          unsigned int width = event.window.data1;
-          unsigned int height = event.window.data2;
-          gfx->set_resolution(width, height, gfx->is_fullscreen());
-          notify_resize(width, height);
-        }
+      case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED: {
+        unsigned int width = event.window.data1;
+        unsigned int height = event.window.data2;
+        gfx->set_resolution(width, height, gfx->is_fullscreen());
+        notify_resize(width, height);
         break;
-      case SDL_USEREVENT:
+      }
+      case SDL_EVENT_USER:
         switch (event.user.code) {
           case USER_EVENT_QUIT:
             SDL_RemoveTimer(timer_id);

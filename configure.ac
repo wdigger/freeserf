@@ -15,8 +15,8 @@ AM_PROG_CC_C_O
 AC_PROG_CXX
 
 # Checks for libraries.
-PKG_CHECK_MODULES([SDL2], [sdl2])
-PKG_CHECK_MODULES([SDL2_mixer], [SDL2_mixer], [have_sdl2_mixer=yes], [have_sdl2_mixer=no])
+PKG_CHECK_MODULES([SDL3], [sdl3])
+PKG_CHECK_MODULES([SDL3_mixer], [sdl3-mixer], [have_sdl3_mixer=yes], [have_sdl3_mixer=no])
 
 # Checks for header files.
 AC_HEADER_ASSERT
@@ -41,28 +41,28 @@ AC_FUNC_MMAP
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS([atexit memset munmap strtol])
 
-# Check SDL2_mixer support
-AC_MSG_CHECKING([whether to enable SDL2_mixer support])
-AC_ARG_ENABLE([sdl2-mixer], [AC_HELP_STRING([--enable-sdl2-mixer],
-			   [enable SDL2_mixer support (music/sound effects)])],
-			   [enable_sdl2_mixer=$enableval], [enable_sdl2_mixer=maybe])
-AS_IF([test "x$enable_sdl2_mixer" != xno], [
-	AS_IF([test $have_sdl2_mixer = yes], [
-		AC_DEFINE([ENABLE_SDL2_MIXER], 1, [Define to 1 to enable SDL2_mixer support])
+# Check SDL3_mixer support
+AC_MSG_CHECKING([whether to enable SDL3_mixer support])
+AC_ARG_ENABLE([sdl3-mixer], [AC_HELP_STRING([--enable-sdl3-mixer],
+			   [enable SDL3_mixer support (music/sound effects)])],
+			   [enable_sdl3_mixer=$enableval], [enable_sdl3_mixer=maybe])
+AS_IF([test "x$enable_sdl3_mixer" != xno], [
+	AS_IF([test $have_sdl3_mixer = yes], [
+		AC_DEFINE([ENABLE_SDL3_MIXER], 1, [Define to 1 to enable SDL3_mixer support])
 		AC_MSG_RESULT([yes])
-		enable_sdl2_mixer=yes
+		enable_sdl3_mixer=yes
 	], [
 		AC_MSG_RESULT([missing dependencies])
-		AS_IF([test "x$enable_sdl2_mixer" = xyes], [
-			AC_MSG_ERROR([missing dependencies for SDL2_mixer])
+		AS_IF([test "x$enable_sdl3_mixer" = xyes], [
+			AC_MSG_ERROR([missing dependencies for SDL3_mixer])
 		])
-		enable_sdl2_mixer=no
+		enable_sdl3_mixer=no
 	])
 ], [
 	AC_MSG_RESULT([no])
-	enable_sdl2_mixer=no
+	enable_sdl3_mixer=no
 ])
-AM_CONDITIONAL([ENABLE_SDL2_MIXER], [test "x$enable_sdl2_mixer" = xyes])
+AM_CONDITIONAL([ENABLE_SDL3_MIXER], [test "x$enable_sdl3_mixer" = xyes])
 
 # Check debug mode
 AC_MSG_CHECKING([whether to enable debug mode])
@@ -113,5 +113,5 @@ echo "
     cxxflags:		${CXXFLAGS}
     ldflags:		${LDFLAGS}
 
-    SDL2_mixer:		${enable_sdl2_mixer}
+    SDL3_mixer:		${enable_sdl3_mixer}
 "

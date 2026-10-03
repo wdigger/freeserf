@@ -44,14 +44,14 @@ freeserf_SOURCES = \
 	src/xmi2mid.cc src/xmi2mid.h \
 	src/data-source.cc src/data-source.h
 
-AM_CFLAGS = $(SDL2_CFLAGS) -I$(top_builddir)/src
-AM_CXXFLAGS = $(SDL2_CFLAGS) -I$(top_builddir)/src
-freeserf_LDADD = $(SDL2_LIBS) $(SDL2_CFLAGS) -lm
+AM_CFLAGS = $(SDL3_CFLAGS) -I$(top_builddir)/src
+AM_CXXFLAGS = $(SDL3_CFLAGS) -I$(top_builddir)/src
+freeserf_LDADD = $(SDL3_LIBS) $(SDL3_CFLAGS) -lm
 
-if ENABLE_SDL2_MIXER
-AM_CFLAGS += $(SDL2_mixer_CFLAGS)
-AM_CXXFLAGS += $(SDL2_mixer_CFLAGS)
-freeserf_LDADD += $(SDL2_mixer_LIBS)
+if ENABLE_SDL3_MIXER
+AM_CFLAGS += $(SDL3_mixer_CFLAGS)
+AM_CXXFLAGS += $(SDL3_mixer_CFLAGS)
+freeserf_LDADD += $(SDL3_mixer_LIBS)
 freeserf_SOURCES += src/audio-sdlmixer.cc src/audio-sdlmixer.h
 else
 freeserf_SOURCES += src/audio-dummy.cc src/audio-dummy.h

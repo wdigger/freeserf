@@ -61,3 +61,6 @@ windows/Release
 *.sdf
 *.lastbuildstate
 *.unsuccessfulbuild
+
+# CMake
+/build
