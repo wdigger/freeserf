@@ -537,6 +537,8 @@ map_init_sea_level()
 				case 253:
 					tiles[pos].height = game.map_water_level - 1;
 					tiles[pos].resource = game_random_int() & 7; /* Fish */
+					/* Lake water is blocked (Amiga @0x63f6). */
+					tiles[pos].paths |= 0x40;
 					break;
 			}
 		}
@@ -1104,18 +1106,21 @@ init_map_clean_up()
 	/* Make sure that it is always possible to walk around
 	   any impassable objects. This also clears water obstacles
 	   except in certain positions near the shore. */
+	/* As in the original (Amiga init_map_clean_up @0x7324): an object
+	   that is not passable is removed when a neighbour to the left,
+	   up-left or up is blocked; otherwise it stays and its vertex is
+	   blocked. Blocked are lake water and the objects kept so far, so
+	   at the wrap edges a neighbour not processed yet does not count. */
 	for (uint y = 0; y < game.map.rows; y++) {
 		for (uint x = 0; x < game.map.cols; x++) {
 			map_pos_t pos = MAP_POS(x, y);
-			if (map_space_from_obj[MAP_OBJ(pos)] >= MAP_SPACE_IMPASSABLE) {
-				for (int d = DIR_LEFT; d <= DIR_UP; d++) {
-					map_pos_t other_pos = MAP_MOVE(pos, d);
-					map_space_t s = map_space_from_obj[MAP_OBJ(other_pos)];
-					if (MAP_IN_WATER(other_pos) ||
-					    s >= MAP_SPACE_IMPASSABLE) {
-						tiles[pos].obj &= 0x80;
-						break;
-					}
+			if (map_space_from_obj[MAP_OBJ(pos)] >= MAP_SPACE_SEMIPASSABLE) {
+				if (MAP_BLOCKED(MAP_MOVE_LEFT(pos)) ||
+				    MAP_BLOCKED(MAP_MOVE_UP_LEFT(pos)) ||
+				    MAP_BLOCKED(MAP_MOVE_UP(pos))) {
+					tiles[pos].obj &= 0x80;
+				} else {
+					MAP_SET_BLOCKED(pos);
 				}
 			}
 		}
@@ -1527,8 +1532,11 @@ map_update_hidden(map_pos_t pos)
 {
 	map_tile_t *tiles = game.map.tiles;
 
-	/* Update fish resources in water */
-	if (MAP_IN_WATER(pos) &&
+	/* Update fish resources in water: on a water vertex that is blocked
+	   (Amiga map_update @0xa682). Original bug: the original does not
+	   check for real water, so blocked shore objects would have their
+	   ground deposit counted as fish; require MAP_IN_WATER as well. */
+	if (MAP_WATER_MARK(pos) && MAP_BLOCKED(pos) && MAP_IN_WATER(pos) &&
 	    tiles[pos].resource > 0) {
 		int r = game_random_int();
 
@@ -1550,7 +1558,7 @@ map_update_hidden(map_pos_t pos)
 		default: NOT_REACHED(); break;
 		}
 
-		if (MAP_IN_WATER(adj_pos)) {
+		if (MAP_BLOCKED(adj_pos) && MAP_IN_WATER(adj_pos)) {
 			/* Migrate a fish to adjacent water space. */
 			tiles[pos].resource -= 1;
 			tiles[adj_pos].resource += 1;

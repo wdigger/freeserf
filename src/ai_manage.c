@@ -79,11 +79,11 @@ ai_manage_fisher(player_t *player, building_t *building, int budget)
 	for (int i = 1; i <= 64; i++) {
 		map_pos_t pos = MAP_POS_ADD(building->pos,
 					    game.spiral_pos_pattern[i]);
-		/* The original tests the water marker (obj bit 7), the
-		   water flag (paths bit 6) and fish != 0; legacy keeps
-		   neither marker, MAP_IN_WATER is its counterpart (as in
-		   map_update_hidden). */
-		if (MAP_IN_WATER(pos) && MAP_RES_FISH(pos) != 0) {
+		/* Water marker (obj bit 7), blocked bit and fish != 0
+		   (Amiga @0x295a4); the fish are read on water only, like
+		   map_update_hidden. */
+		if (MAP_WATER_MARK(pos) && MAP_BLOCKED(pos) &&
+		    MAP_IN_WATER(pos) && MAP_RES_FISH(pos) != 0) {
 			return budget - 10;
 		}
 	}

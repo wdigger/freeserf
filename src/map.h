@@ -109,6 +109,16 @@ typedef enum {
 	 MAP_TYPE_UP(pos) < 4)
 
 /* Whether the position is completely surrounded by water. */
+/* Stored "blocked" bit of the original (paths bit 6): water of the
+   lakes, impassable objects kept by the map clean-up, buildings. Serfs
+   off the roads may not enter such a vertex. */
+#define MAP_BLOCKED(pos)  ((uint)((game.map.tiles[(pos)].paths >> 6) & 1))
+#define MAP_SET_BLOCKED(pos)  (game.map.tiles[(pos)].paths |= 0x40)
+#define MAP_CLEAR_BLOCKED(pos)  (game.map.tiles[(pos)].paths &= ~0x40)
+/* Water marker of the original (obj bit 7, map_mark_water_tiles
+   @0x679e): the vertex's own up or down triangle is water. */
+#define MAP_WATER_MARK(pos)  (MAP_TYPE_UP(pos) < 4 || MAP_TYPE_DOWN(pos) < 4)
+
 #define MAP_IN_WATER(pos)				\
 	(MAP_WATER_TILE(pos) &&				\
 	 MAP_WATER_TILE(MAP_MOVE_UP_LEFT(pos)) &&	\

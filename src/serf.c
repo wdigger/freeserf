@@ -2497,7 +2497,9 @@ handle_serf_free_walking_switch_with_other(serf_t *serf)
 static int
 serf_can_pass_map_pos(map_pos_t pos)
 {
-	return map_space_from_obj[MAP_OBJ(pos)] <= MAP_SPACE_SEMIPASSABLE;
+	/* The original tests only the stored blocked bit (paths bit 6),
+	   which covers lake water, impassable objects and buildings. */
+	return !MAP_BLOCKED(pos);
 }
 
 static int
@@ -2590,8 +2592,7 @@ handle_free_walking_follow_edge(serf_t *serf)
 	for (int i = 0; i < 6; i++) {
 		map_pos_t new_pos = MAP_MOVE(serf->pos, a0[i]);
 		if (((water && MAP_OBJ(new_pos) == 0) ||
-		     (!water && !MAP_IN_WATER(new_pos) &&
-		      serf_can_pass_map_pos(new_pos))) &&
+		     (!water && serf_can_pass_map_pos(new_pos))) &&
 		    MAP_SERF_INDEX(new_pos) == 0) {
 			dir = (dir_t)a0[i];
 			i0 = i;
@@ -2718,8 +2719,7 @@ handle_free_walking_common(serf_t *serf)
 	dir_t dir = (dir_t)a0[0];
 	map_pos_t new_pos = MAP_MOVE(serf->pos, dir);
 	if (((water && MAP_OBJ(new_pos) == 0) ||
-	     (!water && !MAP_IN_WATER(new_pos) &&
-	      serf_can_pass_map_pos(new_pos))) &&
+	     (!water && serf_can_pass_map_pos(new_pos))) &&
 	    MAP_SERF_INDEX(new_pos) == 0) {
 		handle_serf_free_walking_switch_on_dir(serf, dir);
 		return;
@@ -2801,8 +2801,7 @@ handle_free_walking_common(serf_t *serf)
 		dir = (dir_t)a0[1+i];
 		map_pos_t new_pos = MAP_MOVE(serf->pos, dir);
 		if (((water && MAP_OBJ(new_pos) == 0) ||
-		     (!water && !MAP_IN_WATER(new_pos) &&
-		      serf_can_pass_map_pos(new_pos))) &&
+		     (!water && serf_can_pass_map_pos(new_pos))) &&
 		    MAP_SERF_INDEX(new_pos) == 0) {
 			i0 = i;
 			break;
@@ -2983,8 +2982,7 @@ handle_serf_planning_stonecutting(serf_t *serf)
 		   (Amiga planning_stonecutting @0xf90a). */
 		if (obj >= MAP_OBJ_STONE_0 &&
 		    obj <= MAP_OBJ_STONE_7 &&
-		    serf_can_pass_map_pos(pos) &&
-		    !MAP_IN_WATER(pos)) {
+		    !MAP_BLOCKED(pos)) {
 			serf_log_state_change(serf, SERF_STATE_READY_TO_LEAVE);
 			serf->state = SERF_STATE_READY_TO_LEAVE;
 			serf->s.leaving_building.field_B = game.spiral_pattern[2*index] - 1;
@@ -3059,8 +3057,14 @@ handle_serf_stonecutting_state(serf_t *serf)
 		/* Decrement stone quantity or remove entirely if this
 		   was the last piece. */
 		int obj = MAP_OBJ(serf->pos);
-		if (obj <= MAP_OBJ_STONE_6) map_set_object(serf->pos, (map_obj_t)(obj + 1), -1);
-		else map_set_object(serf->pos, MAP_OBJ_NONE, -1);
+		if (obj <= MAP_OBJ_STONE_6) {
+			map_set_object(serf->pos, (map_obj_t)(obj + 1), -1);
+		} else {
+			/* The last stone is gone: no longer blocked
+			   (Amiga stonecutting @0xf9c4). */
+			map_set_object(serf->pos, MAP_OBJ_NONE, -1);
+			MAP_CLEAR_BLOCKED(serf->pos);
+		}
 
 		serf->counter = 0;
 		serf_start_walking(serf, DIR_DOWN_RIGHT, 32, 1);
@@ -3265,7 +3269,9 @@ handle_free_sailing(serf_t *serf)
 	serf->counter -= delta;
 
 	while (serf->counter < 0) {
-		if (!MAP_IN_WATER(serf->pos)) {
+		/* A sailor stays on blocked (water) vertices
+		   (Amiga free sailing @0xf222). */
+		if (!MAP_BLOCKED(serf->pos)) {
 			serf_log_state_change(serf, SERF_STATE_LOST);
 			serf->state = SERF_STATE_LOST;
 			serf->s.lost.field_B = 0;
@@ -3556,10 +3562,11 @@ handle_serf_fishing_state(serf_t *serf)
 
 		dir_t dir = DIR_NONE;
 		if (serf->animation == 131) {
-			if (MAP_IN_WATER(MAP_MOVE_LEFT(serf->pos))) dir = DIR_LEFT;
+			/* Water is a blocked vertex (Amiga fishing @0xed42). */
+			if (MAP_BLOCKED(MAP_MOVE_LEFT(serf->pos))) dir = DIR_LEFT;
 			else dir = DIR_DOWN;
 		} else {
-			if (MAP_IN_WATER(MAP_MOVE_RIGHT(serf->pos))) dir = DIR_RIGHT;
+			if (MAP_BLOCKED(MAP_MOVE_RIGHT(serf->pos))) dir = DIR_RIGHT;
 			else dir = DIR_DOWN_RIGHT;
 		}
 

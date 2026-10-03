@@ -374,7 +374,7 @@ load_v0_map_state(FILE *f, const v0_map_t *map)
 			uint8_t *field_1_data = &data[4*(x + (y << map->row_shift))];
 			uint8_t *field_2_data = &data[4*(x + (y << map->row_shift)) + 4*map->cols];
 
-			tiles[pos].paths = field_1_data[0] & 0x3f;
+			tiles[pos].paths = field_1_data[0] & 0x7f; /* With the blocked bit 6. */
 			tiles[pos].height = field_1_data[1]; /* With owner bits 5-7. */
 			tiles[pos].type = field_1_data[2];
 			tiles[pos].obj = field_1_data[3] & 0x7f;
@@ -1474,6 +1474,7 @@ save_text_map_state(FILE *f)
 {
 	int height[SAVE_MAP_TILE_COUNT];
 	int owner[SAVE_MAP_TILE_COUNT];
+	int blocked[SAVE_MAP_TILE_COUNT];
 	int type_up[SAVE_MAP_TILE_COUNT];
 	int type_down[SAVE_MAP_TILE_COUNT];
 	int paths[SAVE_MAP_TILE_COUNT];
@@ -1496,6 +1497,7 @@ save_text_map_state(FILE *f)
 					int i = y*SAVE_MAP_TILE_SIZE + x;
 					height[i] = MAP_HEIGHT(pos);
 					owner[i] = MAP_HAS_OWNER(pos) ? MAP_OWNER(pos) + 1 : 0;
+					blocked[i] = MAP_BLOCKED(pos);
 					type_up[i] = MAP_TYPE_UP(pos);
 					type_down[i] = MAP_TYPE_DOWN(pos);
 					paths[i] = MAP_PATHS(pos);
@@ -1518,6 +1520,7 @@ save_text_map_state(FILE *f)
 			save_text_write_array(f, "type.up", type_up, SAVE_MAP_TILE_COUNT);
 			save_text_write_array(f, "type.down", type_down, SAVE_MAP_TILE_COUNT);
 			save_text_write_array(f, "paths", paths, SAVE_MAP_TILE_COUNT);
+			save_text_write_array(f, "blocked", blocked, SAVE_MAP_TILE_COUNT);
 			save_text_write_array(f, "object", obj, SAVE_MAP_TILE_COUNT);
 			save_text_write_array(f, "serf", serfs, SAVE_MAP_TILE_COUNT);
 			save_text_write_array(f, "resource.type", resource_type, SAVE_MAP_TILE_COUNT);
@@ -2781,6 +2784,8 @@ load_text_serf_state(list_t *sections)
 	return 0;
 }
 
+static int map_blocked_loaded;
+
 static int
 load_text_map_section(section_t *section)
 {
@@ -2804,7 +2809,7 @@ load_text_map_section(section_t *section)
 					if (array == NULL) return -1;
 					map_pos_t p = MAP_POS_ADD(pos, MAP_POS(x, y));
 					char *v = parse_array_value(&array);
-					tiles[p].paths = atoi(v) & 0x3f;
+					tiles[p].paths = (tiles[p].paths & 0x40) | (atoi(v) & 0x3f);
 				}
 			}
 		} else if (!strcmp(s->key, "height")) {
@@ -2817,6 +2822,18 @@ load_text_map_section(section_t *section)
 					tiles[p].height = (tiles[p].height & 0xe0) | (atoi(v) & 0x1f);
 				}
 			}
+		} else if (!strcmp(s->key, "blocked")) {
+			char *array = s->value;
+			for (int y = 0; y < SAVE_MAP_TILE_SIZE; y++) {
+				for (int x = 0; x < SAVE_MAP_TILE_SIZE; x++) {
+					if (array == NULL) return -1;
+					map_pos_t p = MAP_POS_ADD(pos, MAP_POS(x, y));
+					char *v = parse_array_value(&array);
+					if (atoi(v)) tiles[p].paths |= 0x40;
+					else tiles[p].paths &= ~0x40;
+				}
+			}
+			map_blocked_loaded = 1;
 		} else if (!strcmp(s->key, "owner")) {
 			char *array = s->value;
 			for (int y = 0; y < SAVE_MAP_TILE_SIZE; y++) {
@@ -2900,12 +2917,27 @@ load_text_map_section(section_t *section)
 static int
 load_text_map_state(list_t *sections)
 {
+	map_blocked_loaded = 0;
 	list_elm_t *elm;
 	list_foreach(sections, elm) {
 		section_t *s = (section_t *)elm;
 		if (!strcmp(s->name, "map")) {
 			int r = load_text_map_section(s);
 			if (r < 0) return -1;
+		}
+	}
+
+	/* Saves from before the blocked bit: rebuild it from water,
+	   impassable objects and buildings. */
+	if (!map_blocked_loaded) {
+		for (uint y = 0; y < game.map.rows; y++) {
+			for (uint x = 0; x < game.map.cols; x++) {
+				map_pos_t pos = MAP_POS(x, y);
+				map_space_t space = map_space_from_obj[MAP_OBJ(pos)];
+				if (MAP_IN_WATER(pos) || space == MAP_SPACE_IMPASSABLE) {
+					MAP_SET_BLOCKED(pos);
+				}
+			}
 		}
 	}
 

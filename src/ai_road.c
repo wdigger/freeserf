@@ -116,13 +116,12 @@ ai_water_marker(map_pos_t pos)
 	return MAP_TYPE_UP(pos) < 4 || MAP_TYPE_DOWN(pos) < 4;
 }
 
-/* Amiga paths bit 6 ("blocked", lake vertices and kept impassable
-   objects). legacy has no stored bit; use the same test as legacy
-   does elsewhere (impassable objects are checked separately). */
+/* Amiga paths bit 6 ("blocked": lake water, kept impassable objects,
+   buildings). */
 static int
 ai_tile_blocked(map_pos_t pos)
 {
-	return MAP_IN_WATER(pos);
+	return MAP_BLOCKED(pos);
 }
 
 static int

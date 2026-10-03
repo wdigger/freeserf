@@ -2459,6 +2459,7 @@ building_burned_down(building_t *building)
 	player_t *player = game.player[BUILDING_PLAYER(building)];
 
 	map_set_object(pos, MAP_OBJ_NONE, 0);
+	MAP_CLEAR_BLOCKED(pos); /* Amiga @0xbdd6 */
 	game_free_building(BUILDING_INDEX(building));
 
 	if (type == BUILDING_NONE || player == NULL) return;
@@ -4401,6 +4402,7 @@ build_building(map_pos_t pos, building_type_t type, player_t *player,
 
 	map_set_object(pos, obj_types[type], bld_index);
 	tiles[pos].paths |= BIT(1);
+	MAP_SET_BLOCKED(pos); /* Amiga game_build_building @0x18898 */
 
 	/* The flag's path to the building, also for an existing flag
 	   (Amiga game_build_building @0x188a4). */
@@ -4758,6 +4760,7 @@ game_build_castle(map_pos_t pos, player_t *player)
 	map_tile_t *tiles = game.map.tiles;
 	map_set_object(pos, MAP_OBJ_CASTLE, bld_index);
 	tiles[pos].paths |= BIT(1);
+	MAP_SET_BLOCKED(pos); /* Amiga game_build_castle @0x156d2 */
 
 	map_set_object(MAP_MOVE_DOWN_RIGHT(pos), MAP_OBJ_FLAG, flg_index);
 	tiles[MAP_MOVE_DOWN_RIGHT(pos)].paths |= BIT(4);
