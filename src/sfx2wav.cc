@@ -38,8 +38,6 @@ sfx2wav(void* sfx, size_t sfx_size, size_t *wav_size, int level, bool invert) {
                           WRITE_DATA_WG(val);}
 #define WRITE_LE32_WG(X) {uint32_t val = X; val = htole32(val); \
                           WRITE_DATA_WG(val);}
-#define WRITE_BE16_WG(X) {uint16_t val = X; val = htobe16(val); \
-                          WRITE_DATA_WG(val);}
 #define WRITE_LE16_WG(X) {uint16_t val = X; val = htole16(val); \
                           WRITE_DATA_WG(val);}
 #define WRITE_BYTE_WG(X) {*current = (uint8_t)X; current++;}
@@ -83,7 +81,11 @@ sfx2wav(void* sfx, size_t sfx_size, size_t *wav_size, int level, bool invert) {
     if (invert) {
       value = 0xFF - value;
     }
-    WRITE_BE16_WG(value*0xFF);
+    /* WAV holds 16-bit little-endian samples. */
+    value = value * 0x100;
+    if (value < -0x8000) value = -0x8000;
+    if (value > 0x7fff) value = 0x7fff;
+    WRITE_LE16_WG(static_cast<uint16_t>(value));
     sfx_size--;
   }
 
