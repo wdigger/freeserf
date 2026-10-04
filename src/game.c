@@ -6178,7 +6178,7 @@ game_load_mission_map(int level)
 }
 
 /* Build a finished military building of the passive enemy in tutorial 6
-   with knights of level 4 (Amiga tutorial_build_military_building
+   with knights of level 0 (Amiga tutorial_build_military_building
    @0x4b58). */
 static void
 tutorial_build_military_building(player_t *player, int col, int row,
@@ -6232,12 +6232,13 @@ tutorial_build_military_building(player_t *player, int col, int row,
 		int index;
 		if (game_alloc_serf(&serf, &index) < 0) break;
 
-		serf->type = (SERF_KNIGHT_4 << 2) | player->player_num;
+		/* Serf type byte 0x59: a level 0 knight of player 1. */
+		serf->type = (SERF_KNIGHT_0 << 2) | player->player_num;
 		serf->state = state;
 		serf->pos = pos;
 		serf->counter = 6000;
 		serf->tick = game.tick;
-		player->serf_count[SERF_KNIGHT_4] += 1;
+		player->serf_count[SERF_KNIGHT_0] += 1;
 		player->total_military_score += 1;
 
 		serf->s.defending.next_knight = building->serf_index;

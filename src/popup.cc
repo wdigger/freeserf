@@ -4231,6 +4231,8 @@ popup_box_t::handle_game_end_clk(int x, int y) {
       interface->play_extro();
     } else {
       game_pause(0);
+      /* The game then asks whether to quit (Amiga @0x1d982). */
+      interface->open_popup(BOX_QUIT_CONFIRM);
     }
   } else {
     set_redraw();

@@ -29,6 +29,7 @@ END_EXT_C
 #include "src/data.h"
 #include "src/audio.h"
 #include "src/interface.h"
+#include "src/popup.h"
 
 #define EXTRO_WIDTH   320
 #define EXTRO_HEIGHT  200
@@ -106,6 +107,8 @@ extro_t::finish() {
   }
 
   game_pause(0);
+  /* The game then asks whether to quit (Amiga @0x1d982). */
+  interface->open_popup(BOX_QUIT_CONFIRM);
 }
 
 void
