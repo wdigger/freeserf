@@ -43,11 +43,13 @@ END_EXT_C
 # undef max
 #endif
 
-/* Number of simultaneous sound effects (channels of SDL2_mixer). */
-#define SFX_TRACKS  16
+/* Tracks of the sound effect channels and their sounds' volume. */
+#define SFX_TRACKS  SFX_CHANNELS
 
 static MIX_Mixer *mixer = NULL;
 static MIX_Track *sfx_tracks[SFX_TRACKS];
+static float sfx_track_volume[SFX_TRACKS];
+static float sfx_master_volume = 1.f;
 static MIX_Track *music_track = NULL;
 
 audio_t *
@@ -82,6 +84,7 @@ audio_sdlmixer_t::audio_sdlmixer_t() {
   }
 
   for (int i = 0; i < SFX_TRACKS; i++) {
+    sfx_track_volume[i] = 1.f;
     sfx_tracks[i] = MIX_CreateTrack(mixer);
     if (sfx_tracks[i] == NULL) {
       LOGE("audio-sdlmixer", "Failed to allocate tracks: %s.", SDL_GetError());
@@ -208,8 +211,9 @@ void
 sfx_player_t::set_volume(float volume) {
   volume = std::max(0.f, std::min(volume, 1.f));
   this->volume = volume;
+  sfx_master_volume = volume;
   for (int i = 0; i < SFX_TRACKS; i++) {
-    MIX_SetTrackGain(sfx_tracks[i], volume);
+    MIX_SetTrackGain(sfx_tracks[i], volume * sfx_track_volume[i]);
   }
 }
 
@@ -245,6 +249,18 @@ sfx_track_t::play() {
   }
 
   LOGE("audio-sdlmixer", "Could not play SFX clip: no free track.");
+}
+
+void
+sfx_track_t::play_on_channel(int channel, float volume, float ratio) {
+  MIX_Track *track = sfx_tracks[channel];
+  MIX_StopTrack(track, 0);
+  sfx_track_volume[channel] = volume;
+  MIX_SetTrackGain(track, sfx_master_volume * volume);
+  MIX_SetTrackFrequencyRatio(track, ratio);
+  if (!MIX_SetTrackAudio(track, chunk) || !MIX_PlayTrack(track, 0)) {
+    LOGE("audio-sdlmixer", "Could not play SFX clip: %s.", SDL_GetError());
+  }
 }
 
 midi_player_t::midi_player_t() {

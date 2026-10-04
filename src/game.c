@@ -2836,6 +2836,9 @@ game_update(void)
 	ai_game.ticks_288 = (ai_game.ticks_288 + game.tick_diff) & 0xffff;
 
 	clear_serf_request_failure();
+	/* The ambient sounds of the panel draw from the game generator here
+	   (Amiga play_ambient_sounds @0xa494). */
+	game.ambient_random = game_random_int();
 	map_update();
 
 	/* Update players */

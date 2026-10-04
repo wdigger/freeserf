@@ -24,6 +24,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <cassert>
+#include <algorithm>
 
 #include "src/misc.h"
 BEGIN_EXT_C
@@ -742,10 +743,38 @@ interface_t::game_reset() {
   viewport->map_reinit();
 }
 
+/* Random ambient sounds: birds by the trees in view, waves louder with
+   more water in view and a faint wind (Amiga play_ambient_sounds
+   @0xa494). */
+void
+interface_t::play_ambient_sounds() {
+  audio_t *audio = audio_t::get_instance();
+  int r = game.ambient_random;
+
+  int trees = viewport->get_trees_in_view();
+  if (trees != 0 && (r & 0x3ff) <= trees) {
+    audio->enqueue_sfx(SFX_BIRD_CHIRP_0 + (r & 0xc));
+  }
+
+  int water = viewport->get_water_in_view();
+  if (water != 0 && (r & 0xf00) == 0) {
+    audio->set_sfx_volume(SFX_WAVES, std::min(water >> 2, 30) + 2);
+    audio->enqueue_sfx(SFX_WAVES);
+  }
+
+  if ((r & 0x3000) == 0) {
+    audio->set_sfx_volume(SFX_WIND, (r & 1) + 1);
+    audio->enqueue_sfx(SFX_WIND);
+  }
+}
+
 /* Called periodically when the game progresses. */
 void
 interface_t::update() {
   extro->step();
+
+  play_ambient_sounds();
+  audio_t::get_instance()->update_sfx();
 
   int tick_diff = game.const_tick - last_const_tick;
   last_const_tick = game.const_tick;

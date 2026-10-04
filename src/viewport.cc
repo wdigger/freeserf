@@ -1166,7 +1166,7 @@ viewport_t::draw_water_waves_row(map_pos_t pos, int y_base, int cols,
   for (int i = 0; i < cols; i++, x_base += MAP_TILE_WIDTH,
        pos = MAP_MOVE_RIGHT(pos)) {
     if (MAP_TYPE_UP(pos) < 4 || MAP_TYPE_DOWN(pos) < 4) {
-      /*player->water_in_view += 1;*/
+      water_in_view += 1;
       draw_water_waves(pos, x_base, y_base);
     }
   }
@@ -1226,7 +1226,7 @@ viewport_t::draw_map_objects_row(map_pos_t pos, int y_base, int cols,
       int sprite = MAP_OBJ(pos) - MAP_OBJ_TREE_0;
       if (sprite < 24) {
         /* Trees */
-        /*player->trees_in_view += 1;*/
+        trees_in_view += 1;
 
         /* Adding sprite number to animation ensures
            that the tree animation won't be synchronized
@@ -2041,8 +2041,8 @@ viewport_t::draw_serf_row_behind(map_pos_t pos, int y_base, int cols,
 
 void
 viewport_t::draw_game_objects(int layers) {
-  /*player->water_in_view = 0;
-  player->trees_in_view = 0;*/
+  water_in_view = 0;
+  trees_in_view = 0;
 
   int draw_landscape = layers & VIEWPORT_LAYER_LANDSCAPE;
   int draw_objects = layers & VIEWPORT_LAYER_OBJECTS;
@@ -2530,6 +2530,8 @@ viewport_t::viewport_t(interface_t *interface) {
   layers = VIEWPORT_LAYER_ALL;
 
   last_tick = 0;
+  water_in_view = 0;
+  trees_in_view = 0;
 
   data_t *data = data_t::get_instance();
   data_source = data->get_data_source();

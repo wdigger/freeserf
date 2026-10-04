@@ -98,8 +98,6 @@ class interface_t : public gui_object_t {
   int building_road_length;
   int building_road_valid_dir;
 
-  int sfx_queue[4];
-
   player_t *player;
   int config;
   int msg_flags;
@@ -108,9 +106,6 @@ class interface_t : public gui_object_t {
 
   int current_stat_8_mode;
   int current_stat_7_item;
-
-  int water_in_view;
-  int trees_in_view;
 
   int return_timeout;
   int return_pos;
@@ -186,6 +181,7 @@ class interface_t : public gui_object_t {
 
   void game_reset();
   void update();
+  void play_ambient_sounds();
 
   virtual bool handle_event(const event_t *event);
 

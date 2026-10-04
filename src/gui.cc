@@ -239,9 +239,5 @@ gui_object_t::del_float(gui_object_t *obj) {
 
 void
 gui_object_t::play_sound(int sound) {
-  audio_t *audio = audio_t::get_instance();
-  audio_player_t *player = audio->get_sound_player();
-  if (player != NULL) {
-    player->play_track(sound);
-  }
+  audio_t::get_instance()->enqueue_sfx(sound);
 }

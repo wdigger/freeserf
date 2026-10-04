@@ -23,7 +23,14 @@
 #ifndef SRC_AUDIO_H_
 #define SRC_AUDIO_H_
 
+#include <stdint.h>
+
 #include <map>
+
+#include "src/misc.h"
+BEGIN_EXT_C
+  #include "src/random.h"
+END_EXT_C
 
 typedef enum {
   SFX_MESSAGE = 1,
@@ -63,9 +70,15 @@ typedef enum {
   SFX_BIRD_CHIRP_2 = 78,
   SFX_BIRD_CHIRP_3 = 82,
   SFX_BURNING = 84,
-  SFX_UNKNOWN_28 = 86,
-  SFX_UNKNOWN_29 = 88,
+  SFX_WAVES = 86,
+  SFX_WIND = 88,
 } sfx_t;
+
+/* Number of sound effects of the original (Amiga sfx_table). */
+#define SFX_COUNT  96
+
+/* Number of channels playing sound effects (Amiga Paula). */
+#define SFX_CHANNELS  4
 
 typedef enum {
   MIDI_TRACK_NONE = -1,
@@ -89,6 +102,11 @@ class audio_track_t {
   virtual ~audio_track_t() {}
 
   virtual void play() = 0;
+  /* Play on a channel replacing what plays there, at a volume (0..1) and a
+     frequency ratio. */
+  virtual void play_on_channel(int channel, float volume, float ratio) {
+    play();
+  }
 };
 
 class audio_player_t {
@@ -102,11 +120,14 @@ class audio_player_t {
   virtual ~audio_player_t();
 
   virtual void play_track(int track_id);
+  virtual void play_track_on_channel(int track_id, int channel, float volume,
+                                     float ratio);
   virtual void enable(bool enable) = 0;
   virtual bool is_enabled() const { return enabled; }
   virtual audio_volume_controller_t *get_volume_controller() = 0;
 
  protected:
+  audio_track_t *get_track(int track_id);
   virtual audio_track_t *create_track(int track_id) = 0;
   virtual void stop() = 0;
 };
@@ -117,11 +138,24 @@ class audio_t {
 
   float volume;
 
+  /* Sound effects as the original schedules them (Amiga
+     enqueue_sfx_clip @0x1beb0, audio_vbl_update @0x2dd6). */
+  int sfx_queue[4];
+  int sfx_channel[SFX_CHANNELS];
+  int sfx_timer[SFX_CHANNELS];
+  int sfx_volume[SFX_COUNT];
+  random_state_t sfx_random;
+
  public:
   /* Common audio. */
+  audio_t();
   virtual ~audio_t() {}
 
   static audio_t *get_instance();
+
+  void enqueue_sfx(int sfx);
+  void set_sfx_volume(int sfx, int volume);
+  void update_sfx();
 
   virtual audio_volume_controller_t *get_volume_controller() = 0;
   virtual audio_player_t *get_sound_player() = 0;

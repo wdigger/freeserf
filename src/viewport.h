@@ -62,6 +62,10 @@ class viewport_t : public gui_object_t {
   unsigned int last_tick;
   data_source_t *data_source;
 
+  /* Water and trees seen by the last draw, for the ambient sounds. */
+  int water_in_view;
+  int trees_in_view;
+
  public:
   explicit viewport_t(interface_t *interface);
   virtual ~viewport_t();
@@ -81,6 +85,9 @@ class viewport_t : public gui_object_t {
   void redraw_map_pos(map_pos_t pos);
 
   void update();
+
+  int get_water_in_view() const { return water_in_view; }
+  int get_trees_in_view() const { return trees_in_view; }
 
  protected:
   void draw_triangle_up(int x, int y, int m, int left, int right, map_pos_t pos,

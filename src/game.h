@@ -134,6 +134,8 @@ typedef struct {
 	uint last_tick;
 	/* Increased by one no matter the game speed. */
 	uint const_tick;
+	/* Drawn for the ambient sounds every update. */
+	uint16_t ambient_random;
 	/* 20E */
 	uint game_stats_counter;
 	uint history_counter;

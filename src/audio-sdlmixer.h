@@ -38,6 +38,7 @@ class sfx_track_t : public audio_track_t {
   virtual ~sfx_track_t();
 
   virtual void play();
+  virtual void play_on_channel(int channel, float volume, float ratio);
 };
 
 class sfx_player_t : public audio_player_t, public audio_volume_controller_t {
