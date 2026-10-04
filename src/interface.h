@@ -179,6 +179,8 @@ class interface_t : public gui_object_t {
   void build_flag();
   void build_building(building_type_t type);
   void set_special_click(bool special) { special_click = special; }
+  bool is_special_click() const { return special_click; }
+  void move_to_castle();
   void build_castle();
   void build_road();
 

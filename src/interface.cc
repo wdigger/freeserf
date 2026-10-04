@@ -315,6 +315,17 @@ interface_t::update_interface() {
   panel->update();
 }
 
+/* Move the view and the map cursor to the player's castle (special click
+   on the map button, Amiga viewport_move_to_castle @0x4ca6). */
+void
+interface_t::move_to_castle() {
+  if (!PLAYER_HAS_CASTLE(player) || player->castle_flag == 0) return;
+
+  flag_t *flag = game_get_flag(player->castle_flag);
+  update_map_cursor_pos(MAP_MOVE_UP_LEFT(flag->pos));
+  viewport->move_to_map_pos(map_cursor_pos);
+}
+
 void
 interface_t::set_player(uint player) {
   assert(PLAYER_IS_ACTIVE(game.player[player]));

@@ -71,11 +71,13 @@ class panel_bar_t : public gui_object_t {
   void draw_message_notify();
   void draw_return_arrow();
   void draw_panel_buttons();
-  void button_click(int button);
+  void button_click(int button, bool special = false);
+  int button_at(int x, int y) const;
   panel_btn_t button_type_with_build_possibility(int build_possibility);
 
   virtual void internal_draw();
   virtual bool handle_click_left(int x, int y);
+  virtual bool handle_click_right(int x, int y);
 };
 
 #endif  // SRC_PANEL_H_

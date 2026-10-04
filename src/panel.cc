@@ -133,9 +133,45 @@ panel_bar_t::internal_draw() {
   draw_panel_buttons();
 }
 
-/* Handle a click on the panel buttons. */
+/* Handle a click on the panel buttons. A special click (right button)
+   works as in the original (Amiga handle_panel_btn_click @0x14914): on a
+   build button it switches the builder's help (the possible building
+   sites), on the map button it shows the castle, and only a special click
+   demolishes. */
 void
-panel_bar_t::button_click(int button) {
+panel_bar_t::button_click(int button, bool special) {
+  if (special) {
+    switch (panel_btns[button]) {
+    case PANEL_BTN_BUILD_INACTIVE:
+    case PANEL_BTN_BUILD_FLAG:
+    case PANEL_BTN_BUILD_MINE:
+    case PANEL_BTN_BUILD_SMALL:
+    case PANEL_BTN_BUILD_LARGE:
+    case PANEL_BTN_BUILD_CASTLE:
+    case PANEL_BTN_BUILD_ROAD:
+      /* Not while a popup is open or a road is built (@0x14d6c). */
+      if (!interface->get_popup_box()->is_displayed() &&
+          !interface->is_building_road()) {
+        interface->get_viewport()->switch_layer(VIEWPORT_LAYER_BUILDS);
+        play_sound(SFX_CLICK);
+      }
+      return;
+    case PANEL_BTN_MAP:
+      /* Show the castle instead of the map (@0x14d90). */
+      interface->move_to_castle();
+      return;
+    case PANEL_BTN_DESTROY:
+    case PANEL_BTN_DESTROY_ROAD:
+      break;
+    default:
+      return;
+    }
+  } else if (panel_btns[button] == PANEL_BTN_DESTROY ||
+             panel_btns[button] == PANEL_BTN_DESTROY_ROAD) {
+    /* A normal click on a demolish button does nothing (@0x14a1a). */
+    return;
+  }
+
   switch (panel_btns[button]) {
   case PANEL_BTN_MAP:
   case PANEL_BTN_MAP_STARRED:
@@ -333,27 +369,41 @@ panel_bar_t::handle_click_left(int x, int y) {
 
       play_sound(SFX_ACCEPTED);
     }
-  } else if (y >= 4 && y < 36 && x >= 64) {
-    x -= 64;
-
-    /* Figure out what button was clicked */
-    int button = 0;
-    while (1) {
-      if (x < 32) {
-        if (button < 5) {
-          break;
-        } else {
-          return false;
-        }
-      }
-      button += 1;
-      if (x < 48) return false;
-      x -= 48;
-    }
+  } else {
+    int button = button_at(x, y);
+    if (button < 0) return false;
     button_click(button);
   }
 
   return true;
+}
+
+/* Special click (right button) on a panel button. */
+bool
+panel_bar_t::handle_click_right(int x, int y) {
+  int button = button_at(x, y);
+  if (button < 0) return false;
+
+  set_redraw();
+  button_click(button, true);
+  return true;
+}
+
+/* Index of the panel button at x, y, or -1. */
+int
+panel_bar_t::button_at(int x, int y) const {
+  if (y < 4 || y >= 36 || x < 64) return -1;
+
+  x -= 64;
+  int button = 0;
+  while (1) {
+    if (x < 32) {
+      return (button < 5) ? button : -1;
+    }
+    button += 1;
+    if (x < 48) return -1;
+    x -= 48;
+  }
 }
 
 panel_bar_t::panel_bar_t(interface_t *interface) {
@@ -366,9 +416,14 @@ panel_bar_t::panel_bar_t(interface_t *interface) {
   panel_btns[4] = PANEL_BTN_SETT;
 }
 
+/* Keyboard shortcut for a panel button (not in the original). The
+   demolish buttons act as with a special click, so the keys can still
+   demolish. */
 void
 panel_bar_t::activate_button(int button) {
-  button_click(button);
+  bool special = (panel_btns[button] == PANEL_BTN_DESTROY ||
+                  panel_btns[button] == PANEL_BTN_DESTROY_ROAD);
+  button_click(button, special);
 }
 
 panel_bar_t::panel_btn_t

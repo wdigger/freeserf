@@ -2202,9 +2202,6 @@ popup_box_t::draw_transport_info_box() {
 
   draw_box_background(0x138);
 
-  /* TODO show path merge button. */
-  /* if (r == 0) draw_popup_icon(7, 51, 0x135); */
-
   if (interface->get_player()->index == 0) {
     interface->close_popup();
     return;
@@ -2240,6 +2237,13 @@ popup_box_t::draw_transport_info_box() {
       if (FLAG_HAS_TRANSPORTER(flag, 5-i)) sprite = 0x120; /* Check box */
       draw_popup_icon(x, y, sprite);
     }
+  }
+
+  /* Road merge button: a road passes the flag around a corner and can
+     be led through it (Amiga draw_transport_info_box @0x1f104). */
+  if (!PLAYER_IS_AI(interface->get_player()) &&
+      game_flag_has_road_corner(flag->pos)) {
+    draw_popup_icon(7, 51, 0x135);
   }
 
   draw_green_string(0, 4, "Transport Info:");
@@ -2983,6 +2987,11 @@ popup_box_t::handle_action(int action, int x, int y) {
     set_box(BOX_MAP);
     break;
   case ACTION_MINIMAP_BUILDINGS:
+    /* A special click opens the building filter (Amiga @0x1842e). */
+    if (interface->is_special_click()) {
+      set_box(BOX_BLD_1);
+      break;
+    }
     if (minimap->get_advanced() >= 0) {
       minimap->set_advanced(-1);
       minimap->set_flags(minimap->get_flags() | BIT(3));
@@ -2990,15 +2999,6 @@ popup_box_t::handle_action(int action, int x, int y) {
       minimap->set_flags(minimap->get_flags() ^ 8);
     }
     set_box(BOX_MAP);
-
-    /* TODO on double click */
-#if 0
-    if (minimap.advanced >= 0) {
-      minimap.advanced = -1;
-    } else {
-      set_box(BOX_BLD_1);
-    }
-#endif
     break;
   case ACTION_MINIMAP_GRID:
     minimap->set_flags(minimap->get_flags() ^ 16);
@@ -3499,13 +3499,33 @@ popup_box_t::handle_action(int action, int x, int y) {
   case ACTION_RES_MODE_IN:
   case ACTION_RES_MODE_STOP:
   case ACTION_RES_MODE_OUT:
+    /* Stop and out need a special click (Amiga @0x17a28, @0x17a5e). */
+    if (action != ACTION_RES_MODE_IN && !interface->is_special_click()) {
+      break;
+    }
     set_inventory_resource_mode(action - ACTION_RES_MODE_IN);
     break;
   case ACTION_SERF_MODE_IN:
   case ACTION_SERF_MODE_STOP:
   case ACTION_SERF_MODE_OUT:
+    /* Stop and out need a special click (Amiga @0x17ab2, @0x17ae8). */
+    if (action != ACTION_SERF_MODE_IN && !interface->is_special_click()) {
+      break;
+    }
     set_inventory_serf_mode(action - ACTION_SERF_MODE_IN);
     break;
+  case ACTION_UNKNOWN_TP_INFO_FLAG: {
+    /* Lead the roads around the flag through it (Amiga @0x17732). */
+    flag_t *flag = game_get_flag(interface->get_player()->index);
+    if (game_pull_roads_through_flag(flag->pos,
+                                     interface->get_player()) >= 0) {
+      play_sound(SFX_ACCEPTED);
+    } else {
+      play_sound(SFX_NOT_ACCEPTED);
+    }
+    interface->close_popup();
+    break;
+  }
   case ACTION_SHOW_SETT_8:
     set_box(BOX_SETT_8);
     break;
@@ -4320,6 +4340,8 @@ popup_box_t::handle_click_right(int x, int y) {
   case BOX_BASIC_BLD_FLIP:
   case BOX_ADV_1_BLD:
   case BOX_ADV_2_BLD:
+  case BOX_RESDIR:
+  case BOX_MAP:
     interface->set_special_click(true);
     handle_click_left(x, y);
     interface->set_special_click(false);

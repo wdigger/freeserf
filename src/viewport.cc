@@ -2324,12 +2324,22 @@ viewport_t::road_click(map_pos_t clk_pos) {
    a new flag. */
 bool
 viewport_t::handle_click_right(int x, int y) {
-  if (!interface->is_building_road()) return false;
-
   set_redraw();
-  interface->set_special_click(true);
-  road_click(map_pos_from_screen_pix(x, y));
-  interface->set_special_click(false);
+
+  map_pos_t clk_pos = map_pos_from_screen_pix(x, y);
+
+  if (interface->is_building_road()) {
+    interface->set_special_click(true);
+    road_click(clk_pos);
+    interface->set_special_click(false);
+    return true;
+  }
+
+  /* A special click moves the cursor and opens the window of a flag or
+     building there, as a click does in the original (Amiga
+     handle_player_click @0x15cb2). */
+  interface->update_map_cursor_pos(clk_pos);
+  open_object_box(clk_pos);
   return true;
 }
 
@@ -2396,99 +2406,109 @@ viewport_t::handle_dbl_click(int x, int y, event_button_t button) {
       }
     }
   } else {
-    if (MAP_OBJ(clk_pos) == MAP_OBJ_NONE ||
-        MAP_OBJ(clk_pos) > MAP_OBJ_CASTLE) {
-      return false;
+    return open_object_box(clk_pos);
+  }
+
+  return false;
+}
+
+/* Open the window of the flag or building at clk_pos: own flags and
+   buildings show their box, a foreign military building the attack box
+   (Amiga handle_player_click @0x15cce). */
+bool
+viewport_t::open_object_box(map_pos_t clk_pos) {
+  if (MAP_OBJ(clk_pos) == MAP_OBJ_NONE ||
+      MAP_OBJ(clk_pos) > MAP_OBJ_CASTLE) {
+    return false;
+  }
+
+  if (MAP_OBJ(clk_pos) == MAP_OBJ_FLAG) {
+    if (BIT_TEST(game.split, 5) || /* Demo mode */
+        MAP_OWNER(clk_pos) == interface->get_player()->player_num) {
+      interface->open_popup(BOX_TRANSPORT_INFO);
     }
 
-    if (MAP_OBJ(clk_pos) == MAP_OBJ_FLAG) {
-      if (BIT_TEST(game.split, 5) || /* Demo mode */
-          MAP_OWNER(clk_pos) == interface->get_player()->player_num) {
-        interface->open_popup(BOX_TRANSPORT_INFO);
+    interface->get_player()->index = MAP_OBJ_INDEX(clk_pos);
+  } else { /* Building */
+    if (BIT_TEST(game.split, 5) || /* Demo mode */
+        MAP_OWNER(clk_pos) == interface->get_player()->player_num) {
+      building_t *building = game_get_building(MAP_OBJ_INDEX(clk_pos));
+      if (!BUILDING_IS_DONE(building)) {
+        interface->open_popup(BOX_ORDERED_BLD);
+        } else if (BUILDING_TYPE(building) == BUILDING_CASTLE) {
+        interface->open_popup(BOX_CASTLE_RES);
+      } else if (BUILDING_TYPE(building) == BUILDING_STOCK) {
+        if (!BUILDING_IS_ACTIVE(building)) return 0;
+        interface->open_popup(BOX_CASTLE_RES);
+      } else if (BUILDING_TYPE(building) == BUILDING_HUT ||
+           BUILDING_TYPE(building) == BUILDING_TOWER ||
+           BUILDING_TYPE(building) == BUILDING_FORTRESS) {
+        interface->open_popup(BOX_DEFENDERS);
+      } else if (BUILDING_TYPE(building) == BUILDING_STONEMINE ||
+           BUILDING_TYPE(building) == BUILDING_COALMINE ||
+           BUILDING_TYPE(building) == BUILDING_IRONMINE ||
+           BUILDING_TYPE(building) == BUILDING_GOLDMINE) {
+        interface->open_popup(BOX_MINE_OUTPUT);
+      } else {
+        interface->open_popup(BOX_BLD_STOCK);
       }
 
       interface->get_player()->index = MAP_OBJ_INDEX(clk_pos);
-    } else { /* Building */
-      if (BIT_TEST(game.split, 5) || /* Demo mode */
-          MAP_OWNER(clk_pos) == interface->get_player()->player_num) {
-        building_t *building = game_get_building(MAP_OBJ_INDEX(clk_pos));
-        if (!BUILDING_IS_DONE(building)) {
-          interface->open_popup(BOX_ORDERED_BLD);
-          } else if (BUILDING_TYPE(building) == BUILDING_CASTLE) {
-          interface->open_popup(BOX_CASTLE_RES);
-        } else if (BUILDING_TYPE(building) == BUILDING_STOCK) {
-          if (!BUILDING_IS_ACTIVE(building)) return 0;
-          interface->open_popup(BOX_CASTLE_RES);
-        } else if (BUILDING_TYPE(building) == BUILDING_HUT ||
-             BUILDING_TYPE(building) == BUILDING_TOWER ||
-             BUILDING_TYPE(building) == BUILDING_FORTRESS) {
-          interface->open_popup(BOX_DEFENDERS);
-        } else if (BUILDING_TYPE(building) == BUILDING_STONEMINE ||
-             BUILDING_TYPE(building) == BUILDING_COALMINE ||
-             BUILDING_TYPE(building) == BUILDING_IRONMINE ||
-             BUILDING_TYPE(building) == BUILDING_GOLDMINE) {
-          interface->open_popup(BOX_MINE_OUTPUT);
-        } else {
-          interface->open_popup(BOX_BLD_STOCK);
+    } else if (BIT_TEST(game.split, 5)) { /* Demo mode*/
+      return false;
+    } else { /* Foreign building */
+      /* TODO handle coop mode*/
+      building_t *building = game_get_building(MAP_OBJ_INDEX(clk_pos));
+      interface->get_player()->building_attacked = BUILDING_INDEX(building);
+
+      if (BUILDING_IS_DONE(building) &&
+          (BUILDING_TYPE(building) == BUILDING_HUT ||
+           BUILDING_TYPE(building) == BUILDING_TOWER ||
+           BUILDING_TYPE(building) == BUILDING_FORTRESS ||
+           BUILDING_TYPE(building) == BUILDING_CASTLE)) {
+        if (!BUILDING_IS_ACTIVE(building) ||
+            BUILDING_STATE(building) != 3) {
+          /* It is not allowed to attack
+             if currently not occupied or
+             is too far from the border. */
+          play_sound(SFX_NOT_ACCEPTED);
+          return false;
         }
 
-        interface->get_player()->index = MAP_OBJ_INDEX(clk_pos);
-      } else if (BIT_TEST(game.split, 5)) { /* Demo mode*/
-        return false;
-      } else { /* Foreign building */
-        /* TODO handle coop mode*/
-        building_t *building = game_get_building(MAP_OBJ_INDEX(clk_pos));
-        interface->get_player()->building_attacked = BUILDING_INDEX(building);
-
-        if (BUILDING_IS_DONE(building) &&
-            (BUILDING_TYPE(building) == BUILDING_HUT ||
-             BUILDING_TYPE(building) == BUILDING_TOWER ||
-             BUILDING_TYPE(building) == BUILDING_FORTRESS ||
-             BUILDING_TYPE(building) == BUILDING_CASTLE)) {
-          if (!BUILDING_IS_ACTIVE(building) ||
-              BUILDING_STATE(building) != 3) {
-            /* It is not allowed to attack
-               if currently not occupied or
-               is too far from the border. */
-            play_sound(SFX_NOT_ACCEPTED);
-            return false;
+        const map_pos_t *p = &game.spiral_pos_pattern[7];
+        int found = 0;
+        for (int i = 257; i >= 0; i--) {
+          map_pos_t pos = MAP_POS_ADD(building->pos, p[257-i]);
+          if (MAP_HAS_OWNER(pos) &&
+              MAP_OWNER(pos) == interface->get_player()->player_num) {
+            found = 1;
+            break;
           }
-
-          const map_pos_t *p = &game.spiral_pos_pattern[7];
-          int found = 0;
-          for (int i = 257; i >= 0; i--) {
-            map_pos_t pos = MAP_POS_ADD(building->pos, p[257-i]);
-            if (MAP_HAS_OWNER(pos) &&
-                MAP_OWNER(pos) == interface->get_player()->player_num) {
-              found = 1;
-              break;
-            }
-          }
-
-          if (!found) {
-            play_sound(SFX_NOT_ACCEPTED);
-            return false;
-          }
-
-          /* Action accepted */
-          play_sound(SFX_CLICK);
-
-          int max_knights = 0;
-          switch (BUILDING_TYPE(building)) {
-          case BUILDING_HUT: max_knights = 3; break;
-          case BUILDING_TOWER: max_knights = 6; break;
-          case BUILDING_FORTRESS: max_knights = 12; break;
-          case BUILDING_CASTLE: max_knights = 20; break;
-          default: NOT_REACHED(); break;
-          }
-
-          int knights =
-                player_knights_available_for_attack(interface->get_player(),
-                                                    building->pos);
-          interface->get_player()->knights_attacking = std::min(knights,
-                                                                max_knights);
-          interface->open_popup(BOX_START_ATTACK);
         }
+
+        if (!found) {
+          play_sound(SFX_NOT_ACCEPTED);
+          return false;
+        }
+
+        /* Action accepted */
+        play_sound(SFX_CLICK);
+
+        int max_knights = 0;
+        switch (BUILDING_TYPE(building)) {
+        case BUILDING_HUT: max_knights = 3; break;
+        case BUILDING_TOWER: max_knights = 6; break;
+        case BUILDING_FORTRESS: max_knights = 12; break;
+        case BUILDING_CASTLE: max_knights = 20; break;
+        default: NOT_REACHED(); break;
+        }
+
+        int knights =
+              player_knights_available_for_attack(interface->get_player(),
+                                                  building->pos);
+        interface->get_player()->knights_attacking = std::min(knights,
+                                                              max_knights);
+        interface->open_popup(BOX_START_ATTACK);
       }
     }
   }

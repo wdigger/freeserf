@@ -127,6 +127,7 @@ class viewport_t : public gui_object_t {
   virtual bool handle_click_right(int x, int y);
   void road_click(map_pos_t clk_pos);
   virtual bool handle_dbl_click(int x, int y, event_button_t button);
+  bool open_object_box(map_pos_t clk_pos);
   virtual bool handle_drag(int x, int y);
 
   frame_t *get_tile_frame(unsigned int tid, int tc, int tr);

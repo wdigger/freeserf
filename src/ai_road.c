@@ -1043,25 +1043,51 @@ ai_reroute_path_corner(map_pos_t pos, int dir)
 	ai_restore_path_serf_info(flag, (dir_t)dir_2, &path_2_data);
 }
 
+/* Per corner of a flag (between two of its directions, where the flag
+   has no paths): neighbour direction and the path direction of the
+   corner segment there. */
+static const dir_t corner_nb[6] = {
+	DIR_RIGHT, DIR_DOWN, DIR_LEFT, DIR_LEFT, DIR_UP, DIR_RIGHT
+};
+static const dir_t corner_path[6] = {
+	DIR_DOWN, DIR_RIGHT, DIR_DOWN_RIGHT, DIR_UP, DIR_LEFT, DIR_UP_LEFT
+};
+
+/* Does a road pass the flag at pos around a corner, so that it could be
+   led through the flag? (Amiga flag_has_road_corner @0x270fe, the
+   condition of the road merge button of the transport info box.) */
+int
+game_flag_has_road_corner(map_pos_t pos)
+{
+	if (!MAP_HAS_FLAG(pos)) return 0;
+
+	for (int d = 0; d < 6; d++) {
+		int mask = BIT(d) | BIT((d + 1) % 6);
+		if (MAP_PATHS(pos) & mask) continue;
+
+		map_pos_t nb = MAP_MOVE(pos, corner_nb[d]);
+		if (BIT_TEST(MAP_PATHS(nb), corner_path[d])) return 1;
+	}
+
+	return 0;
+}
+
 /* ai_pull_roads_through_flag @0x271d4: roads passing the flag at the
-   AI cursor around a corner (between two neighbours, where the flag
-   has no paths) are led through the flag (the same test as
-   flag_has_road_corner @0x270fe). Roads that now start and end at
-   this flag are removed. Returns 0 if a road was rerouted, -1 if not
-   (or no flag at the cursor). */
+   AI cursor around a corner are led through the flag. */
 int
 ai_pull_roads_through_flag(player_t *player)
 {
-	/* Per corner: neighbour direction and the path direction of the
-	   corner segment there. */
-	static const dir_t corner_nb[6] = {
-		DIR_RIGHT, DIR_DOWN, DIR_LEFT, DIR_LEFT, DIR_UP, DIR_RIGHT
-	};
-	static const dir_t corner_path[6] = {
-		DIR_DOWN, DIR_RIGHT, DIR_DOWN_RIGHT, DIR_UP, DIR_LEFT, DIR_UP_LEFT
-	};
+	return game_pull_roads_through_flag(AI_CURSOR_POS(player), player);
+}
 
-	map_pos_t pos = AI_CURSOR_POS(player);
+/* Roads passing the flag at pos around a corner are led through the
+   flag (the test of game_flag_has_road_corner). Roads that now start
+   and end at this flag are removed. Returns 0 if a road was rerouted,
+   -1 if not (or no flag at pos). Used by the AI and by the merge button
+   of the transport info box (Amiga @0x271d4, action @0x17732). */
+int
+game_pull_roads_through_flag(map_pos_t pos, player_t *player)
+{
 	int r = -1;
 
 	if (!MAP_HAS_FLAG(pos)) return -1;
